@@ -28,6 +28,12 @@ const userSchema = new mongoose.Schema(
       type: Date,
       default: Date.now,
     },
+    protienStructures: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "ProteinStructure",
+      },
+    ],
    
    
   },

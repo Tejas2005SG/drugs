@@ -8,28 +8,11 @@ import {
   SparklesIcon 
 } from '@heroicons/react/24/outline';
 import { Link } from 'react-router-dom'; 
-
+import Navbar from "../../components/Navbar.jsx"
 function Homepage() {
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Navbar */}
-      <nav className="bg-white shadow-lg">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16">
-            <div className="flex items-center">
-              <h1 className="text-2xl font-bold text-blue-600">Drug Discovery Assistant</h1>
-            </div>
-            <div className="flex items-center space-x-4">
-              <a href="#features" className="text-gray-600 hover:text-blue-600 font-medium">Features</a>
-              <a href="#about" className="text-gray-600 hover:text-blue-600 font-medium">About</a>
-              <a href="#contact" className="text-gray-600 hover:text-blue-600 font-medium">Contact</a>
-              <Link to="/login" className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition">
-                Get Started
-              </Link>
-            </div>
-          </div>
-        </div>
-      </nav>
+{/* <Navbar/> */}
 
       {/* Hero Section */}
       <section className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white py-20">
@@ -38,7 +21,7 @@ function Homepage() {
           <p className="text-lg mb-8">
             Empowering researchers to design, optimize, and discover novel drug candidates faster and more efficiently using cutting-edge AI technology.
           </p>
-          <Link to="/protein-structure" className="bg-white text-blue-600 px-6 py-3 rounded-lg font-semibold hover:bg-gray-100 transition">
+          <Link to="/dashboard" className="bg-white text-blue-600 px-6 py-3 rounded-lg font-semibold hover:bg-gray-100 transition">
             Start Your Discovery Journey
           </Link>
         </div>

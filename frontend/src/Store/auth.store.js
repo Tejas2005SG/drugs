@@ -1,108 +1,78 @@
-import { create } from "zustand";
-import axios from "axios";
-import { toast } from "react-hot-toast";
+// auth.store.js
+import { create } from 'zustand';
+import { persist } from 'zustand/middleware'; // Add persist middleware
+import axios from 'axios';
+import { toast } from 'react-hot-toast';
 
-const API_URL = "http://localhost:5000/api/auth";
+const API_URL = 'http://localhost:5000/api/auth';
 axios.defaults.withCredentials = true;
 
-export const useAuthStore = create((set, get) => ({
-  user: null,
-  token: null,
-  isAuthenticated: false,
-  error: null,
-  isLoading: false,
-  isCheckingAuth: true,
+export const useAuthStore = create(
+  persist(
+    (set, get) => ({
+      user: null,
+      loading: false,
+      checkingAuth: true,
 
-  // Persist user in local storage
-  persistUser: (userData, token) => {
-    if (!userData) return;
-    try {
-      const authData = { user: userData, token: token || userData.token };
-      localStorage.setItem("authData", JSON.stringify(authData));
+      signup: async ({ firstName, lastName, email, password, confirmPassword }) => {
+        set({ loading: true });
+        if (password !== confirmPassword) {
+          set({ loading: false });
+          return toast.error('Passwords do not match');
+        }
+        try {
+          const res = await axios.post(`${API_URL}/signup`, { firstName, lastName, email, password, confirmPassword });
+          set({ user: res.data.user, loading: false });
+          console.log('Signup - Updated State:', get().user);
+        } catch (error) {
+          set({ loading: false });
+          toast.error(error.response?.data?.message || 'An error occurred');
+        }
+      },
 
-      if (authData.token) {
-        axios.defaults.headers.common["Authorization"] = `Bearer ${authData.token}`;
-      }
+      login: async ({ email, password }) => {
+        set({ loading: true });
+        try {
+          const res = await axios.post(`${API_URL}/login`, { email, password });
+          console.log('Login Response:', res.data);
+          set({ user: res.data.user, loading: false });
+          console.log('Login - Updated State:', get().user);
+        } catch (error) {
+          console.error('Login Error:', error.response?.data);
+          set({ loading: false });
+          toast.error(error.response?.data?.message || 'No User found');
+        }
+      },
 
-      set({ user: userData, token: authData.token, isAuthenticated: true });
-    } catch (error) {
-      console.error("Failed to persist auth data:", error);
+      logout: async () => {
+        try {
+          await axios.post(`${API_URL}/logout`);
+          set({ user: null });
+          console.log('Logout - Updated State:', get().user);
+        } catch (error) {
+          toast.error(error.response?.data?.message || 'An error occurred during logout');
+        }
+      },
+
+      checkAuth: async () => {
+        set({ checkingAuth: true });
+        try {
+          const response = await axios.get(`${API_URL}/profile`);
+          console.log('checkAuth Response:', response.data);
+          set({ user: response.data.user, checkingAuth: false });
+          console.log('checkAuth - Updated State:', get().user);
+          return response.data.user;
+        } catch (error) {
+          console.error('checkAuth Error:', error.response?.data || error.message);
+          set({ checkingAuth: false, user: null });
+          console.log('checkAuth - State after error:', get().user);
+          return null;
+        }
+      },
+    }),
+    {
+      name: 'auth-storage', // Name for localStorage key
+      partialize: (state) => ({ user: state.user }), // Only persist user
     }
-  },
-
-  // Restore auth state from localStorage
-  restoreAuth: () => {
-    const storedAuth = localStorage.getItem("authData");
-    if (storedAuth) {
-      try {
-        const { user, token } = JSON.parse(storedAuth);
-        set({ user, token, isAuthenticated: true });
-        axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
-      } catch (error) {
-        console.error("Error restoring auth:", error);
-        localStorage.removeItem("authData");
-      }
-    }
-    set({ isCheckingAuth: false });
-  },
-
-  // Signup function
-  signup: async (firstName, lastName, email, password, confirmPassword) => {
-    set({ isLoading: true, error: null });
-
-    if (password !== confirmPassword) {
-      set({ isLoading: false });
-      toast.error("Passwords do not match");
-      return;
-    }
-
-    try {
-      const response = await axios.post(`${API_URL}/signup`, {
-        firstName, lastName, email, password, confirmPassword,
-      });
-
-      get().persistUser(response.data.user, response.data.token);
-      toast.success("Signup successful!");
-    } catch (error) {
-      set({ error: error.response?.data?.message || "Signup failed", isLoading: false });
-      toast.error(error.response?.data?.message || "Signup failed");
-    } finally {
-      set({ isLoading: false });
-    }
-  },
-
-  // Login function
-  login: async (email, password) => {
-    set({ isLoading: true, error: null });
-
-    try {
-      const response = await axios.post(`${API_URL}/login`, { email, password });
-
-      get().persistUser(response.data.user, response.data.token);
-      toast.success("Logged in successfully!");
-    } catch (error) {
-      set({ error: error.response?.data?.message || "Login failed", isLoading: false });
-      toast.error(error.response?.data?.message || "Login failed");
-    } finally {
-      set({ isLoading: false });
-    }
-  },
-
-  // Logout function
-  logout: async () => {
-    try {
-      await axios.post(`${API_URL}/logout`);
-      localStorage.removeItem("authData");
-      set({ user: null, token: null, isAuthenticated: false });
-      delete axios.defaults.headers.common["Authorization"];
-      toast.success("Logged out successfully");
-    } catch (error) {
-      toast.error("Logout failed",error);
-    }
-  },
-}));
-
-// Auto-restore authentication on store initialization
-useAuthStore.getState().restoreAuth();
-
-export default useAuthStore;
+  )
+);
