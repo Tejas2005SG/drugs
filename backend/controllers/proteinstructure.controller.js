@@ -1,5 +1,6 @@
 import ProteinStructure from '../models/protienstructure.model.js'; // Fixed typo in import
 import { User } from '../models/auth.model.js'; // Added User model import
+import GeneratenewMolecule from '../models/generatenew.model.js'; // Added GeneratenewMolecule model import
 import axios from 'axios';
 import dotenv from 'dotenv';
 
@@ -185,49 +186,226 @@ export const postProteinStructure = async (req, res) => {
 };
 
 // getVariantInfo remains unchanged as it doesn't interact with user data
-export const getVariantInfo = async (req, res) => {
-  try {
-    const { smiles } = req.query;
+// export const getVariantInfo = async (req, res) => {
+//   try {
+//     const { smiles } = req.query;
     
-    if (!smiles) {
-      return res.status(400).json({ message: 'SMILES string is required' });
+//     if (!smiles) {
+//       return res.status(400).json({ message: 'SMILES string is required' });
+//     }
+
+//     if (!GEMINI_API_KEY) {
+//       return res.status(500).json({ message: 'Gemini API key is not configured on the server' });
+//     }
+
+//     const prompt = `Provide detailed information about the molecule with the SMILES string "${smiles}". Include its chemical properties, potential uses, and any relevant biological or medicinal information.`;
+    
+//     const geminiResponse = await axios.post(
+//       `${GEMINI_API_URL}?key=${GEMINI_API_KEY}`,
+//       {
+//         contents: [{ parts: [{ text: prompt }] }]
+//       },
+//       {
+//         headers: { 'Content-Type': 'application/json' }
+//       }
+//     );
+
+//     if (geminiResponse.data.candidates?.length > 0) {
+//       const info = geminiResponse.data.candidates[0].content.parts[0].text;
+//       return res.status(200).json({ information: info });
+//     }
+    
+//     return res.status(404).json({ message: 'No content returned from Gemini API' });
+//   } catch (error) {
+//     console.error('Error fetching variant information:', error);
+//     let errorMessage = 'Server error';
+//     let errorDetails = error.message;
+    
+//     if (error.response) {
+//       errorMessage = `API Error (${error.response.status})`;
+//       errorDetails = JSON.stringify(error.response.data);
+//     }
+    
+//     return res.status(500).json({ 
+//       message: errorMessage, 
+//       error: errorDetails 
+//     });
+//   }
+// };
+
+
+export const generatenewmolecule = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { smilesoffirst, smilesofsecond } = req.body;
+
+    console.log(`Processing request for user ID: ${id}`);
+    console.log('Request body:', { smilesoffirst, smilesofsecond });
+
+    if (!smilesoffirst || !smilesofsecond) {
+      return res.status(400).json({ message: "Both SMILES strings are required" });
+    }
+
+    if (!id) {
+      return res.status(400).json({ message: "User ID is required" });
     }
 
     if (!GEMINI_API_KEY) {
-      return res.status(500).json({ message: 'Gemini API key is not configured on the server' });
+      console.error("GEMINI_API_KEY is not set in environment variables");
+      return res.status(500).json({ message: "Gemini API key is not configured" });
     }
 
-    const prompt = `Provide detailed information about the molecule with the SMILES string "${smiles}". Include its chemical properties, potential uses, and any relevant biological or medicinal information.`;
-    
+    const prompt = `
+      You are an expert cheminformatics AI designed to combine two SMILES strings into a new molecule. Follow these steps:
+1. Analyze the two input SMILES strings to understand their chemical structures.
+2. Combine them into a new molecule by forming a chemically reasonable bond (e.g., an ether linkage -O-, an ester, or a carbon-carbon bond) between appropriate atoms.
+3. Generate the SMILES string for the new molecule and its corresponding IUPAC name.
+4. Return the result in this JSON format:
+{
+  "newSmiles": "[NEW_SMILES]",
+  "newIupacName": "[NEW_IUPAC_NAME]"
+}
+
+Example:
+- Input SMILES 1: "CCO" (ethanol)
+- Input SMILES 2: "c1ccccc1" (benzene)
+- Combined: Link the oxygen of ethanol to a carbon of benzene to form an ether.
+- Output: {
+  "newSmiles": "CCOc1ccccc1",
+  "newIupacName": "Ethoxybenzene"
+}
+
+Input:
+- SMILES 1: "${smilesoffirst}"
+- SMILES 2: "${smilesofsecond}"
+    `;
+
+    console.log('Sending request to Gemini API...');
     const geminiResponse = await axios.post(
       `${GEMINI_API_URL}?key=${GEMINI_API_KEY}`,
-      {
-        contents: [{ parts: [{ text: prompt }] }]
-      },
-      {
-        headers: { 'Content-Type': 'application/json' }
-      }
+      { contents: [{ parts: [{ text: prompt }] }] },
+      { headers: { "Content-Type": "application/json" } }
     );
 
-    if (geminiResponse.data.candidates?.length > 0) {
-      const info = geminiResponse.data.candidates[0].content.parts[0].text;
-      return res.status(200).json({ information: info });
+    const geminiContent = geminiResponse.data.candidates?.[0]?.content?.parts?.[0]?.text;
+    console.log('Gemini API response:', geminiContent);
+    if (!geminiContent) {
+      throw new Error("No content returned from Gemini API");
     }
-    
-    return res.status(404).json({ message: 'No content returned from Gemini API' });
-  } catch (error) {
-    console.error('Error fetching variant information:', error);
-    let errorMessage = 'Server error';
-    let errorDetails = error.message;
-    
-    if (error.response) {
-      errorMessage = `API Error (${error.response.status})`;
-      errorDetails = JSON.stringify(error.response.data);
+
+    let result;
+    try {
+      result = JSON.parse(geminiContent);
+    } catch (parseError) {
+      console.error("Failed to parse Gemini response as JSON:", geminiContent);
+      const smilesMatch = geminiContent.match(/"newSmiles":\s*"([^"]+)"/);
+      const iupacMatch = geminiContent.match(/"newIupacName":\s*"([^"]+)"/);
+      if (smilesMatch && iupacMatch) {
+        result = { newSmiles: smilesMatch[1], newIupacName: iupacMatch[1] };
+      } else {
+        result = {
+          newSmiles: `${smilesoffirst}${smilesofsecond}`,
+          newIupacName: "Generated Molecule (Fallback Name)",
+        };
+        console.warn("Using fallback molecule due to invalid Gemini response");
+      }
     }
-    
-    return res.status(500).json({ 
-      message: errorMessage, 
-      error: errorDetails 
+
+    const { newSmiles, newIupacName } = result;
+    if (!newSmiles || !newIupacName) {
+      throw new Error("Gemini response missing required fields");
+    }
+
+    const information = JSON.stringify({
+      newSmiles,
+      newIupacName,
+      description: "Generated by combining two SMILES strings",
     });
+
+    console.log('Saving new molecule to database...');
+    const newMolecule = new GeneratenewMolecule({
+      smilesoffirst,
+      smilesofsecond,
+      information,
+      userId: id,
+    });
+    await newMolecule.save();
+
+    console.log('Updating user with new molecule ID:', newMolecule._id);
+    const userUpdate = await User.findByIdAndUpdate(
+      id,
+      { $push: { protienStructures: newMolecule._id } },
+      { new: true }
+    );
+    if (!userUpdate) {
+      throw new Error(`User with ID ${id} not found`);
+    }
+
+    res.status(201).json({
+      newSmiles,
+      newIupacName,
+      id: newMolecule._id,
+    });
+  } catch (error) {
+    console.error("Error generating new molecule:", error.message, error.stack);
+    res.status(500).json({ message: "Failed to generate new molecule", error: error.message });
+  }
+};
+
+export const getgeneratednewmolecule = async (req, res) => {
+  try {
+    const { id } = req.params; // Molecule ID from route
+    const userId = req.user.id; // From protectRoute middleware
+
+    console.log(`Request received for /api/protein/generatednewmolecule/${id}`);
+
+    const molecule = await GeneratenewMolecule.findOne({ _id: id, userId });
+
+    if (!molecule) {
+      return res.status(404).json({ message: "Generated molecule not found" });
+    }
+
+    const info = JSON.parse(molecule.information);
+
+    res.status(200).json({
+      newSmiles: info.newSmiles,
+      newIupacName: info.newIupacName,
+    });
+  } catch (error) {
+    console.error("Error retrieving generated molecule:", error);
+    res.status(500).json({ message: "Failed to retrieve molecule", error: error.message });
+  }
+};
+
+// New endpoint to fetch the latest molecule for a user
+export const getLatestGeneratedMolecule = async (req, res) => {
+  try {
+    const { userId } = req.params; // User ID from route
+    const authUserId = req.user.id; // From protectRoute middleware
+
+    console.log(`Request received for /api/protein/generatednewmolecule/latest/${userId}`);
+
+    if (userId !== authUserId) {
+      return res.status(403).json({ message: "Unauthorized to access this user’s molecules" });
+    }
+
+    const latestMolecule = await GeneratenewMolecule
+      .findOne({ userId })
+      .sort({ createdAt: -1 }); // Sort by creation date, descending
+
+    if (!latestMolecule) {
+      return res.status(404).json({ message: "No generated molecules found for this user" });
+    }
+
+    const info = JSON.parse(latestMolecule.information);
+
+    res.status(200).json({
+      newSmiles: info.newSmiles,
+      newIupacName: info.newIupacName,
+      id: latestMolecule._id,
+    });
+  } catch (error) {
+    console.error("Error retrieving latest generated molecule:", error);
+    res.status(500).json({ message: "Failed to retrieve latest molecule", error: error.message });
   }
 };

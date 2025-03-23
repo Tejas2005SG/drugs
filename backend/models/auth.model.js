@@ -34,6 +34,7 @@ const userSchema = new mongoose.Schema(
         ref: "ProteinStructure",
       },
     ],
+    NewproteinStructures: [{ type: mongoose.Schema.Types.ObjectId, ref: 'GeneratenewMolecule' }],
    
    
   },
