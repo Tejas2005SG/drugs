@@ -17,14 +17,15 @@ const StructureDetails = ({ structure, rdkitLoaded }) => {
   const [variantStyle, setVariantStyle] = useState('ballstick');
   const [showLabels, setShowLabels] = useState(false);
   const [aiDescription, setAiDescription] = useState('');
-  const [spinAnimation, setSpinAnimation] = useState(false); // New: Animation toggle
-  const [highlightedAtom, setHighlightedAtom] = useState(null); // New: Atom highlighting
+  const [spinAnimation, setSpinAnimation] = useState(false);
+  const [highlightedAtom, setHighlightedAtom] = useState(null);
   const parentMolRef = useRef(null);
   const variantMolRefs = useRef({});
   const parent3DRef = useRef(null);
   const variant3DRef = useRef(null);
   const parentViewerRef = useRef(null);
   const variantViewerRef = useRef(null);
+  const animationFrameId = useRef(null); // For smooth spinning
 
   useEffect(() => {
     if (showParent3D || showVariant3D) {
@@ -47,7 +48,6 @@ const StructureDetails = ({ structure, rdkitLoaded }) => {
     }
   }, [showParent3D, showVariant3D]);
 
-  // Reset state on structure change or tab switch
   useEffect(() => {
     setSelectedVariant(null);
     setVariantInfo(null);
@@ -59,6 +59,10 @@ const StructureDetails = ({ structure, rdkitLoaded }) => {
     setHighlightedAtom(null);
     if (parent3DRef.current) parent3DRef.current.innerHTML = '';
     if (variant3DRef.current) variant3DRef.current.innerHTML = '';
+    if (animationFrameId.current) {
+      cancelAnimationFrame(animationFrameId.current); // Clean up animation
+      animationFrameId.current = null;
+    }
   }, [structure, activeTab]);
 
   useEffect(() => {
@@ -120,16 +124,26 @@ const StructureDetails = ({ structure, rdkitLoaded }) => {
     }
   };
 
-  // Handle atom click for highlighting
   const handleAtomClick = (viewer, atom) => {
     if (highlightedAtom && highlightedAtom.index === atom.index) {
-      viewer.setStyle({ index: atom.index }, { sphere: { scale: 0.3 }, stick: { radius: 0.2 } }); // Reset style
+      viewer.setStyle({ index: atom.index }, { sphere: { scale: 0.3 }, stick: { radius: 0.2 } });
       setHighlightedAtom(null);
     } else {
       viewer.setStyle({ index: atom.index }, { sphere: { scale: 0.5, color: 'yellow' }, stick: { radius: 0.3, color: 'yellow' } });
       setHighlightedAtom({ element: atom.elem, x: atom.x, y: atom.y, z: atom.z, index: atom.index });
     }
     viewer.render();
+  };
+
+  // Custom spin animation
+  const spinModel = (viewer) => {
+    if (!spinAnimation || !viewer) return;
+    const animate = () => {
+      viewer.rotate(2, 'y'); // Rotate 2 degrees around y-axis
+      viewer.render();
+      animationFrameId.current = requestAnimationFrame(animate);
+    };
+    animationFrameId.current = requestAnimationFrame(animate);
   };
 
   // Enhanced 3D rendering for parent
@@ -166,14 +180,24 @@ const StructureDetails = ({ structure, rdkitLoaded }) => {
         });
       }
 
-      // Atom click handler
       viewer.setClickable({}, true, (atom) => handleAtomClick(viewer, atom));
-
       viewer.zoomTo();
-      if (spinAnimation) viewer.spin(true);
-      else viewer.spin(false);
       viewer.render();
-      fetchAiEnhancements(structure.smiles);
+
+      if (spinAnimation) {
+        if (animationFrameId.current) cancelAnimationFrame(animationFrameId.current);
+        spinModel(viewer);
+      } else if (animationFrameId.current) {
+        cancelAnimationFrame(animationFrameId.current);
+        animationFrameId.current = null;
+      }
+
+      return () => {
+        if (animationFrameId.current) {
+          cancelAnimationFrame(animationFrameId.current);
+          animationFrameId.current = null;
+        }
+      };
     }
   }, [showParent3D, structure, is3DmolLoaded, parentStyle, showLabels, spinAnimation]);
 
@@ -212,12 +236,23 @@ const StructureDetails = ({ structure, rdkitLoaded }) => {
       }
 
       viewer.setClickable({}, true, (atom) => handleAtomClick(viewer, atom));
-
       viewer.zoomTo();
-      if (spinAnimation) viewer.spin(true);
-      else viewer.spin(false);
       viewer.render();
-      fetchAiEnhancements(selectedVariant.smiles);
+
+      if (spinAnimation) {
+        if (animationFrameId.current) cancelAnimationFrame(animationFrameId.current);
+        spinModel(viewer);
+      } else if (animationFrameId.current) {
+        cancelAnimationFrame(animationFrameId.current);
+        animationFrameId.current = null;
+      }
+
+      return () => {
+        if (animationFrameId.current) {
+          cancelAnimationFrame(animationFrameId.current);
+          animationFrameId.current = null;
+        }
+      };
     }
   }, [showVariant3D, selectedVariant, is3DmolLoaded, variantStyle, showLabels, spinAnimation]);
 
@@ -268,7 +303,7 @@ const StructureDetails = ({ structure, rdkitLoaded }) => {
     setActiveTab('variant');
     setVariantInfo(null);
     setVariantInfoError(null);
-    setShowVariant3D(false); // Reset 3D view
+    setShowVariant3D(false);
     fetchVariantInfo(variant.smiles);
   };
 
@@ -280,6 +315,10 @@ const StructureDetails = ({ structure, rdkitLoaded }) => {
     setSpinAnimation(false);
     if (parent3DRef.current) parent3DRef.current.innerHTML = '';
     if (variant3DRef.current) variant3DRef.current.innerHTML = '';
+    if (animationFrameId.current) {
+      cancelAnimationFrame(animationFrameId.current);
+      animationFrameId.current = null;
+    }
   };
 
   const renderMoleculeFallback = (smiles) => {
