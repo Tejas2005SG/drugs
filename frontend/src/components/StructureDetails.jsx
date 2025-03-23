@@ -13,10 +13,18 @@ const StructureDetails = ({ structure, rdkitLoaded }) => {
   const [showParent3D, setShowParent3D] = useState(false);
   const [showVariant3D, setShowVariant3D] = useState(false);
   const [is3DmolLoaded, setIs3DmolLoaded] = useState(false);
+  const [parentStyle, setParentStyle] = useState('ballstick');
+  const [variantStyle, setVariantStyle] = useState('ballstick');
+  const [showLabels, setShowLabels] = useState(false);
+  const [aiDescription, setAiDescription] = useState('');
+  const [spinAnimation, setSpinAnimation] = useState(false); // New: Animation toggle
+  const [highlightedAtom, setHighlightedAtom] = useState(null); // New: Atom highlighting
   const parentMolRef = useRef(null);
   const variantMolRefs = useRef({});
   const parent3DRef = useRef(null);
   const variant3DRef = useRef(null);
+  const parentViewerRef = useRef(null);
+  const variantViewerRef = useRef(null);
 
   useEffect(() => {
     if (showParent3D || showVariant3D) {
@@ -39,14 +47,19 @@ const StructureDetails = ({ structure, rdkitLoaded }) => {
     }
   }, [showParent3D, showVariant3D]);
 
+  // Reset state on structure change or tab switch
   useEffect(() => {
     setSelectedVariant(null);
-    setActiveTab('parent');
     setVariantInfo(null);
     setVariantInfoError(null);
     setShowParent3D(false);
     setShowVariant3D(false);
-  }, [structure]);
+    setAiDescription('');
+    setSpinAnimation(false);
+    setHighlightedAtom(null);
+    if (parent3DRef.current) parent3DRef.current.innerHTML = '';
+    if (variant3DRef.current) variant3DRef.current.innerHTML = '';
+  }, [structure, activeTab]);
 
   useEffect(() => {
     if (rdkitLoaded && window.RDKit && structure?.smiles && activeTab === 'parent') {
@@ -83,47 +96,148 @@ const StructureDetails = ({ structure, rdkitLoaded }) => {
     }
   }, [rdkitLoaded, structure, activeTab]);
 
+  const fetchAiEnhancements = async (smiles) => {
+    const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
+    if (!GEMINI_API_KEY) {
+      setAiDescription('Gemini API key not set');
+      return;
+    }
+
+    try {
+      const response = await axios.post(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${GEMINI_API_KEY}`,
+        { contents: [{ parts: [{ text: `Generate a creative, concise description of potential applications for a molecule with SMILES "${smiles}".` }] }] },
+        { headers: { 'Content-Type': 'application/json' }, withCredentials: false }
+      );
+      if (response.data.candidates?.[0]?.content?.parts?.[0]?.text) {
+        setAiDescription(response.data.candidates[0].content.parts[0].text);
+      } else {
+        setAiDescription('No AI description available');
+      }
+    } catch (error) {
+      console.error('Failed to fetch AI enhancements:', error);
+      setAiDescription('Failed to fetch AI description');
+    }
+  };
+
+  // Handle atom click for highlighting
+  const handleAtomClick = (viewer, atom) => {
+    if (highlightedAtom && highlightedAtom.index === atom.index) {
+      viewer.setStyle({ index: atom.index }, { sphere: { scale: 0.3 }, stick: { radius: 0.2 } }); // Reset style
+      setHighlightedAtom(null);
+    } else {
+      viewer.setStyle({ index: atom.index }, { sphere: { scale: 0.5, color: 'yellow' }, stick: { radius: 0.3, color: 'yellow' } });
+      setHighlightedAtom({ element: atom.elem, x: atom.x, y: atom.y, z: atom.z, index: atom.index });
+    }
+    viewer.render();
+  };
+
+  // Enhanced 3D rendering for parent
   useEffect(() => {
     if (showParent3D && parent3DRef.current && structure?.smiles && is3DmolLoaded && window.$3Dmol) {
-      parent3DRef.current.innerHTML = ''; // Clear container
+      parent3DRef.current.innerHTML = '';
       const mol = window.RDKit.get_mol(structure.smiles);
       const molData = mol.get_molblock();
       mol.delete();
       
-      const viewer = window.$3Dmol.createViewer(parent3DRef.current, {
-        backgroundColor: 'white'
-      });
+      const viewer = window.$3Dmol.createViewer(parent3DRef.current, { backgroundColor: 'white' });
       if (!viewer) {
         console.error('Failed to create parent 3D viewer');
         return;
       }
+      parentViewerRef.current = viewer;
       viewer.addModel(molData, 'mol');
-      viewer.setStyle({}, { stick: { radius: 0.2 }, sphere: { scale: 0.3 } });
-      viewer.zoomTo();
-      viewer.render();
-    }
-  }, [showParent3D, structure, is3DmolLoaded]);
 
+      const styleConfig = parentStyle === 'ballstick' ? { stick: { radius: 0.2 }, sphere: { scale: 0.3 } } :
+                         parentStyle === 'stick' ? { stick: { radius: 0.2 } } :
+                         parentStyle === 'sphere' ? { sphere: { scale: 0.5 } } :
+                         { surface: { opacity: 0.9, color: 'grey' } };
+      viewer.setStyle({}, styleConfig);
+
+      if (showLabels) {
+        const model = viewer.getModel(0);
+        const atoms = model.selectedAtoms({});
+        atoms.forEach((atom, index) => {
+          viewer.addLabel(
+            `${atom.elem}${index + 1}`,
+            { fontSize: 10, backgroundColor: 'black', backgroundOpacity: 0.8 },
+            { x: atom.x, y: atom.y, z: atom.z }
+          );
+        });
+      }
+
+      // Atom click handler
+      viewer.setClickable({}, true, (atom) => handleAtomClick(viewer, atom));
+
+      viewer.zoomTo();
+      if (spinAnimation) viewer.spin(true);
+      else viewer.spin(false);
+      viewer.render();
+      fetchAiEnhancements(structure.smiles);
+    }
+  }, [showParent3D, structure, is3DmolLoaded, parentStyle, showLabels, spinAnimation]);
+
+  // Enhanced 3D rendering for variant
   useEffect(() => {
     if (showVariant3D && variant3DRef.current && selectedVariant?.smiles && is3DmolLoaded && window.$3Dmol) {
-      variant3DRef.current.innerHTML = ''; // Clear container
+      variant3DRef.current.innerHTML = '';
       const mol = window.RDKit.get_mol(selectedVariant.smiles);
       const molData = mol.get_molblock();
       mol.delete();
       
-      const viewer = window.$3Dmol.createViewer(variant3DRef.current, {
-        backgroundColor: 'white'
-      });
+      const viewer = window.$3Dmol.createViewer(variant3DRef.current, { backgroundColor: 'white' });
       if (!viewer) {
         console.error('Failed to create variant 3D viewer');
         return;
       }
+      variantViewerRef.current = viewer;
       viewer.addModel(molData, 'mol');
-      viewer.setStyle({}, { stick: { radius: 0.2 }, sphere: { scale: 0.3 } });
+
+      const styleConfig = variantStyle === 'ballstick' ? { stick: { radius: 0.2 }, sphere: { scale: 0.3 } } :
+                         variantStyle === 'stick' ? { stick: { radius: 0.2 } } :
+                         variantStyle === 'sphere' ? { sphere: { scale: 0.5 } } :
+                         { surface: { opacity: 0.9, color: 'grey' } };
+      viewer.setStyle({}, styleConfig);
+
+      if (showLabels) {
+        const model = viewer.getModel(0);
+        const atoms = model.selectedAtoms({});
+        atoms.forEach((atom, index) => {
+          viewer.addLabel(
+            `${atom.elem}${index + 1}`,
+            { fontSize: 10, backgroundColor: 'black', backgroundOpacity: 0.8 },
+            { x: atom.x, y: atom.y, z: atom.z }
+          );
+        });
+      }
+
+      viewer.setClickable({}, true, (atom) => handleAtomClick(viewer, atom));
+
       viewer.zoomTo();
+      if (spinAnimation) viewer.spin(true);
+      else viewer.spin(false);
       viewer.render();
+      fetchAiEnhancements(selectedVariant.smiles);
     }
-  }, [showVariant3D, selectedVariant, is3DmolLoaded]);
+  }, [showVariant3D, selectedVariant, is3DmolLoaded, variantStyle, showLabels, spinAnimation]);
+
+  const download3DView = (viewerRef, filename) => {
+    if (viewerRef.current) {
+      viewerRef.current.render(() => {
+        const canvas = (parent3DRef.current || variant3DRef.current).querySelector('canvas');
+        if (canvas) {
+          const pngData = canvas.toDataURL('image/png');
+          const link = document.createElement('a');
+          link.href = pngData;
+          link.download = `${filename}.png`;
+          link.click();
+        } else {
+          console.error('Canvas not found for download');
+          alert('Failed to download image: Canvas not found');
+        }
+      });
+    }
+  };
 
   const fetchVariantInfo = async (smiles) => {
     try {
@@ -134,7 +248,7 @@ const StructureDetails = ({ structure, rdkitLoaded }) => {
       const response = await axios.post(
         `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${GEMINI_API_KEY}`,
         { contents: [{ parts: [{ text: `Provide detailed information about the molecule with SMILES "${smiles}".` }] }] },
-        { headers: { 'Content-Type': 'application/json' } }
+        { headers: { 'Content-Type': 'application/json' }, withCredentials: false }
       );
       if (response.data.candidates?.[0]?.content?.parts?.[0]?.text) {
         setVariantInfo(response.data.candidates[0].content.parts[0].text);
@@ -154,7 +268,18 @@ const StructureDetails = ({ structure, rdkitLoaded }) => {
     setActiveTab('variant');
     setVariantInfo(null);
     setVariantInfoError(null);
+    setShowVariant3D(false); // Reset 3D view
     fetchVariantInfo(variant.smiles);
+  };
+
+  const handleTabSwitch = (tab) => {
+    setActiveTab(tab);
+    setShowParent3D(false);
+    setShowVariant3D(false);
+    setHighlightedAtom(null);
+    setSpinAnimation(false);
+    if (parent3DRef.current) parent3DRef.current.innerHTML = '';
+    if (variant3DRef.current) variant3DRef.current.innerHTML = '';
   };
 
   const renderMoleculeFallback = (smiles) => {
@@ -265,7 +390,7 @@ const StructureDetails = ({ structure, rdkitLoaded }) => {
                 ? 'border-blue-500 text-blue-600'
                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
             }`}
-            onClick={() => setActiveTab('parent')}
+            onClick={() => handleTabSwitch('parent')}
           >
             Parent Structure
           </button>
@@ -275,7 +400,7 @@ const StructureDetails = ({ structure, rdkitLoaded }) => {
                 ? 'border-blue-500 text-blue-600'
                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
             }`}
-            onClick={() => setActiveTab('variants')}
+            onClick={() => handleTabSwitch('variants')}
           >
             Generated Variants ({structure.generatedStructures?.length || 0})
           </button>
@@ -286,7 +411,7 @@ const StructureDetails = ({ structure, rdkitLoaded }) => {
                   ? 'border-blue-500 text-blue-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
               }`}
-              onClick={() => setActiveTab('variant')}
+              onClick={() => handleTabSwitch('variant')}
             >
               Selected Variant
             </button>
@@ -314,12 +439,58 @@ const StructureDetails = ({ structure, rdkitLoaded }) => {
           </div>
 
           {showParent3D && (
-            <div 
-              ref={parent3DRef}
-              className="w-full h-96 mt-4 border rounded relative"
-            >
-              {!is3DmolLoaded && <p className="text-center pt-20">Loading 3D viewer...</p>}
-            </div>
+            <>
+              <div 
+                ref={parent3DRef}
+                className="w-full h-96 mt-4 border rounded relative bg-gray-100"
+              >
+                {!is3DmolLoaded && <p className="text-center pt-20">Loading 3D viewer...</p>}
+              </div>
+              {is3DmolLoaded && (
+                <div className="mt-2">
+                  <div className="flex justify-center space-x-4">
+                    <select
+                      value={parentStyle}
+                      onChange={(e) => setParentStyle(e.target.value)}
+                      className="border rounded p-1"
+                    >
+                      <option value="ballstick">Ball & Stick</option>
+                      <option value="stick">Stick</option>
+                      <option value="sphere">Sphere</option>
+                      <option value="surface">Surface</option>
+                    </select>
+                    <button
+                      onClick={() => setShowLabels(!showLabels)}
+                      className="bg-gray-500 hover:bg-gray-600 text-white py-1 px-3 rounded"
+                    >
+                      {showLabels ? 'Hide Labels' : 'Show Labels'}
+                    </button>
+                    <button
+                      onClick={() => setSpinAnimation(!spinAnimation)}
+                      className="bg-teal-500 hover:bg-teal-600 text-white py-1 px-3 rounded"
+                    >
+                      {spinAnimation ? 'Stop Spin' : 'Spin Model'}
+                    </button>
+                    <button
+                      onClick={() => download3DView(parentViewerRef, `${structure.name}-3D`)}
+                      className="bg-purple-500 hover:bg-purple-600 text-white py-1 px-3 rounded"
+                    >
+                      Download PNG
+                    </button>
+                  </div>
+                  {highlightedAtom && (
+                    <div className="mt-2 text-center text-sm text-gray-700 bg-yellow-50 p-2 rounded">
+                      <strong>Highlighted Atom:</strong> {highlightedAtom.element} (x: {highlightedAtom.x.toFixed(2)}, y: {highlightedAtom.y.toFixed(2)}, z: {highlightedAtom.z.toFixed(2)})
+                    </div>
+                  )}
+                  {aiDescription && (
+                    <div className="mt-4 text-center text-sm text-gray-700 bg-blue-50 p-2 rounded">
+                      <strong>AI Insight:</strong> {aiDescription}
+                    </div>
+                  )}
+                </div>
+              )}
+            </>
           )}
 
           <div className="mt-6">
@@ -411,34 +582,77 @@ const StructureDetails = ({ structure, rdkitLoaded }) => {
           </div>
 
           {showVariant3D && (
-            <div 
-              ref={variant3DRef}
-              className="w-full h-96 mt-4 border rounded relative"
-            >
-              {!is3DmolLoaded && <p className="text-center pt-20">Loading 3D viewer...</p>}
-            </div>
+            <>
+              <div 
+                ref={variant3DRef}
+                className="w-full h-96 mt-4 border rounded relative bg-gray-100"
+              >
+                {!is3DmolLoaded && <p className="text-center pt-20">Loading 3D viewer...</p>}
+              </div>
+              {is3DmolLoaded && (
+                <div className="mt-2">
+                  <div className="flex justify-center space-x-4">
+                    <select
+                      value={variantStyle}
+                      onChange={(e) => setVariantStyle(e.target.value)}
+                      className="border rounded p-1"
+                    >
+                      <option value="ballstick">Ball & Stick</option>
+                      <option value="stick">Stick</option>
+                      <option value="sphere">Sphere</option>
+                      <option value="surface">Surface</option>
+                    </select>
+                    <button
+                      onClick={() => setShowLabels(!showLabels)}
+                      className="bg-gray-500 hover:bg-gray-600 text-white py-1 px-3 rounded"
+                    >
+                      {showLabels ? 'Hide Labels' : 'Show Labels'}
+                    </button>
+                    <button
+                      onClick={() => setSpinAnimation(!spinAnimation)}
+                      className="bg-teal-500 hover:bg-teal-600 text-white py-1 px-3 rounded"
+                    >
+                      {spinAnimation ? 'Stop Spin' : 'Spin Model'}
+                    </button>
+                    <button
+                      onClick={() => download3DView(variantViewerRef, `${structure.name}-variant-3D`)}
+                      className="bg-purple-500 hover:bg-purple-600 text-white py-1 px-3 rounded"
+                    >
+                      Download PNG
+                    </button>
+                  </div>
+                  {highlightedAtom && (
+                    <div className="mt-2 text-center text-sm text-gray-700 bg-yellow-50 p-2 rounded">
+                      <strong>Highlighted Atom:</strong> {highlightedAtom.element} (x: {highlightedAtom.x.toFixed(2)}, y: {highlightedAtom.y.toFixed(2)}, z: {highlightedAtom.z.toFixed(2)})
+                    </div>
+                  )}
+                  {aiDescription && (
+                    <div className="mt-4 text-center text-sm text-gray-700 bg-blue-50 p-2 rounded">
+                      <strong>AI Insight:</strong> {aiDescription}
+                    </div>
+                  )}
+                </div>
+              )}
+            </>
           )}
 
           <div className="mt-6">
-            <h3 className="text-lg font-semibold mb-2">Properties</h3>
-            <div className="grid grid-cols-3 gap-4">
+            <h3 className="text-lg font-semibold mb-2">Property Comparison</h3>
+            <div className="grid grid-cols-2 gap-4">
               <div className="bg-gray-50 p-3 rounded">
-                <span className="text-sm font-medium text-gray-500">QED</span>
-                <p className="text-xl font-semibold">
-                  {selectedVariant.properties?.qed?.toFixed(3) || 'N/A'}
-                </p>
+                <h4 className="text-md font-medium">Parent</h4>
+                <div className="text-sm">
+                  <p><strong>QED:</strong> {structure.properties?.qed?.toFixed(3) || 'N/A'}</p>
+                  <p><strong>LogP:</strong> {structure.properties?.logp?.toFixed(3) || 'N/A'}</p>
+                </div>
               </div>
               <div className="bg-gray-50 p-3 rounded">
-                <span className="text-sm font-medium text-gray-500">LogP</span>
-                <p className="text-xl font-semibold">
-                  {selectedVariant.properties?.logp?.toFixed(3) || 'N/A'}
-                </p>
-              </div>
-              <div className="bg-gray-50 p-3 rounded">
-                <span className="text-sm font-medium text-gray-500">Similarity to Parent</span>
-                <p className="text-xl font-semibold">
-                  {(selectedVariant.similarity * 100).toFixed(1)}%
-                </p>
+                <h4 className="text-md font-medium">Variant</h4>
+                <div className="text-sm">
+                  <p><strong>QED:</strong> {selectedVariant.properties?.qed?.toFixed(3) || 'N/A'}</p>
+                  <p><strong>LogP:</strong> {selectedVariant.properties?.logp?.toFixed(3) || 'N/A'}</p>
+                  <p><strong>Similarity:</strong> {(selectedVariant.similarity * 100).toFixed(1)}%</p>
+                </div>
               </div>
             </div>
           </div>
