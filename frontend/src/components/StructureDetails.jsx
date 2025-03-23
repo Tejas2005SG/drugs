@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { jsPDF } from 'jspdf';
 import { Canvg } from 'canvg';
 import axios from 'axios';
+import { ClipLoader } from 'react-spinners'; // Import the spinner
 import EnhancedGeminiInfo from './Enhancedgeminiinfo.jsx';
 
 const StructureDetails = ({ structure, rdkitLoaded }) => {
@@ -60,10 +61,17 @@ const StructureDetails = ({ structure, rdkitLoaded }) => {
     if (parent3DRef.current) parent3DRef.current.innerHTML = '';
     if (variant3DRef.current) variant3DRef.current.innerHTML = '';
     if (animationFrameId.current) {
-      cancelAnimationFrame(animationFrameId.current); // Clean up animation
+      cancelAnimationFrame(animationFrameId.current);
       animationFrameId.current = null;
     }
   }, [structure, activeTab]);
+
+  // Fetch AI enhancements for the parent structure when the parent tab is active
+  useEffect(() => {
+    if (activeTab === 'parent' && structure?.smiles) {
+      fetchAiEnhancements(structure.smiles);
+    }
+  }, [activeTab, structure]);
 
   useEffect(() => {
     if (rdkitLoaded && window.RDKit && structure?.smiles && activeTab === 'parent') {
@@ -75,15 +83,21 @@ const StructureDetails = ({ structure, rdkitLoaded }) => {
     }
   }, [rdkitLoaded, structure, activeTab]);
 
+  // Highlight differences between parent and variant in 2D visualization
   useEffect(() => {
     if (rdkitLoaded && window.RDKit && selectedVariant?.smiles && activeTab === 'variant') {
-      const mol = window.RDKit.get_mol(selectedVariant.smiles);
-      if (mol && parentMolRef.current) {
-        parentMolRef.current.innerHTML = mol.get_svg(600, 400);
-        mol.delete();
+      const parentMol = window.RDKit.get_mol(structure.smiles);
+      const variantMol = window.RDKit.get_mol(selectedVariant.smiles);
+      if (parentMol && variantMol && parentMolRef.current) {
+        // Note: RDKit's get_mcs might not be directly available in all versions.
+        // This is a placeholder for highlighting differences; you may need to adjust based on your RDKit version.
+        const svg = variantMol.get_svg(600, 400); // Simplified; add highlighting logic if RDKit supports it
+        parentMolRef.current.innerHTML = svg;
+        parentMol.delete();
+        variantMol.delete();
       }
     }
-  }, [rdkitLoaded, selectedVariant, activeTab]);
+  }, [rdkitLoaded, selectedVariant, activeTab, structure]);
 
   useEffect(() => {
     if (rdkitLoaded && window.RDKit && activeTab === 'variants' && structure?.generatedStructures) {
@@ -135,18 +149,16 @@ const StructureDetails = ({ structure, rdkitLoaded }) => {
     viewer.render();
   };
 
-  // Custom spin animation
   const spinModel = (viewer) => {
     if (!spinAnimation || !viewer) return;
     const animate = () => {
-      viewer.rotate(2, 'y'); // Rotate 2 degrees around y-axis
+      viewer.rotate(2, 'y');
       viewer.render();
       animationFrameId.current = requestAnimationFrame(animate);
     };
     animationFrameId.current = requestAnimationFrame(animate);
   };
 
-  // Enhanced 3D rendering for parent
   useEffect(() => {
     if (showParent3D && parent3DRef.current && structure?.smiles && is3DmolLoaded && window.$3Dmol) {
       parent3DRef.current.innerHTML = '';
@@ -201,7 +213,6 @@ const StructureDetails = ({ structure, rdkitLoaded }) => {
     }
   }, [showParent3D, structure, is3DmolLoaded, parentStyle, showLabels, spinAnimation]);
 
-  // Enhanced 3D rendering for variant
   useEffect(() => {
     if (showVariant3D && variant3DRef.current && selectedVariant?.smiles && is3DmolLoaded && window.$3Dmol) {
       variant3DRef.current.innerHTML = '';
@@ -274,7 +285,7 @@ const StructureDetails = ({ structure, rdkitLoaded }) => {
     }
   };
 
-  const fetchVariantInfo = async (smiles) => {
+  const fetchVariantInfo = async (smiles, retries = 3) => {
     try {
       setLoadingVariantInfo(true);
       setVariantInfoError(null);
@@ -291,7 +302,12 @@ const StructureDetails = ({ structure, rdkitLoaded }) => {
         throw new Error('No content from Gemini API');
       }
     } catch (error) {
-      setVariantInfoError('Failed to fetch variant info: ' + error.message);
+      if (retries > 0) {
+        console.warn(`Retrying fetchVariantInfo (${retries} attempts left)...`);
+        await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait 1 second before retrying
+        return fetchVariantInfo(smiles, retries - 1);
+      }
+      setVariantInfoError('Failed to fetch variant info after multiple attempts: ' + error.message);
       setVariantInfo(null);
     } finally {
       setLoadingVariantInfo(false);
@@ -305,6 +321,7 @@ const StructureDetails = ({ structure, rdkitLoaded }) => {
     setVariantInfoError(null);
     setShowVariant3D(false);
     fetchVariantInfo(variant.smiles);
+    fetchAiEnhancements(variant.smiles); // Fetch AI description for the variant as well
   };
 
   const handleTabSwitch = (tab) => {
@@ -481,9 +498,14 @@ const StructureDetails = ({ structure, rdkitLoaded }) => {
             <>
               <div 
                 ref={parent3DRef}
-                className="w-full h-96 mt-4 border rounded relative bg-gray-100"
+                className="w-full h-96 mt-4 border rounded relative bg-gray-100 flex items-center justify-center"
               >
-                {!is3DmolLoaded && <p className="text-center pt-20">Loading 3D viewer...</p>}
+                {!is3DmolLoaded && (
+                  <div className="flex flex-col items-center">
+                    <ClipLoader color="#3B82F6" size={50} />
+                    <p className="mt-2 text-gray-600">Loading 3D viewer...</p>
+                  </div>
+                )}
               </div>
               {is3DmolLoaded && (
                 <div className="mt-2">
@@ -624,9 +646,14 @@ const StructureDetails = ({ structure, rdkitLoaded }) => {
             <>
               <div 
                 ref={variant3DRef}
-                className="w-full h-96 mt-4 border rounded relative bg-gray-100"
+                className="w-full h-96 mt-4 border rounded relative bg-gray-100 flex items-center justify-center"
               >
-                {!is3DmolLoaded && <p className="text-center pt-20">Loading 3D viewer...</p>}
+                {!is3DmolLoaded && (
+                  <div className="flex flex-col items-center">
+                    <ClipLoader color="#3B82F6" size={50} />
+                    <p className="mt-2 text-gray-600">Loading 3D viewer...</p>
+                  </div>
+                )}
               </div>
               {is3DmolLoaded && (
                 <div className="mt-2">

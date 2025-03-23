@@ -31,6 +31,8 @@
     "react-dom": "^19.0.0",
     "react-hot-toast": "^2.5.2",
     "react-router-dom": "^7.4.0",
+    "react-spinner": "^0.2.7",
+    "react-spinners": "^0.15.0",
     "tailwind-merge": "^3.0.2",
     "tailwindcss": "^4.0.15",
     "tailwindcss-animate": "^1.0.7",
