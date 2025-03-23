@@ -1,27 +1,53 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { jsPDF } from 'jspdf';
-import { Canvg } from 'canvg'; // Import Canvg for SVG rendering
+import { Canvg } from 'canvg';
 import axios from 'axios';
-import EnhancedGeminiInfo from './Enhancedgeminiinfo.jsx'; // Import the new component
+import EnhancedGeminiInfo from './Enhancedgeminiinfo.jsx';
 
 const StructureDetails = ({ structure, rdkitLoaded }) => {
   const [activeTab, setActiveTab] = useState('parent');
   const [selectedVariant, setSelectedVariant] = useState(null);
-  const [variantInfo, setVariantInfo] = useState(null); // Store detailed info for the selected variant
-  const [loadingVariantInfo, setLoadingVariantInfo] = useState(false); // Loading state for variant info
-  const [variantInfoError, setVariantInfoError] = useState(null); // Error state for variant info
+  const [variantInfo, setVariantInfo] = useState(null);
+  const [loadingVariantInfo, setLoadingVariantInfo] = useState(false);
+  const [variantInfoError, setVariantInfoError] = useState(null);
+  const [showParent3D, setShowParent3D] = useState(false);
+  const [showVariant3D, setShowVariant3D] = useState(false);
+  const [is3DmolLoaded, setIs3DmolLoaded] = useState(false);
   const parentMolRef = useRef(null);
   const variantMolRefs = useRef({});
+  const parent3DRef = useRef(null);
+  const variant3DRef = useRef(null);
 
-  // Reset state when structure changes
+  useEffect(() => {
+    if (showParent3D || showVariant3D) {
+      if (!window.$3Dmol && !is3DmolLoaded) {
+        const script = document.createElement('script');
+        script.src = 'https://3dmol.csb.pitt.edu/build/3Dmol-min.js';
+        script.async = true;
+        script.onload = () => {
+          console.log('3Dmol.js loaded successfully');
+          setIs3DmolLoaded(true);
+        };
+        script.onerror = () => {
+          console.error('Failed to load 3Dmol.js');
+          setIs3DmolLoaded(false);
+        };
+        document.head.appendChild(script);
+      } else if (window.$3Dmol) {
+        setIs3DmolLoaded(true);
+      }
+    }
+  }, [showParent3D, showVariant3D]);
+
   useEffect(() => {
     setSelectedVariant(null);
     setActiveTab('parent');
-    setVariantInfo(null); // Reset variant info when structure changes
+    setVariantInfo(null);
     setVariantInfoError(null);
+    setShowParent3D(false);
+    setShowVariant3D(false);
   }, [structure]);
 
-  // Render molecule effect for parent structure
   useEffect(() => {
     if (rdkitLoaded && window.RDKit && structure?.smiles && activeTab === 'parent') {
       const mol = window.RDKit.get_mol(structure.smiles);
@@ -32,24 +58,16 @@ const StructureDetails = ({ structure, rdkitLoaded }) => {
     }
   }, [rdkitLoaded, structure, activeTab]);
 
-  // Render molecule effect for selected variant
   useEffect(() => {
-    if (
-      rdkitLoaded &&
-      window.RDKit &&
-      selectedVariant?.smiles &&
-      activeTab === 'variant' &&
-      parentMolRef.current
-    ) {
+    if (rdkitLoaded && window.RDKit && selectedVariant?.smiles && activeTab === 'variant') {
       const mol = window.RDKit.get_mol(selectedVariant.smiles);
-      if (mol) {
+      if (mol && parentMolRef.current) {
         parentMolRef.current.innerHTML = mol.get_svg(600, 400);
         mol.delete();
       }
     }
   }, [rdkitLoaded, selectedVariant, activeTab]);
 
-  // Render molecules for variants tab
   useEffect(() => {
     if (rdkitLoaded && window.RDKit && activeTab === 'variants' && structure?.generatedStructures) {
       structure.generatedStructures.forEach((variant, index) => {
@@ -65,51 +83,66 @@ const StructureDetails = ({ structure, rdkitLoaded }) => {
     }
   }, [rdkitLoaded, structure, activeTab]);
 
-  // Fetch detailed information for the selected variant from Gemini API
+  useEffect(() => {
+    if (showParent3D && parent3DRef.current && structure?.smiles && is3DmolLoaded && window.$3Dmol) {
+      parent3DRef.current.innerHTML = ''; // Clear container
+      const mol = window.RDKit.get_mol(structure.smiles);
+      const molData = mol.get_molblock();
+      mol.delete();
+      
+      const viewer = window.$3Dmol.createViewer(parent3DRef.current, {
+        backgroundColor: 'white'
+      });
+      if (!viewer) {
+        console.error('Failed to create parent 3D viewer');
+        return;
+      }
+      viewer.addModel(molData, 'mol');
+      viewer.setStyle({}, { stick: { radius: 0.2 }, sphere: { scale: 0.3 } });
+      viewer.zoomTo();
+      viewer.render();
+    }
+  }, [showParent3D, structure, is3DmolLoaded]);
+
+  useEffect(() => {
+    if (showVariant3D && variant3DRef.current && selectedVariant?.smiles && is3DmolLoaded && window.$3Dmol) {
+      variant3DRef.current.innerHTML = ''; // Clear container
+      const mol = window.RDKit.get_mol(selectedVariant.smiles);
+      const molData = mol.get_molblock();
+      mol.delete();
+      
+      const viewer = window.$3Dmol.createViewer(variant3DRef.current, {
+        backgroundColor: 'white'
+      });
+      if (!viewer) {
+        console.error('Failed to create variant 3D viewer');
+        return;
+      }
+      viewer.addModel(molData, 'mol');
+      viewer.setStyle({}, { stick: { radius: 0.2 }, sphere: { scale: 0.3 } });
+      viewer.zoomTo();
+      viewer.render();
+    }
+  }, [showVariant3D, selectedVariant, is3DmolLoaded]);
+
   const fetchVariantInfo = async (smiles) => {
     try {
       setLoadingVariantInfo(true);
       setVariantInfoError(null);
-
       const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
-      if (!GEMINI_API_KEY) {
-        throw new Error('Gemini API key is not set in environment variables (VITE_GEMINI_API_KEY)');
-      }
-
-      const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent";
-      const prompt = `Provide detailed information about the molecule with the SMILES string "${smiles}". Include its chemical properties, potential uses, and any relevant biological or medicinal information.`;
-
+      if (!GEMINI_API_KEY) throw new Error('Gemini API key not set');
       const response = await axios.post(
-        `${GEMINI_API_URL}?key=${GEMINI_API_KEY}`,
-        {
-          contents: [
-            {
-              parts: [
-                {
-                  text: prompt
-                }
-              ]
-            }
-          ]
-        },
-        {
-          headers: {
-            'Content-Type': 'application/json',
-          }
-        }
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${GEMINI_API_KEY}`,
+        { contents: [{ parts: [{ text: `Provide detailed information about the molecule with SMILES "${smiles}".` }] }] },
+        { headers: { 'Content-Type': 'application/json' } }
       );
-
-      console.log('Gemini API Response for Variant:', JSON.stringify(response.data, null, 2));
-
-      if (response.data.candidates && response.data.candidates.length > 0) {
-        const info = response.data.candidates[0].content.parts[0].text;
-        setVariantInfo(info);
+      if (response.data.candidates?.[0]?.content?.parts?.[0]?.text) {
+        setVariantInfo(response.data.candidates[0].content.parts[0].text);
       } else {
-        throw new Error('No content returned from Gemini API');
+        throw new Error('No content from Gemini API');
       }
     } catch (error) {
-      console.error('Error fetching variant information from Gemini API:', error);
-      setVariantInfoError('Failed to retrieve detailed information about the variant: ' + error.message);
+      setVariantInfoError('Failed to fetch variant info: ' + error.message);
       setVariantInfo(null);
     } finally {
       setLoadingVariantInfo(false);
@@ -119,9 +152,9 @@ const StructureDetails = ({ structure, rdkitLoaded }) => {
   const handleVariantSelect = (variant) => {
     setSelectedVariant(variant);
     setActiveTab('variant');
-    setVariantInfo(null); // Reset variant info when selecting a new variant
+    setVariantInfo(null);
     setVariantInfoError(null);
-    fetchVariantInfo(variant.smiles); // Fetch detailed info for the selected variant
+    fetchVariantInfo(variant.smiles);
   };
 
   const renderMoleculeFallback = (smiles) => {
@@ -135,169 +168,83 @@ const StructureDetails = ({ structure, rdkitLoaded }) => {
     return <div ref={parentMolRef} className="flex justify-center" />;
   };
 
-  // Export to PDF function
   const exportToPDF = async () => {
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
     const margin = 10;
     let y = margin;
 
-    // Helper function to add text and update y position
     const addText = (text, x, size = 12) => {
       doc.setFontSize(size);
-      // Split text into lines if it's too long
       const lines = doc.splitTextToSize(text, pageWidth - 2 * margin);
       doc.text(lines, x, y);
-      y += lines.length * size * 0.5; // Adjust line spacing based on number of lines
+      y += lines.length * size * 0.5;
       return y;
     };
 
-    // Add title
     addText(`${structure.name} Details`, margin, 16);
     y += 5;
-
-    // Add creation date
     addText(`Created: ${new Date(structure.created).toLocaleString()}`, margin, 10);
 
-    // Function to add SVG to PDF
     const addSvgToPDF = async (svgString, x, y, width, height) => {
-      if (!svgString) {
-        console.error('No SVG string provided for rendering');
-        return y;
-      }
-
-      try {
-        // Log the SVG string for debugging
-        console.log('SVG String:', svgString);
-
-        // Create a canvas to render the SVG
-        const canvas = document.createElement('canvas');
-        canvas.width = width * 2; // Higher resolution for better quality
-        canvas.height = height * 2;
-        const ctx = canvas.getContext('2d');
-
-        // Use Canvg to render SVG to canvas
-        const v = Canvg.fromString(ctx, svgString);
-        await v.render();
-
-        // Convert canvas to PNG data URL
-        const imgData = canvas.toDataURL('image/png');
-        if (!imgData || imgData === 'data:,') {
-          console.error('Failed to generate image data from canvas');
-          return y;
-        }
-
-        // Add image to PDF
-        doc.addImage(imgData, 'PNG', x, y, width, height);
-        return y + height + 10; // Update y position
-      } catch (error) {
-        console.error('Error rendering SVG to PDF:', error);
-        return y;
-      }
+      if (!svgString) return y;
+      const canvas = document.createElement('canvas');
+      canvas.width = width * 2;
+      canvas.height = height * 2;
+      const ctx = canvas.getContext('2d');
+      const v = Canvg.fromString(ctx, svgString);
+      await v.render();
+      const imgData = canvas.toDataURL('image/png');
+      doc.addImage(imgData, 'PNG', x, y, width, height);
+      return y + height + 10;
     };
 
-    // Add active tab content
     if (activeTab === 'parent') {
       addText('Parent Structure', margin, 14);
       addText(`SMILES: ${structure.smiles}`, margin);
-      addText('Generation Parameters:', margin, 12);
-      addText(`Algorithm: ${structure.properties.algorithm || 'CMA-ES'}`, margin + 5);
-      addText(`Property: ${structure.properties.propertyName || 'QED'}`, margin + 5);
-      addText(`Optimization: ${structure.properties.minimize ? 'Minimize' : 'Maximize'}`, margin + 5);
-      addText(`Min Similarity: ${structure.properties.minSimilarity || 0.3}`, margin + 5);
-
-      // Add detailed information from Gemini API
-      addText('Detailed Information:', margin, 12);
-      const infoText = structure.information || 'No detailed information available.';
-      y = addText(infoText, margin + 5, 10);
-
-      // Add molecule SVG if RDKit is loaded
       if (rdkitLoaded && window.RDKit && structure.smiles) {
-        try {
-          const mol = window.RDKit.get_mol(structure.smiles);
-          if (mol && mol.is_valid()) {
-            const svg = mol.get_svg(300, 200); // Reduced size for better rendering
-            y = await addSvgToPDF(svg, margin, y, 90, 60); // Match the size used for variants
-            mol.delete();
-          } else {
-            console.error('Invalid molecule for SMILES:', structure.smiles);
-            addText('Molecule visualization unavailable', margin, 10);
-          }
-        } catch (error) {
-          console.error('Error generating SVG for parent structure:', error);
-          addText('Molecule visualization unavailable', margin, 10);
+        const mol = window.RDKit.get_mol(structure.smiles);
+        if (mol) {
+          const svg = mol.get_svg(300, 200);
+          y = await addSvgToPDF(svg, margin, y, 90, 60);
+          mol.delete();
         }
-      } else {
-        addText('Molecule visualization unavailable (RDKit not loaded)', margin, 10);
       }
+      addText('Detailed Information:', margin, 12);
+      y = addText(structure.information || 'No info available', margin + 5, 10);
     } else if (activeTab === 'variant' && selectedVariant) {
       addText('Selected Variant', margin, 14);
       addText(`SMILES: ${selectedVariant.smiles}`, margin);
-      addText('Properties:', margin, 12);
-      addText(`QED: ${selectedVariant.properties?.qed?.toFixed(3) || 'N/A'}`, margin + 5);
-      addText(`LogP: ${selectedVariant.properties?.logp?.toFixed(3) || 'N/A'}`, margin + 5);
-      addText(`Similarity to Parent: ${(selectedVariant.similarity * 100).toFixed(1)}%`, margin + 5);
-
-      // Add detailed information for the variant
-      addText('Detailed Information:', margin, 12);
-      const variantInfoText = variantInfo || variantInfoError || 'Fetching detailed information...';
-      y = addText(variantInfoText, margin + 5, 10);
-
-      // Add molecule SVG if RDKit is loaded
       if (rdkitLoaded && window.RDKit && selectedVariant.smiles) {
-        try {
-          const mol = window.RDKit.get_mol(selectedVariant.smiles);
-          if (mol && mol.is_valid()) {
-            const svg = mol.get_svg(300, 200); // Reduced size for consistency
-            y = await addSvgToPDF(svg, margin, y, 90, 60);
-            mol.delete();
-          } else {
-            console.error('Invalid molecule for SMILES:', selectedVariant.smiles);
-            addText('Molecule visualization unavailable', margin, 10);
-          }
-        } catch (error) {
-          console.error('Error generating SVG for selected variant:', error);
-          addText('Molecule visualization unavailable', margin, 10);
+        const mol = window.RDKit.get_mol(selectedVariant.smiles);
+        if (mol) {
+          const svg = mol.get_svg(300, 200);
+          y = await addSvgToPDF(svg, margin, y, 90, 60);
+          mol.delete();
         }
-      } else {
-        addText('Molecule visualization unavailable (RDKit not loaded)', margin, 10);
       }
+      addText('Detailed Information:', margin, 12);
+      y = addText(variantInfo || variantInfoError || 'Fetching info...', margin + 5, 10);
     } else if (activeTab === 'variants') {
       addText('Generated Variants', margin, 14);
       if (structure.generatedStructures) {
-        for (let index = 0; index < structure.generatedStructures.length; index++) {
-          const variant = structure.generatedStructures[index];
-          addText(`Variant ${index + 1}:`, margin, 12);
+        for (let i = 0; i < structure.generatedStructures.length; i++) {
+          const variant = structure.generatedStructures[i];
+          addText(`Variant ${i + 1}:`, margin, 12);
           addText(`SMILES: ${variant.smiles}`, margin + 5);
-          addText(`QED: ${variant.properties?.qed?.toFixed(3) || 'N/A'}`, margin + 5);
-          addText(`LogP: ${variant.properties?.logp?.toFixed(3) || 'N/A'}`, margin + 5);
-          addText(`Similarity: ${(variant.similarity * 100).toFixed(1)}%`, margin + 5);
-
-          // Add SVG for each variant
           if (rdkitLoaded && window.RDKit && variant.smiles) {
-            try {
-              const mol = window.RDKit.get_mol(variant.smiles);
-              if (mol && mol.is_valid()) {
-                const svg = mol.get_svg(160, 120);
-                y = await addSvgToPDF(svg, margin, y, 90, 60); // Same size as before
-                mol.delete();
-              } else {
-                console.error('Invalid molecule for SMILES:', variant.smiles);
-                addText('Molecule visualization unavailable', margin + 5, 10);
-              }
-            } catch (error) {
-              console.error('Error generating SVG for variant:', error);
-              addText('Molecule visualization unavailable', margin + 5, 10);
+            const mol = window.RDKit.get_mol(variant.smiles);
+            if (mol) {
+              const svg = mol.get_svg(160, 120);
+              y = await addSvgToPDF(svg, margin, y, 90, 60);
+              mol.delete();
             }
-          } else {
-            addText('Molecule visualization unavailable (RDKit not loaded)', margin + 5, 10);
           }
-          y += 5; // Extra spacing between variants
+          y += 5;
         }
       }
     }
 
-    // Save the PDF
     doc.save(`${structure.name}-${activeTab}.pdf`);
   };
 
@@ -356,6 +303,25 @@ const StructureDetails = ({ structure, rdkitLoaded }) => {
 
           {renderMoleculeFallback(structure.smiles)}
 
+          <div className="mt-4 flex justify-center">
+            <button
+              onClick={() => setShowParent3D(!showParent3D)}
+              className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded"
+              disabled={!rdkitLoaded}
+            >
+              {showParent3D ? 'Hide 3D View' : 'Show 3D Visualization'}
+            </button>
+          </div>
+
+          {showParent3D && (
+            <div 
+              ref={parent3DRef}
+              className="w-full h-96 mt-4 border rounded relative"
+            >
+              {!is3DmolLoaded && <p className="text-center pt-20">Loading 3D viewer...</p>}
+            </div>
+          )}
+
           <div className="mt-6">
             <h3 className="text-lg font-semibold mb-2">Detailed Information</h3>
             <EnhancedGeminiInfo 
@@ -365,30 +331,9 @@ const StructureDetails = ({ structure, rdkitLoaded }) => {
             />
           </div>
 
-          <div className="mt-6">
-            <h3 className="text-lg font-semibold mb-2">Generation Parameters</h3>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="bg-gray-50 p-3 rounded">
-                <span className="text-sm font-medium text-gray-500">Algorithm</span>
-                <p>{structure.properties.algorithm || 'CMA-ES'}</p>
-              </div>
-              <div className="bg-gray-50 p-3 rounded">
-                <span className="text-sm font-medium text-gray-500">Property</span>
-                <p>{structure.properties.propertyName || 'QED'}</p>
-              </div>
-              <div className="bg-gray-50 p-3 rounded">
-                <span className="text-sm font-medium text-gray-500">Optimization</span>
-                <p>{structure.properties.minimize ? 'Minimize' : 'Maximize'}</p>
-              </div>
-              <div className="bg-gray-50 p-3 rounded">
-                <span className="text-sm font-medium text-gray-500">Min Similarity</span>
-                <p>{structure.properties.minSimilarity || 0.3}</p>
-              </div>
-            </div>
-          </div>
           <div className="mt-6 flex justify-center">
             <button
-              className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
+              className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded"
               onClick={exportToPDF}
             >
               Export to PDF
@@ -437,7 +382,7 @@ const StructureDetails = ({ structure, rdkitLoaded }) => {
           </div>
           <div className="mt-6 flex justify-center">
             <button
-              className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
+              className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded"
               onClick={exportToPDF}
             >
               Export to PDF
@@ -454,6 +399,25 @@ const StructureDetails = ({ structure, rdkitLoaded }) => {
           </div>
 
           {renderMoleculeFallback(selectedVariant.smiles)}
+
+          <div className="mt-4 flex justify-center">
+            <button
+              onClick={() => setShowVariant3D(!showVariant3D)}
+              className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded"
+              disabled={!rdkitLoaded}
+            >
+              {showVariant3D ? 'Hide 3D View' : 'Show 3D Visualization'}
+            </button>
+          </div>
+
+          {showVariant3D && (
+            <div 
+              ref={variant3DRef}
+              className="w-full h-96 mt-4 border rounded relative"
+            >
+              {!is3DmolLoaded && <p className="text-center pt-20">Loading 3D viewer...</p>}
+            </div>
+          )}
 
           <div className="mt-6">
             <h3 className="text-lg font-semibold mb-2">Properties</h3>
@@ -490,14 +454,14 @@ const StructureDetails = ({ structure, rdkitLoaded }) => {
 
           <div className="mt-6 flex justify-center">
             <button
-              className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
+              className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded"
               onClick={exportToPDF}
             >
               Export to PDF
             </button>
           </div>
         </div>
-      )}  
+      )}
     </div>
   );
 };
