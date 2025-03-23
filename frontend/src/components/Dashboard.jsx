@@ -26,9 +26,9 @@ function DashboardPage() {
       roles: ['admin', 'citizen', 'guest']
     },
     { 
-      name: 'Settings', 
-      icon: <Settings size={20} className="mr-3" />,
-      navigation: () => navigate('/dashboard/settings'), 
+      name: 'Protein Structure Evolution', 
+      icon: <UserPlus size={20} className="mr-3" />,
+      navigation: () => navigate('/dashboard/protein-structure-mutation'), 
       roles: ['admin', 'citizen', 'guest']
     },
    

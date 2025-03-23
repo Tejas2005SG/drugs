@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { jsPDF } from 'jspdf';
 import { Canvg } from 'canvg';
 import axios from 'axios';
-import { ClipLoader } from 'react-spinners'; // Import the spinner
+import { ClipLoader } from 'react-spinners';
 import EnhancedGeminiInfo from './Enhancedgeminiinfo.jsx';
 
 const StructureDetails = ({ structure, rdkitLoaded }) => {
@@ -21,12 +21,13 @@ const StructureDetails = ({ structure, rdkitLoaded }) => {
   const [spinAnimation, setSpinAnimation] = useState(false);
   const [highlightedAtom, setHighlightedAtom] = useState(null);
   const parentMolRef = useRef(null);
+  const variantMolRef = useRef(null);
   const variantMolRefs = useRef({});
   const parent3DRef = useRef(null);
   const variant3DRef = useRef(null);
   const parentViewerRef = useRef(null);
   const variantViewerRef = useRef(null);
-  const animationFrameId = useRef(null); // For smooth spinning
+  const animationFrameId = useRef(null);
 
   useEffect(() => {
     if (showParent3D || showVariant3D) {
@@ -50,9 +51,12 @@ const StructureDetails = ({ structure, rdkitLoaded }) => {
   }, [showParent3D, showVariant3D]);
 
   useEffect(() => {
-    setSelectedVariant(null);
-    setVariantInfo(null);
-    setVariantInfoError(null);
+    // Only reset variant-related state if we're not on the variant tab
+    if (activeTab !== 'variant') {
+      setSelectedVariant(null);
+      setVariantInfo(null);
+      setVariantInfoError(null);
+    }
     setShowParent3D(false);
     setShowVariant3D(false);
     setAiDescription('');
@@ -66,41 +70,45 @@ const StructureDetails = ({ structure, rdkitLoaded }) => {
     }
   }, [structure, activeTab]);
 
-  // Fetch AI enhancements for the parent structure when the parent tab is active
   useEffect(() => {
     if (activeTab === 'parent' && structure?.smiles) {
+      console.log('Fetching AI enhancements for parent:', structure.smiles);
       fetchAiEnhancements(structure.smiles);
+    } else if (activeTab === 'variant' && selectedVariant?.smiles) {
+      console.log('Fetching AI enhancements for variant:', selectedVariant.smiles);
+      fetchAiEnhancements(selectedVariant.smiles);
     }
-  }, [activeTab, structure]);
+  }, [activeTab, structure, selectedVariant]);
 
   useEffect(() => {
     if (rdkitLoaded && window.RDKit && structure?.smiles && activeTab === 'parent') {
+      console.log('Rendering parent molecule:', structure.smiles);
       const mol = window.RDKit.get_mol(structure.smiles);
       if (mol && parentMolRef.current) {
         parentMolRef.current.innerHTML = mol.get_svg(600, 400);
         mol.delete();
+      } else {
+        console.error('Failed to render parent molecule');
       }
     }
   }, [rdkitLoaded, structure, activeTab]);
 
-  // Highlight differences between parent and variant in 2D visualization
   useEffect(() => {
     if (rdkitLoaded && window.RDKit && selectedVariant?.smiles && activeTab === 'variant') {
-      const parentMol = window.RDKit.get_mol(structure.smiles);
+      console.log('Rendering variant molecule:', selectedVariant.smiles);
       const variantMol = window.RDKit.get_mol(selectedVariant.smiles);
-      if (parentMol && variantMol && parentMolRef.current) {
-        // Note: RDKit's get_mcs might not be directly available in all versions.
-        // This is a placeholder for highlighting differences; you may need to adjust based on your RDKit version.
-        const svg = variantMol.get_svg(600, 400); // Simplified; add highlighting logic if RDKit supports it
-        parentMolRef.current.innerHTML = svg;
-        parentMol.delete();
+      if (variantMol && variantMolRef.current) {
+        variantMolRef.current.innerHTML = variantMol.get_svg(600, 400);
         variantMol.delete();
+      } else {
+        console.error('Failed to render variant molecule');
       }
     }
-  }, [rdkitLoaded, selectedVariant, activeTab, structure]);
+  }, [rdkitLoaded, selectedVariant, activeTab]);
 
   useEffect(() => {
     if (rdkitLoaded && window.RDKit && activeTab === 'variants' && structure?.generatedStructures) {
+      console.log('Rendering variant thumbnails');
       structure.generatedStructures.forEach((variant, index) => {
         const ref = variantMolRefs.current[index];
         if (ref && variant.smiles) {
@@ -117,6 +125,7 @@ const StructureDetails = ({ structure, rdkitLoaded }) => {
   const fetchAiEnhancements = async (smiles) => {
     const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
     if (!GEMINI_API_KEY) {
+      console.error('Gemini API key not set');
       setAiDescription('Gemini API key not set');
       return;
     }
@@ -165,7 +174,7 @@ const StructureDetails = ({ structure, rdkitLoaded }) => {
       const mol = window.RDKit.get_mol(structure.smiles);
       const molData = mol.get_molblock();
       mol.delete();
-      
+
       const viewer = window.$3Dmol.createViewer(parent3DRef.current, { backgroundColor: 'white' });
       if (!viewer) {
         console.error('Failed to create parent 3D viewer');
@@ -175,9 +184,9 @@ const StructureDetails = ({ structure, rdkitLoaded }) => {
       viewer.addModel(molData, 'mol');
 
       const styleConfig = parentStyle === 'ballstick' ? { stick: { radius: 0.2 }, sphere: { scale: 0.3 } } :
-                         parentStyle === 'stick' ? { stick: { radius: 0.2 } } :
-                         parentStyle === 'sphere' ? { sphere: { scale: 0.5 } } :
-                         { surface: { opacity: 0.9, color: 'grey' } };
+                        parentStyle === 'stick' ? { stick: { radius: 0.2 } } :
+                        parentStyle === 'sphere' ? { sphere: { scale: 0.5 } } :
+                        { surface: { opacity: 0.9, color: 'grey' } };
       viewer.setStyle({}, styleConfig);
 
       if (showLabels) {
@@ -219,7 +228,7 @@ const StructureDetails = ({ structure, rdkitLoaded }) => {
       const mol = window.RDKit.get_mol(selectedVariant.smiles);
       const molData = mol.get_molblock();
       mol.delete();
-      
+
       const viewer = window.$3Dmol.createViewer(variant3DRef.current, { backgroundColor: 'white' });
       if (!viewer) {
         console.error('Failed to create variant 3D viewer');
@@ -229,9 +238,9 @@ const StructureDetails = ({ structure, rdkitLoaded }) => {
       viewer.addModel(molData, 'mol');
 
       const styleConfig = variantStyle === 'ballstick' ? { stick: { radius: 0.2 }, sphere: { scale: 0.3 } } :
-                         variantStyle === 'stick' ? { stick: { radius: 0.2 } } :
-                         variantStyle === 'sphere' ? { sphere: { scale: 0.5 } } :
-                         { surface: { opacity: 0.9, color: 'grey' } };
+                        variantStyle === 'stick' ? { stick: { radius: 0.2 } } :
+                        variantStyle === 'sphere' ? { sphere: { scale: 0.5 } } :
+                        { surface: { opacity: 0.9, color: 'grey' } };
       viewer.setStyle({}, styleConfig);
 
       if (showLabels) {
@@ -304,7 +313,7 @@ const StructureDetails = ({ structure, rdkitLoaded }) => {
     } catch (error) {
       if (retries > 0) {
         console.warn(`Retrying fetchVariantInfo (${retries} attempts left)...`);
-        await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait 1 second before retrying
+        await new Promise((resolve) => setTimeout(resolve, 1000));
         return fetchVariantInfo(smiles, retries - 1);
       }
       setVariantInfoError('Failed to fetch variant info after multiple attempts: ' + error.message);
@@ -315,16 +324,20 @@ const StructureDetails = ({ structure, rdkitLoaded }) => {
   };
 
   const handleVariantSelect = (variant) => {
+    console.log('Selected variant:', variant);
     setSelectedVariant(variant);
     setActiveTab('variant');
     setVariantInfo(null);
     setVariantInfoError(null);
     setShowVariant3D(false);
-    fetchVariantInfo(variant.smiles);
-    fetchAiEnhancements(variant.smiles); // Fetch AI description for the variant as well
+    if (variant.smiles) {
+      fetchVariantInfo(variant.smiles);
+      fetchAiEnhancements(variant.smiles);
+    }
   };
 
   const handleTabSwitch = (tab) => {
+    console.log('Switching to tab:', tab);
     setActiveTab(tab);
     setShowParent3D(false);
     setShowVariant3D(false);
@@ -338,7 +351,7 @@ const StructureDetails = ({ structure, rdkitLoaded }) => {
     }
   };
 
-  const renderMoleculeFallback = (smiles) => {
+  const renderMolecule = (smiles, ref) => {
     if (!rdkitLoaded || !smiles || !window.RDKit) {
       return (
         <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 flex items-center justify-center">
@@ -346,7 +359,7 @@ const StructureDetails = ({ structure, rdkitLoaded }) => {
         </div>
       );
     }
-    return <div ref={parentMolRef} className="flex justify-center" />;
+    return <div ref={ref} className="flex justify-center" />;
   };
 
   const exportToPDF = async () => {
@@ -482,7 +495,7 @@ const StructureDetails = ({ structure, rdkitLoaded }) => {
             <p className="font-mono text-sm break-all">{structure.smiles}</p>
           </div>
 
-          {renderMoleculeFallback(structure.smiles)}
+          {renderMolecule(structure.smiles, parentMolRef)}
 
           <div className="mt-4 flex justify-center">
             <button
@@ -496,7 +509,7 @@ const StructureDetails = ({ structure, rdkitLoaded }) => {
 
           {showParent3D && (
             <>
-              <div 
+              <div
                 ref={parent3DRef}
                 className="w-full h-96 mt-4 border rounded relative bg-gray-100 flex items-center justify-center"
               >
@@ -556,7 +569,7 @@ const StructureDetails = ({ structure, rdkitLoaded }) => {
 
           <div className="mt-6">
             <h3 className="text-lg font-semibold mb-2">Detailed Information</h3>
-            <EnhancedGeminiInfo 
+            <EnhancedGeminiInfo
               information={structure.information}
               isLoading={false}
               error={null}
@@ -623,123 +636,131 @@ const StructureDetails = ({ structure, rdkitLoaded }) => {
         </div>
       )}
 
-      {activeTab === 'variant' && selectedVariant && (
+      {activeTab === 'variant' && (
         <div>
-          <div className="bg-gray-50 p-4 rounded-lg mb-6">
-            <h3 className="text-lg font-semibold mb-2">Variant SMILES</h3>
-            <p className="font-mono text-sm break-all">{selectedVariant.smiles}</p>
-          </div>
-
-          {renderMoleculeFallback(selectedVariant.smiles)}
-
-          <div className="mt-4 flex justify-center">
-            <button
-              onClick={() => setShowVariant3D(!showVariant3D)}
-              className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded"
-              disabled={!rdkitLoaded}
-            >
-              {showVariant3D ? 'Hide 3D View' : 'Show 3D Visualization'}
-            </button>
-          </div>
-
-          {showVariant3D && (
+          {!selectedVariant ? (
+            <div className="text-center text-gray-500">
+              <p>No variant selected. Please select a variant from the Generated Variants tab.</p>
+            </div>
+          ) : (
             <>
-              <div 
-                ref={variant3DRef}
-                className="w-full h-96 mt-4 border rounded relative bg-gray-100 flex items-center justify-center"
-              >
-                {!is3DmolLoaded && (
-                  <div className="flex flex-col items-center">
-                    <ClipLoader color="#3B82F6" size={50} />
-                    <p className="mt-2 text-gray-600">Loading 3D viewer...</p>
-                  </div>
-                )}
+              <div className="bg-gray-50 p-4 rounded-lg mb-6">
+                <h3 className="text-lg font-semibold mb-2">Variant SMILES</h3>
+                <p className="font-mono text-sm break-all">{selectedVariant.smiles || 'N/A'}</p>
               </div>
-              {is3DmolLoaded && (
-                <div className="mt-2">
-                  <div className="flex justify-center space-x-4">
-                    <select
-                      value={variantStyle}
-                      onChange={(e) => setVariantStyle(e.target.value)}
-                      className="border rounded p-1"
-                    >
-                      <option value="ballstick">Ball & Stick</option>
-                      <option value="stick">Stick</option>
-                      <option value="sphere">Sphere</option>
-                      <option value="surface">Surface</option>
-                    </select>
-                    <button
-                      onClick={() => setShowLabels(!showLabels)}
-                      className="bg-gray-500 hover:bg-gray-600 text-white py-1 px-3 rounded"
-                    >
-                      {showLabels ? 'Hide Labels' : 'Show Labels'}
-                    </button>
-                    <button
-                      onClick={() => setSpinAnimation(!spinAnimation)}
-                      className="bg-teal-500 hover:bg-teal-600 text-white py-1 px-3 rounded"
-                    >
-                      {spinAnimation ? 'Stop Spin' : 'Spin Model'}
-                    </button>
-                    <button
-                      onClick={() => download3DView(variantViewerRef, `${structure.name}-variant-3D`)}
-                      className="bg-purple-500 hover:bg-purple-600 text-white py-1 px-3 rounded"
-                    >
-                      Download PNG
-                    </button>
+
+              {renderMolecule(selectedVariant.smiles, variantMolRef)}
+
+              <div className="mt-4 flex justify-center">
+                <button
+                  onClick={() => setShowVariant3D(!showVariant3D)}
+                  className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded"
+                  disabled={!rdkitLoaded}
+                >
+                  {showVariant3D ? 'Hide 3D View' : 'Show 3D Visualization'}
+                </button>
+              </div>
+
+              {showVariant3D && (
+                <>
+                  <div
+                    ref={variant3DRef}
+                    className="w-full h-96 mt-4 border rounded relative bg-gray-100 flex items-center justify-center"
+                  >
+                    {!is3DmolLoaded && (
+                      <div className="flex flex-col items-center">
+                        <ClipLoader color="#3B82F6" size={50} />
+                        <p className="mt-2 text-gray-600">Loading 3D viewer...</p>
+                      </div>
+                    )}
                   </div>
-                  {highlightedAtom && (
-                    <div className="mt-2 text-center text-sm text-gray-700 bg-yellow-50 p-2 rounded">
-                      <strong>Highlighted Atom:</strong> {highlightedAtom.element} (x: {highlightedAtom.x.toFixed(2)}, y: {highlightedAtom.y.toFixed(2)}, z: {highlightedAtom.z.toFixed(2)})
+                  {is3DmolLoaded && (
+                    <div className="mt-2">
+                      <div className="flex justify-center space-x-4">
+                        <select
+                          value={variantStyle}
+                          onChange={(e) => setVariantStyle(e.target.value)}
+                          className="border rounded p-1"
+                        >
+                          <option value="ballstick">Ball & Stick</option>
+                          <option value="stick">Stick</option>
+                          <option value="sphere">Sphere</option>
+                          <option value="surface">Surface</option>
+                        </select>
+                        <button
+                          onClick={() => setShowLabels(!showLabels)}
+                          className="bg-gray-500 hover:bg-gray-600 text-white py-1 px-3 rounded"
+                        >
+                          {showLabels ? 'Hide Labels' : 'Show Labels'}
+                        </button>
+                        <button
+                          onClick={() => setSpinAnimation(!spinAnimation)}
+                          className="bg-teal-500 hover:bg-teal-600 text-white py-1 px-3 rounded"
+                        >
+                          {spinAnimation ? 'Stop Spin' : 'Spin Model'}
+                        </button>
+                        <button
+                          onClick={() => download3DView(variantViewerRef, `${structure.name}-variant-3D`)}
+                          className="bg-purple-500 hover:bg-purple-600 text-white py-1 px-3 rounded"
+                        >
+                          Download PNG
+                        </button>
+                      </div>
+                      {highlightedAtom && (
+                        <div className="mt-2 text-center text-sm text-gray-700 bg-yellow-50 p-2 rounded">
+                          <strong>Highlighted Atom:</strong> {highlightedAtom.element} (x: {highlightedAtom.x.toFixed(2)}, y: {highlightedAtom.y.toFixed(2)}, z: {highlightedAtom.z.toFixed(2)})
+                        </div>
+                      )}
+                      {aiDescription && (
+                        <div className="mt-4 text-center text-sm text-gray-700 bg-blue-50 p-2 rounded">
+                          <strong>AI Insight:</strong> {aiDescription}
+                        </div>
+                      )}
                     </div>
                   )}
-                  {aiDescription && (
-                    <div className="mt-4 text-center text-sm text-gray-700 bg-blue-50 p-2 rounded">
-                      <strong>AI Insight:</strong> {aiDescription}
-                    </div>
-                  )}
-                </div>
+                </>
               )}
+
+              <div className="mt-6">
+                <h3 className="text-lg font-semibold mb-2">Property Comparison</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-gray-50 p-3 rounded">
+                    <h4 className="text-md font-medium">Parent</h4>
+                    <div className="text-sm">
+                      <p><strong>QED:</strong> {structure.properties?.qed?.toFixed(3) || 'N/A'}</p>
+                      <p><strong>LogP:</strong> {structure.properties?.logp?.toFixed(3) || 'N/A'}</p>
+                    </div>
+                  </div>
+                  <div className="bg-gray-50 p-3 rounded">
+                    <h4 className="text-md font-medium">Variant</h4>
+                    <div className="text-sm">
+                      <p><strong>QED:</strong> {selectedVariant.properties?.qed?.toFixed(3) || 'N/A'}</p>
+                      <p><strong>LogP:</strong> {selectedVariant.properties?.logp?.toFixed(3) || 'N/A'}</p>
+                      <p><strong>Similarity:</strong> {(selectedVariant.similarity * 100).toFixed(1)}%</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-6">
+                <h3 className="text-lg font-semibold mb-2">Detailed Information</h3>
+                <EnhancedGeminiInfo
+                  information={variantInfo}
+                  isLoading={loadingVariantInfo}
+                  error={variantInfoError}
+                />
+              </div>
+
+              <div className="mt-6 flex justify-center">
+                <button
+                  className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded"
+                  onClick={exportToPDF}
+                >
+                  Export to PDF
+                </button>
+              </div>
             </>
           )}
-
-          <div className="mt-6">
-            <h3 className="text-lg font-semibold mb-2">Property Comparison</h3>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="bg-gray-50 p-3 rounded">
-                <h4 className="text-md font-medium">Parent</h4>
-                <div className="text-sm">
-                  <p><strong>QED:</strong> {structure.properties?.qed?.toFixed(3) || 'N/A'}</p>
-                  <p><strong>LogP:</strong> {structure.properties?.logp?.toFixed(3) || 'N/A'}</p>
-                </div>
-              </div>
-              <div className="bg-gray-50 p-3 rounded">
-                <h4 className="text-md font-medium">Variant</h4>
-                <div className="text-sm">
-                  <p><strong>QED:</strong> {selectedVariant.properties?.qed?.toFixed(3) || 'N/A'}</p>
-                  <p><strong>LogP:</strong> {selectedVariant.properties?.logp?.toFixed(3) || 'N/A'}</p>
-                  <p><strong>Similarity:</strong> {(selectedVariant.similarity * 100).toFixed(1)}%</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-6">
-            <h3 className="text-lg font-semibold mb-2">Detailed Information</h3>
-            <EnhancedGeminiInfo 
-              information={variantInfo}
-              isLoading={loadingVariantInfo}
-              error={variantInfoError}
-            />
-          </div>
-
-          <div className="mt-6 flex justify-center">
-            <button
-              className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded"
-              onClick={exportToPDF}
-            >
-              Export to PDF
-            </button>
-          </div>
         </div>
       )}
     </div>
