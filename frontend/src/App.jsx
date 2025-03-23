@@ -10,6 +10,7 @@ import { useAuthStore } from './Store/auth.store.js';
 import Navbar from './components/Navbar.jsx';
 import Dashboard from './components/Dashboard.jsx';
 import DashboardHome from './components/Dashboardhome.jsx';
+import ProteinStructureEvolution from './components/Protienstructureevolution.jsx';
 
 const ProtectedRoute = ({ children }) => {
   const { user } = useAuthStore();
@@ -38,6 +39,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <ProteinStructureApp />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="protein-structure-mutation"
+            element={
+              <ProtectedRoute>
+                <ProteinStructureEvolution />
               </ProtectedRoute>
             }
           />
