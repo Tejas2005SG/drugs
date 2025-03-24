@@ -3,14 +3,20 @@ import { User } from '../models/auth.model.js'; // Added User model import
 import GeneratenewMolecule from '../models/generatenew.model.js'; // Added GeneratenewMolecule model import
 import axios from 'axios';
 import dotenv from 'dotenv';
+import OpenAI from 'openai';
 
 dotenv.config();
 
+const QWQ_API_KEY = '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';
 const MOLMIM_API_KEY = process.env.MOLMIM_API_KEY;
 const MOLMIM_API_URL = "https://health.api.nvidia.com/v1/biology/nvidia/molmim/generate";
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent";
 
+const openai = new OpenAI({
+  apiKey: QWQ_API_KEY,
+  baseURL: 'https://integrate.api.nvidia.com/v1',
+});
 export const getProteinStructure = async (req, res) => {
   try {
     const { id } = req.params; // Changed from req.query to req.params
@@ -185,227 +191,543 @@ export const postProteinStructure = async (req, res) => {
   }
 };
 
-// getVariantInfo remains unchanged as it doesn't interact with user data
-// export const getVariantInfo = async (req, res) => {
-//   try {
-//     const { smiles } = req.query;
-    
-//     if (!smiles) {
-//       return res.status(400).json({ message: 'SMILES string is required' });
-//     }
-
-//     if (!GEMINI_API_KEY) {
-//       return res.status(500).json({ message: 'Gemini API key is not configured on the server' });
-//     }
-
-//     const prompt = `Provide detailed information about the molecule with the SMILES string "${smiles}". Include its chemical properties, potential uses, and any relevant biological or medicinal information.`;
-    
-//     const geminiResponse = await axios.post(
-//       `${GEMINI_API_URL}?key=${GEMINI_API_KEY}`,
-//       {
-//         contents: [{ parts: [{ text: prompt }] }]
-//       },
-//       {
-//         headers: { 'Content-Type': 'application/json' }
-//       }
-//     );
-
-//     if (geminiResponse.data.candidates?.length > 0) {
-//       const info = geminiResponse.data.candidates[0].content.parts[0].text;
-//       return res.status(200).json({ information: info });
-//     }
-    
-//     return res.status(404).json({ message: 'No content returned from Gemini API' });
-//   } catch (error) {
-//     console.error('Error fetching variant information:', error);
-//     let errorMessage = 'Server error';
-//     let errorDetails = error.message;
-    
-//     if (error.response) {
-//       errorMessage = `API Error (${error.response.status})`;
-//       errorDetails = JSON.stringify(error.response.data);
-//     }
-    
-//     return res.status(500).json({ 
-//       message: errorMessage, 
-//       error: errorDetails 
-//     });
-//   }
-// };
-
-
 export const generatenewmolecule = async (req, res) => {
   try {
     const { id } = req.params;
-    const { smilesoffirst, smilesofsecond } = req.body;
+    const { smilesoffirst, smilesofsecond, newmoleculetitle } = req.body;
 
     console.log(`Processing request for user ID: ${id}`);
-    console.log('Request body:', { smilesoffirst, smilesofsecond });
+    console.log("Request body:", { smilesoffirst, smilesofsecond, newmoleculetitle });
 
-    if (!smilesoffirst || !smilesofsecond) {
-      return res.status(400).json({ message: "Both SMILES strings are required" });
+    // Validation
+    if (!smilesoffirst || !smilesofsecond || !newmoleculetitle) {
+      return res.status(400).json({ message: "SMILES strings and molecule title are required" });
     }
-
     if (!id) {
       return res.status(400).json({ message: "User ID is required" });
     }
 
-    if (!GEMINI_API_KEY) {
-      console.error("GEMINI_API_KEY is not set in environment variables");
-      return res.status(500).json({ message: "Gemini API key is not configured" });
-    }
-
     const prompt = `
-      You are an expert cheminformatics AI designed to combine two SMILES strings into a new molecule. Follow these steps:
-1. Analyze the two input SMILES strings to understand their chemical structures.
-2. Combine them into a new molecule by forming a chemically reasonable bond (e.g., an ether linkage -O-, an ester, or a carbon-carbon bond) between appropriate atoms.
-3. Generate the SMILES string for the new molecule and its corresponding IUPAC name.
-4. Return the result in this JSON format:
-{
-  "newSmiles": "[NEW_SMILES]",
-  "newIupacName": "[NEW_IUPAC_NAME]"
-}
+You are an expert cheminformatics AI designed to combine two SMILES strings into a new molecule. Follow these steps strictly and ensure your response ends with a valid JSON object. The fields in your response will be extracted and saved to a MongoDB database, so they must be clearly labeled and structured.
 
-Example:
-- Input SMILES 1: "CCO" (ethanol)
-- Input SMILES 2: "c1ccccc1" (benzene)
-- Combined: Link the oxygen of ethanol to a carbon of benzene to form an ether.
-- Output: {
-  "newSmiles": "CCOc1ccccc1",
-  "newIupacName": "Ethoxybenzene"
-}
+1. Analyze the Input SMILES Strings:
+   - Parse SMILES 1: "${smilesoffirst}" and describe its chemical structure (e.g., functional groups, atoms, bonds).
+   - Parse SMILES 2: "${smilesofsecond}" and describe its chemical structure similarly.
+   - Identify key reactive sites or functional groups in each molecule that could be used for bonding.
+2. Combine into a New Molecule:
+   - Propose a chemically reasonable bond to link the two molecules (e.g., an ether linkage -O-, an ester -COO-, a carbon-carbon bond).
+   - Explain the rationale for choosing this bond type (e.g., based on functional group compatibility, stability).
+   - Detail the step-by-step process of how the atoms are connected, including which atoms are involved and any adjustments needed.
+3. Generate the New Molecule:
+   - Provide the SMILES string for the resulting molecule.
+   - Determine and provide the IUPAC name for the new molecule.
+4. Therapeutic Potential:
+   - Analyze the new molecule’s structure to hypothesize potential biological activity (e.g., similarity to known drug classes).
+   - Suggest one or more diseases this molecule might target, with a brief explanation linking chemical features to mechanisms.
+   - Note this is speculative, not experimental.
+5. Return the Result:
+   - At the end of your response, provide a valid JSON object with the following structure. This JSON object will be parsed and its fields (newSmiles, newIupacName, conversionDetails, potentialDiseases) will be saved to a MongoDB database.
+   - The JSON object must be the last part of your response, with no additional text, comments, or whitespace after it:
+     {
+       "newSmiles": "[NEW_SMILES]",
+       "newIupacName": "[NEW_IUPAC_NAME]",
+       "conversionDetails": "[DETAILED_EXPLANATION]",
+       "potentialDiseases": "[LIST_OF_DISEASES_WITH_EXPLANATIONS]"
+     }
+   - Ensure the JSON object is properly formatted, contains all required fields, and has valid values (e.g., no empty strings or null values).
+   - If you cannot generate a valid SMILES string or IUPAC name, provide a placeholder value (e.g., "Unable to generate SMILES" or "Unknown IUPAC Name") and explain why in the conversionDetails.
+   - If you cannot determine potential diseases, provide a placeholder value (e.g., "Unknown potential diseases") and explain why in the potentialDiseases field.
+`;
 
-Input:
-- SMILES 1: "${smilesoffirst}"
-- SMILES 2: "${smilesofsecond}"
-    `;
+    console.log("Sending streaming request to NVIDIA NIM API...");
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
 
-    console.log('Sending request to Gemini API...');
-    const geminiResponse = await axios.post(
-      `${GEMINI_API_URL}?key=${GEMINI_API_KEY}`,
-      { contents: [{ parts: [{ text: prompt }] }] },
-      { headers: { "Content-Type": "application/json" } }
-    );
+    const completion = await openai.chat.completions.create({
+      model: "qwen/qwq-32b", // Consider switching to "gpt-3.5-turbo" if the issue persists
+      messages: [{ role: "user", content: prompt }],
+      temperature: 0.6,
+      top_p: 0.7,
+      max_tokens: 4096,
+      stream: true,
+    });
 
-    const geminiContent = geminiResponse.data.candidates?.[0]?.content?.parts?.[0]?.text;
-    console.log('Gemini API response:', geminiContent);
-    if (!geminiContent) {
-      throw new Error("No content returned from Gemini API");
+    let fullResponse = '';
+    for await (const chunk of completion) {
+      const content = chunk.choices[0]?.delta?.content || '';
+      fullResponse += content;
+      res.write(`data: ${content}\n\n`);
     }
+    res.write('data: [DONE]\n\n');
+    res.end();
 
-    let result;
-    try {
-      result = JSON.parse(geminiContent);
-    } catch (parseError) {
-      console.error("Failed to parse Gemini response as JSON:", geminiContent);
-      const smilesMatch = geminiContent.match(/"newSmiles":\s*"([^"]+)"/);
-      const iupacMatch = geminiContent.match(/"newIupacName":\s*"([^"]+)"/);
-      if (smilesMatch && iupacMatch) {
-        result = { newSmiles: smilesMatch[1], newIupacName: iupacMatch[1] };
-      } else {
-        result = {
-          newSmiles: `${smilesoffirst}${smilesofsecond}`,
-          newIupacName: "Generated Molecule (Fallback Name)",
-        };
-        console.warn("Using fallback molecule due to invalid Gemini response");
+    // Log the full response for debugging
+    console.log("Full QWQ response:", fullResponse);
+
+    // Extract JSON-like object from the streaming response
+    let newSmiles = "";
+    let newIupacName = "";
+    let conversionDetails = "";
+    let potentialDiseases = "";
+
+    // Try to extract JSON object
+    const jsonMatch = fullResponse.match(/{[\s\S]*?}$/); // Match the last JSON object in the response
+    if (jsonMatch) {
+      try {
+        const result = JSON.parse(jsonMatch[0]);
+        newSmiles = result.newSmiles || "";
+        newIupacName = result.newIupacName || "";
+        conversionDetails = result.conversionDetails || "";
+        potentialDiseases = result.potentialDiseases || "";
+        console.log("Extracted fields from JSON:", { newSmiles, newIupacName, conversionDetails, potentialDiseases });
+      } catch (parseError) {
+        console.error("Failed to parse JSON from response:", parseError);
       }
     }
 
-    const { newSmiles, newIupacName } = result;
-    if (!newSmiles || !newIupacName) {
-      throw new Error("Gemini response missing required fields");
+    // Fallback: Parse the fields from the text if JSON is not found or parsing fails
+    if (!jsonMatch || !newSmiles) {
+      console.log("Falling back to text parsing...");
+      const lines = fullResponse.split('\n');
+
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i].trim();
+        console.log(`Parsing line ${i}:`, line);
+
+        // Try different formats for field extraction
+        if (line.toLowerCase().includes("newsmiles")) {
+          const match = line.match(/(?:newSmiles|newsmiles)\s*[:=]\s*(.+)/i);
+          if (match) {
+            newSmiles = match[1].trim();
+            console.log("Found newSmiles:", newSmiles);
+          }
+        }
+        if (line.toLowerCase().includes("newiupacname")) {
+          const match = line.match(/(?:newIupacName|newiupacname)\s*[:=]\s*(.+)/i);
+          if (match) {
+            newIupacName = match[1].trim();
+            console.log("Found newIupacName:", newIupacName);
+          }
+        }
+        if (line.toLowerCase().includes("conversiondetails")) {
+          const match = line.match(/(?:conversionDetails|conversiondetails)\s*[:=]\s*(.+)/i);
+          if (match) {
+            conversionDetails = match[1].trim();
+            console.log("Found conversionDetails:", conversionDetails);
+          }
+        }
+        if (line.toLowerCase().includes("potentialdiseases")) {
+          const match = line.match(/(?:potentialDiseases|potentialdiseases)\s*[:=]\s*(.+)/i);
+          if (match) {
+            potentialDiseases = match[1].trim();
+            console.log("Found potentialDiseases:", potentialDiseases);
+          }
+        }
+      }
     }
 
-    const information = JSON.stringify({
-      newSmiles,
-      newIupacName,
-      description: "Generated by combining two SMILES strings",
-    });
+    // Validate and set fallback values if fields are empty
+    newSmiles = newSmiles || `${smilesoffirst}.${smilesofsecond}`;
+    newIupacName = newIupacName || "Unknown IUPAC Name";
+    conversionDetails = conversionDetails || "Unable to parse conversion details from the response.";
+    potentialDiseases = potentialDiseases || "Unknown potential diseases due to lack of information in the response.";
 
-    console.log('Saving new molecule to database...');
+    console.log("Final extracted fields:", { newSmiles, newIupacName, conversionDetails, potentialDiseases });
+
+    // Save the new molecule to the database
+    console.log("Saving new molecule to database with raw streaming response...");
     const newMolecule = new GeneratenewMolecule({
       smilesoffirst,
       smilesofsecond,
-      information,
+      newmoleculetitle,
+      newSmiles,
+      newIupacName,
+      conversionDetails,
+      potentialDiseases,
+      information: fullResponse, // Save the raw streaming response
       userId: id,
     });
     await newMolecule.save();
 
-    console.log('Updating user with new molecule ID:', newMolecule._id);
-    const userUpdate = await User.findByIdAndUpdate(
-      id,
-      { $push: { protienStructures: newMolecule._id } },
-      { new: true }
-    );
-    if (!userUpdate) {
-      throw new Error(`User with ID ${id} not found`);
-    }
-
-    res.status(201).json({
-      newSmiles,
-      newIupacName,
-      id: newMolecule._id,
-    });
+    console.log("Updating user with new molecule ID:", newMolecule._id);
+    await User.findByIdAndUpdate(id, { $push: { proteinStructures: newMolecule._id } }, { new: true });
   } catch (error) {
     console.error("Error generating new molecule:", error.message, error.stack);
-    res.status(500).json({ message: "Failed to generate new molecule", error: error.message });
+    res.write(`data: {"error": "${error.message}"}\n\n`);
+    res.end();
   }
 };
 
 export const getgeneratednewmolecule = async (req, res) => {
   try {
-    const { id } = req.params; // Molecule ID from route
     const userId = req.user.id; // From protectRoute middleware
 
-    console.log(`Request received for /api/protein/generatednewmolecule/${id}`);
+    console.log(`Request received for /api/protein/generatednewmolecule for user: ${userId}`);
+    const molecules = await GeneratenewMolecule.find({ userId }).sort({ created: -1 });
 
-    const molecule = await GeneratenewMolecule.findOne({ _id: id, userId });
-
-    if (!molecule) {
-      return res.status(404).json({ message: "Generated molecule not found" });
-    }
-
-    const info = JSON.parse(molecule.information);
-
-    res.status(200).json({
-      newSmiles: info.newSmiles,
-      newIupacName: info.newIupacName,
-    });
-  } catch (error) {
-    console.error("Error retrieving generated molecule:", error);
-    res.status(500).json({ message: "Failed to retrieve molecule", error: error.message });
-  }
-};
-
-// New endpoint to fetch the latest molecule for a user
-export const getLatestGeneratedMolecule = async (req, res) => {
-  try {
-    const { userId } = req.params; // User ID from route
-    const authUserId = req.user.id; // From protectRoute middleware
-
-    console.log(`Request received for /api/protein/generatednewmolecule/latest/${userId}`);
-
-    if (userId !== authUserId) {
-      return res.status(403).json({ message: "Unauthorized to access this user’s molecules" });
-    }
-
-    const latestMolecule = await GeneratenewMolecule
-      .findOne({ userId })
-      .sort({ createdAt: -1 }); // Sort by creation date, descending
-
-    if (!latestMolecule) {
+    if (!molecules || molecules.length === 0) {
       return res.status(404).json({ message: "No generated molecules found for this user" });
     }
 
-    const info = JSON.parse(latestMolecule.information);
+    const moleculeData = molecules.map((molecule) => ({
+      id: molecule._id,
+      newSmiles: molecule.newSmiles,
+      newIupacName: molecule.newIupacName,
+      newmoleculetitle: molecule.newmoleculetitle,
+      conversionDetails: molecule.conversionDetails,
+      potentialDiseases: molecule.potentialDiseases,
+      information: molecule.information, // Raw streaming response as text
+      created: molecule.created,
+    }));
 
     res.status(200).json({
-      newSmiles: info.newSmiles,
-      newIupacName: info.newIupacName,
-      id: latestMolecule._id,
+      molecules: moleculeData,
+      total: moleculeData.length,
     });
   } catch (error) {
-    console.error("Error retrieving latest generated molecule:", error);
-    res.status(500).json({ message: "Failed to retrieve latest molecule", error: error.message });
+    console.error("Error retrieving generated molecules:", error);
+    res.status(500).json({ message: "Failed to retrieve molecules", error: error.message });
   }
-};
+};;
+
+
+// export const generatenewmolecule = async (req, res) => {
+//   try {
+//     const { id } = req.params;
+//     const { smilesoffirst, smilesofsecond, newmoleculetitle } = req.body;
+
+//     console.log(`Processing request for user ID: ${id}`);
+//     console.log("Request body:", { smilesoffirst, smilesofsecond, newmoleculetitle });
+
+//     // Validation
+//     if (!smilesoffirst || !smilesofsecond || !newmoleculetitle) {
+//       return res.status(400).json({ message: "SMILES strings and molecule title are required" });
+//     }
+
+//     if (!id) {
+//       return res.status(400).json({ message: "User ID is required" });
+//     }
+
+//     if (!GEMINI_API_KEY) {
+//       console.error("GEMINI_API_KEY is not set in environment variables");
+//       return res.status(500).json({ message: "Gemini API key is not configured" });
+//     }
+
+//     const prompt = `
+//       You are an expert cheminformatics AI designed to combine two SMILES strings into a new molecule. Follow these steps:
+// 1. Analyze the two input SMILES strings to understand their chemical structures.
+// 2. Combine them into a new molecule by forming a chemically reasonable bond (e.g., an ether linkage -O-, an ester, or a carbon-carbon bond) between appropriate atoms.
+// 3. Generate the SMILES string for the new molecule and its corresponding IUPAC name.
+// 4. Return the result in this JSON format:
+// {
+//   "newSmiles": "[NEW_SMILES]",
+//   "newIupacName": "[NEW_IUPAC_NAME]"
+// }
+
+// Example:
+// - Input SMILES 1: "CCO" (ethanol)
+// - Input SMILES 2: "c1ccccc1" (benzene)
+// - Combined: Link the oxygen of ethanol to a carbon of benzene to form an ether.
+// - Output: {
+//   "newSmiles": "CCOc1ccccc1",
+//   "newIupacName": "Ethoxybenzene"
+// }
+
+// Input:
+// - SMILES 1: "${smilesoffirst}"
+// - SMILES 2: "${smilesofsecond}"
+//     `;
+
+//     console.log("Sending request to Gemini API...");
+//     const geminiResponse = await axios.post(
+//       `${GEMINI_API_URL}?key=${GEMINI_API_KEY}`,
+//       { contents: [{ parts: [{ text: prompt }] }] },
+//       { headers: { "Content-Type": "application/json" } }
+//     );
+
+//     const geminiContent = geminiResponse.data.candidates?.[0]?.content?.parts?.[0]?.text;
+//     console.log("Gemini API response:", geminiContent);
+//     if (!geminiContent) {
+//       throw new Error("No content returned from Gemini API");
+//     }
+
+//     let result;
+//     try {
+//       result = JSON.parse(geminiContent);
+//     } catch (parseError) {
+//       console.error("Failed to parse Gemini response as JSON:", geminiContent);
+//       const smilesMatch = geminiContent.match(/"newSmiles":\s*"([^"]+)"/);
+//       const iupacMatch = geminiContent.match(/"newIupacName":\s*"([^"]+)"/);
+//       if (smilesMatch && iupacMatch) {
+//         result = { newSmiles: smilesMatch[1], newIupacName: iupacMatch[1] };
+//       } else {
+//         result = {
+//           newSmiles: `${smilesoffirst}${smilesofsecond}`,
+//           newIupacName: "Generated Molecule (Fallback Name)",
+//         };
+//         console.warn("Using fallback molecule due to invalid Gemini response");
+//       }
+//     }
+
+//     const { newSmiles, newIupacName } = result;
+//     if (!newSmiles || !newIupacName) {
+//       throw new Error("Gemini response missing required fields");
+//     }
+
+//     const information = JSON.stringify({
+//       newSmiles,
+//       newIupacName,
+//       description: "Generated by combining two SMILES strings",
+//     });
+
+//     console.log("Saving new molecule to database...");
+//     const newMolecule = new GeneratenewMolecule({
+//       smilesoffirst,
+//       smilesofsecond,
+//       newmoleculetitle, // Add the new field
+//       information,
+//       userId: id,
+//     });
+//     await newMolecule.save();
+
+//     console.log("Updating user with new molecule ID:", newMolecule._id);
+//     const userUpdate = await User.findByIdAndUpdate(
+//       id,
+//       { $push: { proteinStructures: newMolecule._id } }, // Corrected typo: "protienStructures" -> "proteinStructures"
+//       { new: true }
+//     );
+//     if (!userUpdate) {
+//       throw new Error(`User with ID ${id} not found`);
+//     }
+
+//     res.status(201).json({
+//       newSmiles,
+//       newIupacName,
+//       newmoleculetitle, // Include in response
+//       id: newMolecule._id,
+//     });
+//   } catch (error) {
+//     console.error("Error generating new molecule:", error.message, error.stack);
+//     res.status(500).json({ message: "Failed to generate new molecule", error: error.message });
+//   }
+// };
+
+
+// export const generatenewmolecule = async (req, res) => {
+//   try {
+//     const { id } = req.params;
+//     const { smilesoffirst, smilesofsecond, newmoleculetitle } = req.body;
+
+//     console.log(`Processing request for user ID: ${id}`);
+//     console.log("Request body:", { smilesoffirst, smilesofsecond, newmoleculetitle });
+
+//     // Validation
+//     if (!smilesoffirst || !smilesofsecond || !newmoleculetitle) {
+//       return res.status(400).json({ message: "SMILES strings and molecule title are required" });
+//     }
+
+//     if (!id) {
+//       return res.status(400).json({ message: "User ID is required" });
+//     }
+
+//     const prompt = `
+//      You are an expert cheminformatics AI designed to combine two SMILES strings into a new molecule. Follow these steps:
+
+// 1. **Analyze the Input SMILES Strings**:
+//    - Parse SMILES 1: "${smilesoffirst}" and describe its chemical structure (e.g., functional groups, atoms, bonds).
+//    - Parse SMILES 2: "${smilesofsecond}" and describe its chemical structure similarly.
+//    - Identify key reactive sites or functional groups in each molecule that could be used for bonding.
+
+// 2. **Combine into a New Molecule**:
+//    - Propose a chemically reasonable bond to link the two molecules (e.g., an ether linkage -O-, an ester -COO-, a carbon-carbon bond, or another suitable connection).
+//    - Explain the rationale for choosing this bond type (e.g., based on functional group compatibility, stability, or common chemical synthesis patterns).
+//    - Detail the step-by-step process of how the atoms are connected, including which atoms from each SMILES string are involved and any adjustments (e.g., hydrogen removal) needed for a valid structure.
+
+// 3. **Generate the New Molecule**:
+//    - Provide the SMILES string for the resulting molecule.
+//    - Determine and provide the IUPAC name for the new molecule.
+
+// 4. **Therapeutic Potential**:
+//    - Analyze the new molecule’s structure and functional groups to hypothesize potential biological activity (e.g., similarity to known drug classes like analgesics, antibiotics, or anticancer agents).
+//    - Suggest one or more diseases this molecule might target based on its structure (e.g., inflammation, bacterial infections, cancer), with a brief explanation linking the chemical features to potential mechanisms of action.
+//    - Note that this is a speculative analysis based on cheminformatics reasoning, not experimental data.
+
+// 5. **Return the Result**:
+//    - Format the output as a JSON object with the following structure:
+//      {
+//        "newSmiles": "[NEW_SMILES]",
+//        "newIupacName": "[NEW_IUPAC_NAME]",
+//        "conversionDetails": "[DETAILED_STEP_BY_STEP_EXPLANATION]",
+//        "potentialDiseases": "[LIST_OF_DISEASES_WITH_BRIEF_EXPLANATIONS]"
+//      }
+
+// Example:
+// - Input SMILES 1: "CCO" (ethanol)
+// - Input SMILES 2: "c1ccccc1" (benzene)
+// - Process:
+//   - SMILES 1: "CCO" represents ethanol (CH3-CH2-OH), with a hydroxyl group (-OH) as a reactive site.
+//   - SMILES 2: "c1ccccc1" represents benzene (C6H6), an aromatic ring with carbons available for substitution.
+//   - Bond choice: Form an ether linkage by connecting the oxygen of ethanol to a carbon on the benzene ring, removing one hydrogen from benzene and the hydrogen from the -OH group.
+//   - Resulting structure: CH3-CH2-O-C6H5.
+// - Output:
+//   {
+//     "newSmiles": "CCOc1ccccc1",
+//     "newIupacName": "Ethoxybenzene",
+//     "conversionDetails": "Ethanol (CCO) has a hydroxyl group (-OH) on the second carbon. Benzene (c1ccccc1) is an aromatic ring. The oxygen from ethanol's -OH replaces a hydrogen on one of benzene's carbons, forming an ether linkage (-O-). The hydrogen from the -OH is removed to balance the valency, yielding CCOc1ccccc1.",
+//     "potentialDiseases": "Anxiety (Ether compounds like ethoxybenzene may have sedative properties similar to some anxiolytics); Inflammation (Aromatic ethers can sometimes act as mild anti-inflammatory agents by interacting with specific enzymes)."
+//   }
+
+// Input:
+// - SMILES 1: "${smilesoffirst}"
+// - SMILES 2: "${smilesofsecond}"
+//     `;
+
+//     console.log("Sending request to NVIDIA NIM API...");
+//     const completion = await openai.chat.completions.create({
+//       model: "qwen/qwq-32b",
+//       messages: [{ role: "user", content: prompt }],
+//       temperature: 0.6,
+//       top_p: 0.7,
+//       max_tokens: 4096,
+//     });
+
+//     const qwqResponse = completion.choices[0]?.message?.content;
+//     console.log("NVIDIA NIM API response:", qwqResponse);
+//     if (!qwqResponse) {
+//       throw new Error("No content returned from NVIDIA NIM API");
+//     }
+
+//     let result;
+//     try {
+//       result = JSON.parse(qwqResponse);
+//     } catch (parseError) {
+//       console.error("Failed to parse QWQ response as JSON:", qwqResponse);
+//       const smilesMatch = qwqResponse.match(/"newSmiles":\s*"([^"]+)"/);
+//       const iupacMatch = qwqResponse.match(/"newIupacName":\s*"([^"]+)"/);
+//       if (smilesMatch && iupacMatch) {
+//         result = { newSmiles: smilesMatch[1], newIupacName: iupacMatch[1] };
+//       } else {
+//         result = {
+//           newSmiles: `${smilesoffirst}${smilesofsecond}`,
+//           newIupacName: "Generated Molecule (Fallback Name)",
+//         };
+//         console.warn("Using fallback molecule due to invalid QWQ response");
+//       }
+//     }
+
+//     const { newSmiles, newIupacName } = result;
+//     if (!newSmiles || !newIupacName) {
+//       throw new Error("QWQ response missing required fields");
+//     }
+
+//     const information = JSON.stringify({
+//       newSmiles,
+//       newIupacName,
+//       description: "Generated by combining two SMILES strings",
+//     });
+
+//     console.log("Saving new molecule to database...");
+//     const newMolecule = new GeneratenewMolecule({
+//       smilesoffirst,
+//       smilesofsecond,
+//       newmoleculetitle,
+//       information,
+//       userId: id,
+//     });
+//     await newMolecule.save();
+
+//     console.log("Updating user with new molecule ID:", newMolecule._id);
+//     const userUpdate = await User.findByIdAndUpdate(
+//       id,
+//       { $push: { proteinStructures: newMolecule._id } },
+//       { new: true }
+//     );
+//     if (!userUpdate) {
+//       throw new Error(`User with ID ${id} not found`);
+//     }
+
+//     res.status(201).json({
+//       newSmiles,
+//       newIupacName,
+//       newmoleculetitle,
+//       id: newMolecule._id,
+//     });
+//   } catch (error) {
+//     console.error("Error generating new molecule:", error.message, error.stack);
+//     res.status(500).json({ message: "Failed to generate new molecule", error: error.message });
+//   }
+// };
+
+
+// export const getgeneratednewmolecule = async (req, res) => {
+//   try {
+//     const userId = req.user.id; // From protectRoute middleware
+
+//     console.log(`Request received for /api/protein/generatednewmolecule for user: ${userId}`);
+
+//     // Fetch all molecules for the user
+//     const molecules = await GeneratenewMolecule.find({ userId }).sort({ created: -1 }); // Sort by creation date, descending
+
+//     if (!molecules || molecules.length === 0) {
+//       return res.status(404).json({ message: "No generated molecules found for this user" });
+//     }
+
+//     // Parse the information field for each molecule and include newmoleculetitle
+//     const moleculeData = molecules.map((molecule) => {
+//       const info = JSON.parse(molecule.information);
+//       return {
+//         id: molecule._id,
+//         newSmiles: info.newSmiles,
+//         newIupacName: info.newIupacName,
+//         newmoleculetitle: molecule.newmoleculetitle, // Add the newmoleculetitle field
+//         created: molecule.created,
+//       };
+//     });
+
+//     res.status(200).json({
+//       molecules: moleculeData,
+//       total: moleculeData.length,
+//     });
+//   } catch (error) {
+//     console.error("Error retrieving generated molecules:", error);
+//     res.status(500).json({ message: "Failed to retrieve molecules", error: error.message });
+//   }
+// };
+
+
+
+
+
+// New endpoint to fetch the latest molecule for a user
+// export const getLatestGeneratedMolecule = async (req, res) => {
+//   try {
+//     const { userId } = req.params; // User ID from route
+//     const authUserId = req.user.id; // From protectRoute middleware
+
+//     console.log(`Request received for /api/protein/generatednewmolecule/latest/${userId}`);
+
+//     if (userId !== authUserId) {
+//       return res.status(403).json({ message: "Unauthorized to access this user’s molecules" });
+//     }
+
+//     const latestMolecule = await GeneratenewMolecule
+//       .findOne({ userId })
+//       .sort({ createdAt: -1 }); // Sort by creation date, descending
+
+//     if (!latestMolecule) {
+//       return res.status(404).json({ message: "No generated molecules found for this user" });
+//     }
+
+//     const info = JSON.parse(latestMolecule.information);
+
+//     res.status(200).json({
+//       newSmiles: info.newSmiles,
+//       newIupacName: info.newIupacName,
+//       id: latestMolecule._id,
+//     });
+//   } catch (error) {
+//     console.error("Error retrieving latest generated molecule:", error);
+//     res.status(500).json({ message: "Failed to retrieve latest molecule", error: error.message });
+//   }
+// };

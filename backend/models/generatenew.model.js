@@ -1,6 +1,7 @@
+// GeneratenewMoleculeSchema.js
 import mongoose from "mongoose";
 
-const  GeneratenewMoleculeSchema= new mongoose.Schema({
+const GeneratenewMoleculeSchema = new mongoose.Schema({
   smilesoffirst: {
     type: String,
     required: true,
@@ -9,9 +10,28 @@ const  GeneratenewMoleculeSchema= new mongoose.Schema({
     type: String,
     required: true,
   },
-
+  newmoleculetitle: {
+    type: String,
+    required: true,
+  },
+  newSmiles: {
+    type: String,
+    default: "",
+  },
+  newIupacName: {
+    type: String,
+    default: "",
+  },
+  conversionDetails: {
+    type: String,
+    default: "",
+  },
+  potentialDiseases: {
+    type: String,
+    default: "",
+  },
   information: {
-    type: String, // Store the detailed information as a string
+    type: String, // Stores the raw streaming response as text
     default: "",
   },
   created: {
