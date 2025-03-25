@@ -2,275 +2,233 @@ import React, { useState } from 'react';
 import { Icon } from '@iconify/react';
 
 const EnhancedGeminiInfo = ({ information, isLoading, error }) => {
-  const [selectedSection, setSelectedSection] = useState('');
-  const [copied, setCopied] = useState(false);
+  const [expandedSection, setExpandedSection] = useState(null);
+  const [copiedSections, setCopiedSections] = useState({});
 
-  const handleCopy = async (text) => {
+  const handleCopy = async (text, sectionId) => {
     await navigator.clipboard.writeText(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    setCopiedSections(prev => ({ ...prev, [sectionId]: true }));
+    setTimeout(() => {
+      setCopiedSections(prev => ({ ...prev, [sectionId]: false }));
+    }, 2000);
   };
 
-  // Loading State
+  // Loading state
   if (isLoading) {
     return (
-      <div className="animate-pulse bg-white rounded-2xl shadow-md border border-gray-100 p-6">
-        <div className="flex items-center gap-3 mb-6">
-          <div className="h-10 w-10 bg-gray-200 rounded-full"></div>
-          <div className="h-6 bg-gray-200 rounded w-1/3"></div>
+      <div className="animate-pulse bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden">
+        <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-4 border-b border-gray-100">
+          <div className="h-5 bg-gray-200 rounded w-40 mb-1"></div>
+          <div className="h-3 bg-gray-100 rounded w-60"></div>
         </div>
-        <div className="space-y-4">
-          <div className="h-4 bg-gray-200 rounded w-full"></div>
-          <div className="h-4 bg-gray-200 rounded w-5/6"></div>
-          <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+        <div className="p-6 space-y-6">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="space-y-4">
+              <div className="flex items-center space-x-3">
+                <div className="h-8 w-8 bg-gray-200 rounded-lg"></div>
+                <div className="h-4 bg-gray-200 rounded w-32"></div>
+              </div>
+              <div className="space-y-2">
+                <div className="h-3 bg-gray-100 rounded w-full"></div>
+                <div className="h-3 bg-gray-100 rounded w-5/6"></div>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     );
   }
 
-  // Error State
+  // Error state
   if (error) {
     return (
-      <div className="bg-gradient-to-br from-red-50 to-red-100 border border-red-200 rounded-2xl p-6 flex items-start gap-4 transition-all duration-300 hover:shadow-md">
+      <div className="bg-gradient-to-br from-red-50/80 to-red-100/50 border border-red-200 rounded-xl p-5 flex items-start animate-shake-x animate-duration-300">
         <Icon 
           icon="ph:warning-circle-fill" 
-          className="w-7 h-7 text-red-600 animate-pulse" 
+          className="flex-shrink-0 w-6 h-6 text-red-600 mr-3 mt-0.5 animate-pulse" 
         />
         <div>
-          <h4 className="text-red-900 font-semibold text-lg mb-1.5">Analysis Failed</h4>
-          <p className="text-red-800 text-sm leading-relaxed">{error}</p>
+          <h4 className="text-red-900 font-semibold mb-1 text-lg">Analysis Error</h4>
+          <p className="text-red-800/90 text-sm leading-relaxed">{error}</p>
         </div>
       </div>
     );
   }
 
-  // Empty State
+  // Empty state
   if (!information) {
     return (
-      <div className="bg-gradient-to-br from-gray-50 to-gray-100 border border-gray-200 rounded-2xl p-8 text-center transition-all duration-300 hover:shadow-md">
-        <div className="mx-auto mb-5 w-14 h-14 bg-blue-100 rounded-full flex items-center justify-center">
-          <Icon icon="ph:atom" className="w-7 h-7 text-blue-600" />
+      <div className="bg-gradient-to-br from-gray-50/80 to-gray-100/50 border border-gray-200 rounded-xl p-6 text-center">
+        <div className="mx-auto mb-4 w-12 h-12 bg-blue-100 rounded-2xl flex items-center justify-center">
+          <Icon icon="ph:atom" className="w-6 h-6 text-blue-600/80" />
         </div>
-        <h4 className="text-gray-800 font-semibold text-lg mb-2">No Analysis Available</h4>
-        <p className="text-gray-600 text-sm max-w-sm mx-auto">
-          Provide a SMILES string to generate a comprehensive drug analysis
+        <h4 className="text-gray-700 font-medium mb-2">No Analysis Available</h4>
+        <p className="text-gray-500/90 text-sm max-w-xs mx-auto">
+          Detailed compound information will appear here once generated
         </p>
       </div>
     );
   }
 
-  // Parse Information
+  // Information parsing logic
   const parseInformation = (text) => {
-    const sectionRegex = /##\s+(.+?)(?=\n##|$)/gs;
-    const sections = [];
-    let match;
+    const sectionRegex = /(\n\s*)?(?=\d+\. |[A-Z][a-zA-Z ]+:\n|## |\*{3,}|[A-Z ]{3,}\n)/g;
+    return text.split(sectionRegex)
+      .filter(section => section && !section.match(/^\n\s*$/))
+      .map((section, index) => {
+        const cleanSection = section.replace(/^\n+/, '').trim();
+        const [firstLine, ...rest] = cleanSection.split('\n');
+        
+        const isHeader = firstLine.match(/^(\d+\. |[A-Z][a-zA-Z ]+:|## |\*{3,}|[A-Z ]{3,})/);
+        const title = isHeader ? firstLine.replace(/[:#]+$/, '') : `Details ${index + 1}`;
+        const content = isHeader ? rest.join('\n') : cleanSection;
 
-    while ((match = sectionRegex.exec(text)) !== null) {
-      const [fullSection, title] = match;
-      const content = fullSection.replace(`## ${title}`, '').trim();
-      sections.push({
-        id: sections.length,
-        title: title.trim(),
-        content: content.trim(),
-        icon: getSectionIcon(title),
-        color: getSectionColor(title),
+        return {
+          id: index,
+          title: title.replace(/\*/g, '').trim(),
+          content: content.trim(),
+          icon: getSectionIcon(title),
+          color: getSectionColor(title)
+        };
       });
-    }
-
-    const conclusionMatch = text.match(/(Development potential assessment|Priority research questions|Recommended assay cascade)/gi);
-    if (conclusionMatch) {
-      sections.push({
-        id: sections.length,
-        title: 'Conclusion',
-        content: text.split(conclusionMatch[0])[1].trim(),
-        icon: 'ph:check-circle-fill',
-        color: 'green',
-      });
-    }
-
-    return sections;
   };
 
+  // Icon mapping
   const getSectionIcon = (title) => {
     const lowerTitle = title.toLowerCase();
-    if (lowerTitle.includes('structural')) return 'ph:cube-fill';
-    if (lowerTitle.includes('chemical')) return 'ph:flask-fill';
-    if (lowerTitle.includes('target')) return 'ph:target-fill';
-    if (lowerTitle.includes('admet')) return 'ph:heart-fill';
-    if (lowerTitle.includes('developmental')) return 'ph:book-open-fill';
-    if (lowerTitle.includes('computational')) return 'ph:cpu-fill';
-    if (lowerTitle.includes('conclusion')) return 'ph:check-circle-fill';
+    if (lowerTitle.includes('property')) return 'ph:flask-fill';
+    if (lowerTitle.includes('synthesis')) return 'ph:test-tube-fill';
+    if (lowerTitle.includes('medical')) return 'ph:first-aid-kit-fill';
+    if (lowerTitle.includes('safety')) return 'ph:warning-fill';
     return 'ph:info-fill';
   };
 
+  // Color mapping
   const getSectionColor = (title) => {
     const lowerTitle = title.toLowerCase();
-    if (lowerTitle.includes('structural')) return 'purple';
-    if (lowerTitle.includes('chemical')) return 'blue';
-    if (lowerTitle.includes('target')) return 'orange';
-    if (lowerTitle.includes('admet')) return 'red';
-    if (lowerTitle.includes('developmental')) return 'teal';
-    if (lowerTitle.includes('computational')) return 'indigo';
-    if (lowerTitle.includes('conclusion')) return 'green';
+    if (lowerTitle.includes('warning') || lowerTitle.includes('safety')) return 'red';
+    if (lowerTitle.includes('medical') || lowerTitle.includes('benefit')) return 'green';
+    if (lowerTitle.includes('property') || lowerTitle.includes('chemical')) return 'blue';
     return 'gray';
-  };
-
-  const renderTechnicalContent = (content) => {
-    const lines = content.split('\n');
-    let isDiagram = false;
-    let isTable = false;
-    let tableRows = [];
-
-    return lines.map((line, index) => {
-      if (line.match(/[\|\-\+]+/)) {
-        isDiagram = true;
-        return (
-          <pre key={index} className="font-mono text-sm bg-gray-50 p-3 rounded-lg border border-gray-100 mt-3">
-            {line}
-          </pre>
-        );
-      }
-
-      if (line.includes('|') && line.includes('-')) {
-        isTable = true;
-        tableRows.push(line.split('|').map(cell => cell.trim()));
-      } else if (isTable && line.trim()) {
-        tableRows.push(line.split('|').map(cell => cell.trim()));
-      }
-
-      if (isTable && (!line.trim() || index === lines.length - 1)) {
-        isTable = false;
-        const tableContent = (
-          <table key={index} className="w-full border-collapse mt-3 bg-white rounded-lg shadow-sm">
-            <tbody>
-              {tableRows.map((row, rowIndex) => (
-                <tr key={rowIndex} className="border-b border-gray-100 last:border-b-0 hover:bg-gray-50">
-                  {row.map((cell, cellIndex) => (
-                    <td key={cellIndex} className="p-3 text-sm text-gray-700">
-                      {cell}
-                    </td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        );
-        tableRows = [];
-        return tableContent;
-      }
-
-      return (
-        <p key={index} className="flex items-start text-sm text-gray-700 leading-relaxed">
-          {line.startsWith('-') && <span className="text-blue-500 mr-2">•</span>}
-          <span className="flex-1">{line.replace(/^- /, '')}</span>
-        </p>
-      );
-    });
   };
 
   const sections = parseInformation(information);
 
   return (
-    <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden transition-all duration-300 hover:shadow-xl max-w-3xl mx-auto">
-      <div className="bg-gradient-to-r from-blue-700 to-indigo-700 px-6 py-4">
-        <h3 className="text-lg font-semibold text-white flex items-center gap-3">
-          <Icon icon="ph:atom-fill" className="w-6 h-6 text-white/90" />
-          <span>Drug Molecule Analysis Report</span>
+    <div className="bg-white rounded-xl shadow-lg border border-gray-200/80 overflow-hidden transition-all duration-200 hover:shadow-xl">
+      <div className="bg-gradient-to-r from-blue-600 to-blue-500 px-6 py-4">
+        <h3 className="text-sm font-semibold text-white/90 flex items-center space-x-3">
+          <Icon 
+            icon="ph:atom-fill" 
+            className="w-5 h-5 text-white/80" 
+          />
+          <span>Compound Analysis Report</span>
         </h3>
       </div>
 
-      <div className="p-6 space-y-6">
-        {/* Tabbed Navigation */}
-        <div className="flex flex-wrap gap-2 justify-center">
-          {sections.map((section) => (
+      <div className="divide-y divide-gray-200/60">
+        {sections.map((section) => (
+          <div 
+            key={section.id} 
+            className="group transition-all duration-200 hover:bg-gray-50/30"
+          >
             <button
-              key={section.id}
-              onClick={() => setSelectedSection(section.id)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-                selectedSection === section.id
-                  ? `bg-${section.color}-100 text-${section.color}-800 shadow-md`
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
+              onClick={() => setExpandedSection(prev => prev === section.id ? null : section.id)}
+              className="w-full flex items-center justify-between px-6 py-4"
             >
-              <Icon 
-                icon={section.icon} 
-                className={`w-5 h-5 ${selectedSection === section.id ? `text-${section.color}-600` : 'text-gray-500'}`}
-              />
-              {section.title}
-            </button>
-          ))}
-        </div>
-
-        {/* Section Content */}
-        {selectedSection !== '' && (
-          <div className="relative">
-            <div className="bg-gray-100 rounded-3xl p-6 shadow-sm transition-all duration-300 animate-fade-in">
-              <div className="flex items-center justify-between mb-5">
-                <div className="flex items-center gap-4">
-                  <div className={`p-2.5 bg-${sections[selectedSection].color}-100 rounded-full shadow-sm`}>
-                    <Icon 
-                      icon={sections[selectedSection].icon} 
-                      className={`w-6 h-6 text-${sections[selectedSection].color}-600 animate-pulse`}
-                    />
-                  </div>
-                  <h4 className="text-xl font-semibold text-gray-800">
-                    {sections[selectedSection].title}
-                  </h4>
-                </div>
-                <button
-                  onClick={() => handleCopy(sections[selectedSection].content)}
-                  className="p-2 rounded-full hover:bg-gray-100 transition-all duration-200 relative group"
-                  title="Copy to clipboard"
-                >
+              <div className="flex items-center space-x-4">
+                <div className={`bg-${section.color}-100/80 p-2 rounded-xl shadow-sm`}>
                   <Icon 
-                    icon={copied ? 'ph:check-circle-fill' : 'ph:copy-simple'} 
-                    className={`w-5 h-5 ${copied ? 'text-green-500' : 'text-gray-500 group-hover:text-gray-700'}`}
+                    icon={section.icon} 
+                    className={`w-6 h-6 text-${section.color}-700/90`}
                   />
-                  {copied && (
-                    <span className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded">
-                      Copied!
-                    </span>
-                  )}
-                </button>
+                </div>
+                <h4 className="text-left font-semibold text-gray-800 text-sm">
+                  {section.title}
+                </h4>
               </div>
+              <Icon 
+                icon={expandedSection === section.id ? 'ph:caret-up' : 'ph:caret-down'} 
+                className={`w-5 h-5 text-gray-400 transition-transform duration-300 ${
+                  expandedSection === section.id ? 'rotate-180' : ''
+                }`}
+              />
+            </button>
 
-              <div className="space-y-4 w-96">
-                {renderTechnicalContent(sections[selectedSection].content)}
-                <div className="flex gap-2 flex-wrap">
-                  {sections[selectedSection].content.includes('[Experimental]') && (
-                    <span className="px-2.5 py-1 text-xs font-medium text-green-700 bg-green-100 rounded-full">
-                      Experimental Data
-                    </span>
-                  )}
-                  {sections[selectedSection].content.includes('[Predicted]') && (
-                    <span className="px-2.5 py-1 text-xs font-medium text-blue-700 bg-blue-100 rounded-full">
-                      Predicted Data
-                    </span>
-                  )}
-                  {sections[selectedSection].content.includes('[Hypothetical]') && (
-                    <span className="px-2.5 py-1 text-xs font-medium text-orange-700 bg-orange-100 rounded-full">
-                      Hypothetical
-                    </span>
+            {(expandedSection === section.id || sections.length === 1) && (
+              <div className="px-6 pb-5 pt-2 bg-gradient-to-b from-white to-gray-50/60 border-t border-gray-200/50">
+                <div className="prose-sm max-w-none relative space-y-4">
+                  <button
+                    onClick={() => handleCopy(section.content, section.id)}
+                    className="absolute top-0 right-0 p-2 hover:bg-gray-200/50 rounded-lg transition-colors duration-200 group/copy"
+                  >
+                    <Icon 
+                      icon={copiedSections[section.id] ? 'ph:check-circle-fill' : 'ph:copy-simple'} 
+                      className={`w-5 h-5 transition-all ${
+                        copiedSections[section.id] 
+                          ? 'text-green-600' 
+                          : 'text-gray-500 hover:text-gray-700'
+                      }`}
+                    />
+                  </button>
+                  
+                  {section.content.split('\n\n').map((paragraph, i) => (
+                    <div key={i} className="text-gray-700/90 leading-relaxed space-y-3">
+                      {paragraph.split('\n').map((line, j) => (
+                        <p key={j} className="flex items-start">
+                          {line.startsWith('•') && (
+                            <span className="text-blue-500/80 mr-2 mt-1">•</span>
+                          )}
+                          <span className="flex-1">
+                            {line.replace('• ', '')}
+                            {line.match(/^(Molecular Weight|Solubility|LogP):/) && (
+                              <span className="ml-3 px-2.5 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded-full">
+                                Key Property
+                              </span>
+                            )}
+                          </span>
+                        </p>
+                      ))}
+                    </div>
+                  ))}
+
+                  {section.content.toLowerCase().includes('warning') && (
+                    <div className="mt-4 p-4 bg-red-50/80 border border-red-200/60 rounded-xl flex items-start space-x-3 animate-pulse-slow">
+                      <Icon 
+                        icon="ph:warning-fill" 
+                        className="w-5 h-5 text-red-600/90 flex-shrink-0 mt-0.5" 
+                      />
+                      <div>
+                        <p className="text-red-800/90 text-sm font-medium mb-1">
+                          Safety Notice
+                        </p>
+                        <p className="text-red-700/90 text-sm leading-relaxed">
+                          Critical safety information - handle with proper precautions
+                        </p>
+                      </div>
+                    </div>
                   )}
                 </div>
               </div>
-            </div>
+            )}
           </div>
-        )}
+        ))}
       </div>
 
-      <div className="px-6 py-3.5 bg-gray-50 border-t border-gray-100">
-        <p className="text-xs text-gray-600 flex items-center gap-2">
-          <Icon icon="ph:info" className="w-4 h-4 text-gray-500" />
+      <div className="px-6 py-4 bg-gray-100/60 border-t border-gray-200/50">
+        <p className="text-xs text-gray-600/90 flex items-center space-x-2">
+          <Icon 
+            icon="ph:info" 
+            className="w-4 h-4 text-gray-500/80" 
+          />
           <span>
-            Generated by Gemini AI Engine. 
+            AI-generated analysis •{' '}
+            <span className="font-medium">Always verify critical data</span>
           </span>
         </p>
       </div>
     </div>
   );
 };
-
-
 
 export default EnhancedGeminiInfo;
