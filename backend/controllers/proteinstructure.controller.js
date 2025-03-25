@@ -444,7 +444,7 @@ export const getgeneratednewmolecule = async (req, res) => {
 };;
 
 
-// export const generatenewmolecule = async (req, res) => {
+// export const generatenewmolecule = async (req, res) => {   
 //   try {
 //     const { id } = req.params;
 //     const { smilesoffirst, smilesofsecond, newmoleculetitle } = req.body;
