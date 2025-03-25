@@ -8,7 +8,6 @@ import { fileURLToPath } from "url";
 
 import proteinRoutes from "./routes/proteinstructure.routes.js";
 import authRoutes from "./routes/auth.routes.js";
-
 // Configure environment variables
 dotenv.config();
 
