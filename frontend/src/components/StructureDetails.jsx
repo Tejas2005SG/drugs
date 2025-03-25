@@ -363,84 +363,135 @@ const StructureDetails = ({ structure, rdkitLoaded }) => {
   };
 
   const exportToPDF = async () => {
-    const doc = new jsPDF();
-    const pageWidth = doc.internal.pageSize.getWidth();
-    const margin = 10;
-    let y = margin;
+  const doc = new jsPDF();
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const margin = 10;
+  let y = margin;
+  const lineHeight = 3; // Reduced line height for tighter spacing
 
-    const addText = (text, x, size = 12) => {
-      doc.setFontSize(size);
-      const lines = doc.splitTextToSize(text, pageWidth - 2 * margin);
-      doc.text(lines, x, y);
-      y += lines.length * size * 0.5;
-      return y;
-    };
+  const checkPageBreak = (additionalHeight) => {
+    if (y + additionalHeight > pageHeight - margin) {
+      doc.addPage();
+      y = margin;
+    }
+  };
 
-    addText(`${structure.name} Details`, margin, 16);
-    y += 5;
-    addText(`Created: ${new Date(structure.created).toLocaleString()}`, margin, 10);
+  const addText = (text, x, size = 12) => {
+    doc.setFontSize(size);
+    const lines = doc.splitTextToSize(text, pageWidth - 2 * margin);
+    const textHeight = lines.length * size * 0.5;
+    checkPageBreak(textHeight);
+    doc.text(lines, x, y);
+    y += textHeight + lineHeight;
+    return y;
+  };
 
-    const addSvgToPDF = async (svgString, x, y, width, height) => {
-      if (!svgString) return y;
-      const canvas = document.createElement('canvas');
-      canvas.width = width * 2;
-      canvas.height = height * 2;
-      const ctx = canvas.getContext('2d');
-      const v = Canvg.fromString(ctx, svgString);
-      await v.render();
-      const imgData = canvas.toDataURL('image/png');
-      doc.addImage(imgData, 'PNG', x, y, width, height);
-      return y + height + 10;
-    };
+  const addSvgToPDF = async (svgString, x, yPos, width, height) => {
+    if (!svgString) return yPos;
+    checkPageBreak(height + 10);
+    const canvas = document.createElement('canvas');
+    canvas.width = width * 2;
+    canvas.height = height * 2;
+    const ctx = canvas.getContext('2d');
+    const v = Canvg.fromString(ctx, svgString);
+    await v.render();
+    const imgData = canvas.toDataURL('image/png');
+    doc.addImage(imgData, 'PNG', x, yPos, width, height);
+    return yPos + height + 5; // Reduced spacing after image
+  };
 
-    if (activeTab === 'parent') {
-      addText('Parent Structure', margin, 14);
-      addText(`SMILES: ${structure.smiles}`, margin);
-      if (rdkitLoaded && window.RDKit && structure.smiles) {
-        const mol = window.RDKit.get_mol(structure.smiles);
-        if (mol) {
-          const svg = mol.get_svg(300, 200);
-          y = await addSvgToPDF(svg, margin, y, 90, 60);
-          mol.delete();
-        }
-      }
-      addText('Detailed Information:', margin, 12);
-      y = addText(structure.information || 'No info available', margin + 5, 10);
-    } else if (activeTab === 'variant' && selectedVariant) {
-      addText('Selected Variant', margin, 14);
-      addText(`SMILES: ${selectedVariant.smiles}`, margin);
-      if (rdkitLoaded && window.RDKit && selectedVariant.smiles) {
-        const mol = window.RDKit.get_mol(selectedVariant.smiles);
-        if (mol) {
-          const svg = mol.get_svg(300, 200);
-          y = await addSvgToPDF(svg, margin, y, 90, 60);
-          mol.delete();
-        }
-      }
-      addText('Detailed Information:', margin, 12);
-      y = addText(variantInfo || variantInfoError || 'Fetching info...', margin + 5, 10);
-    } else if (activeTab === 'variants') {
-      addText('Generated Variants', margin, 14);
-      if (structure.generatedStructures) {
-        for (let i = 0; i < structure.generatedStructures.length; i++) {
-          const variant = structure.generatedStructures[i];
-          addText(`Variant ${i + 1}:`, margin, 12);
-          addText(`SMILES: ${variant.smiles}`, margin + 5);
-          if (rdkitLoaded && window.RDKit && variant.smiles) {
-            const mol = window.RDKit.get_mol(variant.smiles);
-            if (mol) {
-              const svg = mol.get_svg(160, 120);
-              y = await addSvgToPDF(svg, margin, y, 90, 60);
-              mol.delete();
-            }
-          }
-          y += 5;
-        }
+  addText(`${structure.name} Details`, margin, 16);
+  addText(`Created: ${new Date(structure.created).toLocaleString()}`, margin, 10);
+
+  if (activeTab === 'parent') {
+    addText('Parent Structure', margin, 14);
+    addText(`SMILES: ${structure.smiles}`, margin);
+
+    if (rdkitLoaded && window.RDKit && structure.smiles) {
+      const mol = window.RDKit.get_mol(structure.smiles);
+      if (mol) {
+        const svg = mol.get_svg(300, 200);
+        y = await addSvgToPDF(svg, margin, y, 90, 60);
+        mol.delete();
       }
     }
 
-    doc.save(`${structure.name}-${activeTab}.pdf`);
-  };
+    // Add properties if available
+    if (structure.properties) {
+      addText('Properties:', margin, 12);
+      addText(`QED: ${structure.properties?.qed?.toFixed(3) || 'N/A'}`, margin + 5, 10);
+      addText(`LogP: ${structure.properties?.logp?.toFixed(3) || 'N/A'}`, margin + 5, 10);
+    }
+
+    addText('Detailed Information:', margin, 12);
+    const infoText = structure.information && structure.information.trim() !== ''
+      ? structure.information
+      : 'No detailed information available.';
+    y = addText(infoText, margin + 5, 10);
+
+    if (aiDescription && aiDescription.trim() !== '') {
+      addText('AI Insight:', margin, 12);
+      y = addText(aiDescription, margin + 5, 10);
+    }
+
+  } else if (activeTab === 'variant' && selectedVariant) {
+    addText('Selected Variant', margin, 14);
+    addText(`SMILES: ${selectedVariant.smiles}`, margin);
+
+    if (rdkitLoaded && window.RDKit && selectedVariant.smiles) {
+      const mol = window.RDKit.get_mol(selectedVariant.smiles);
+      if (mol) {
+        const svg = mol.get_svg(300, 200);
+        y = await addSvgToPDF(svg, margin, y, 90, 60);
+        mol.delete();
+      }
+    }
+
+    addText('Property Comparison:', margin, 12);
+    addText(`Parent QED: ${structure.properties?.qed?.toFixed(3) || 'N/A'}`, margin + 5, 10);
+    addText(`Parent LogP: ${structure.properties?.logp?.toFixed(3) || 'N/A'}`, margin + 5, 10);
+    addText(`Variant QED: ${selectedVariant.properties?.qed?.toFixed(3) || 'N/A'}`, margin + 5, 10);
+    addText(`Variant LogP: ${selectedVariant.properties?.logp?.toFixed(3) || 'N/A'}`, margin + 5, 10);
+    addText(`Similarity: ${(selectedVariant.similarity * 100).toFixed(1)}%`, margin + 5, 10);
+
+    addText('Detailed Information:', margin, 12);
+    const variantText = variantInfo && variantInfo.trim() !== ''
+      ? variantInfo
+      : variantInfoError || 'No detailed information available.';
+    y = addText(variantText, margin + 5, 10);
+
+    if (aiDescription && aiDescription.trim() !== '') {
+      addText('AI Insight:', margin, 12);
+      y = addText(aiDescription, margin + 5, 10);
+    }
+
+  } else if (activeTab === 'variants') {
+    addText('Generated Variants', margin, 14);
+    if (structure.generatedStructures) {
+      for (let i = 0; i < structure.generatedStructures.length; i++) {
+        const variant = structure.generatedStructures[i];
+        addText(`Variant ${i + 1}:`, margin, 12);
+        addText(`SMILES: ${variant.smiles}`, margin + 5);
+        addText(`QED: ${variant.properties?.qed?.toFixed(3) || 'N/A'}`, margin + 5, 10);
+        addText(`LogP: ${variant.properties?.logp?.toFixed(3) || 'N/A'}`, margin + 5, 10);
+        addText(`Similarity: ${(variant.similarity * 100).toFixed(1)}%`, margin + 5, 10);
+
+        if (rdkitLoaded && window.RDKit && variant.smiles) {
+          const mol = window.RDKit.get_mol(variant.smiles);
+          if (mol) {
+            const svg = mol.get_svg(160, 120);
+            y = await addSvgToPDF(svg, margin, y, 90, 60);
+            mol.delete();
+          }
+        }
+        y += 3; // Reduced spacing between variants
+      }
+    }
+  }
+
+  doc.save(`${structure.name}-${activeTab}.pdf`);
+};
 
   return (
     <div>

@@ -10,7 +10,6 @@
   "author": "",
   "type": "module",
   "license": "ISC",
-  "description": "",
   "dependencies": {
     "@google/generative-ai": "^0.24.0",
     "@rdkit/rdkit": "^2024.3.5-1.0.0",
@@ -27,5 +26,6 @@
     "openai": "^4.89.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
-  }
+  },
+  "description": ""
 }
