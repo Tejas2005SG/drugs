@@ -9,6 +9,7 @@ import {connectionDb} from "./lib/db.js";
 import proteinRoutes from "./routes/proteinstructure.routes.js";
 import authRoutes from "./routes/auth.routes.js";
 import costestiminationRoutes from "./routes/costestimination.routes.js";
+import newsRoutes from "./routes/news.routes.js";
 // Configure environment variables
 dotenv.config();
 
@@ -32,6 +33,7 @@ app.use(cookieParser());
 app.use("/api/protein", proteinRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/costestimation", costestiminationRoutes);
+app.use('/api/news', newsRoutes);
 
 // Serve static files in production
 if (process.env.NODE_ENV === "production") {
