@@ -1,18 +1,18 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useAuthStore } from '../../Store/auth.store.js'; // Adjust the import path
-// import { toast } from 'react-hot-toast';
+import { useAuthStore } from '../../Store/auth.store.js';
 
 function Signuppage() {
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
+    username: '', // Add username field
     email: '',
     password: '',
     confirmPassword: '',
   });
 
-  const { signup, loading } = useAuthStore(); // Use 'loading' instead of 'isLoading'
+  const { signup, loading } = useAuthStore();
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
@@ -20,11 +20,11 @@ function Signuppage() {
     await signup({
       firstName: formData.firstName,
       lastName: formData.lastName,
+      username: formData.username, // Include username
       email: formData.email,
       password: formData.password,
       confirmPassword: formData.confirmPassword,
     });
-    // Success toast is already in the store, but we can navigate on success
     if (useAuthStore.getState().user) {
       navigate('/dashboard');
     }
@@ -66,6 +66,21 @@ function Signuppage() {
                 required
                 className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
                 value={formData.lastName}
+                onChange={handleChange}
+              />
+            </div>
+
+            <div>
+              <label htmlFor="username" className="block text-sm font-medium text-gray-700">
+                Username
+              </label>
+              <input
+                id="username"
+                name="username"
+                type="text"
+                required
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                value={formData.username}
                 onChange={handleChange}
               />
             </div>
