@@ -196,19 +196,28 @@ function Airesearchgenerator() {
     }
 
     const geminiPrompt = `
-      You are an expert in cheminformatics. The molecule provided is newly generated, so exact research papers about it do not exist. Provide a scientifically grounded summary based on its structure and properties. Use the following molecule details:
-      - Molecule Title: "${selectedMol.newmoleculetitle}"
-      - SMILES String: "${selectedMol.newSmiles}"
-      - IUPAC Name: "${selectedMol.newIupacName}"
-      - Conversion Details: "${selectedMol.conversionDetails}"
-      - Potential Diseases: "${selectedMol.potentialDiseases}"
-      - Additional Information: "${selectedMol.information}"
+    You are an expert in cheminformatics and molecular analysis. The molecule provided is newly generated, meaning no exact research papers exist on it. However, based on its **structural properties, chemical classification, and known pharmacological analogs**, you will infer its significance. Use scientifically valid reasoning to provide an **accurate and unique summary** for this molecule.  
 
-      Provide the following in a structured JSON format **and nothing else**:
-      {
-        "summary": "A brief summary (2-3 sentences) explaining how the molecule’s structure (SMILES), name (IUPAC), synthesis (conversion details), potential applications (diseases), and additional information relate to existing research areas."
-      }
-    `;
+    Utilize the following molecular details:  
+    - **Molecule Title:** "${selectedMol.newmoleculetitle}"  
+    - **SMILES String:** "${selectedMol.newSmiles}"  
+    - **IUPAC Name:** "${selectedMol.newIupacName}"  
+    - **Conversion Details (Synthesis Pathway):** "${selectedMol.conversionDetails}"  
+    - **Potential Diseases (Therapeutic Relevance):** "${selectedMol.potentialDiseases}"  
+    - **Additional Information (Pharmacokinetics, Mechanism of Action, Toxicity, etc.):** "${selectedMol.information}"  
+
+    ### **Requirements for Response:**  
+    - The summary **must be unique for each molecule**, avoiding generic descriptions.  
+    - It should incorporate **specific scientific insights**, linking the molecule’s **functional groups, core structure, and synthesis method** to known chemical or pharmaceutical research areas.  
+    - If the molecule resembles known drug classes, reference **related bioactivities** based on structure-activity relationships (SAR).  
+    - Discuss potential **biological mechanisms, physicochemical properties (e.g., solubility, stability), or computational predictions (e.g., docking studies, ADMET analysis)** if applicable.  
+    
+    Provide the following in a structured JSON format **and nothing else**:  
+    {
+      "summary": "A scientifically precise and unique 2-3 sentence explanation connecting the molecule’s structure (SMILES), name (IUPAC), synthesis (conversion details), and therapeutic relevance (potential diseases) to known research areas, ensuring authenticity."
+    }
+  `;
+
 
     try {
       const geminiResponse = await axiosInstance.post("/api/protein/proxy/gemini", {
@@ -293,44 +302,44 @@ function Airesearchgenerator() {
     }
 
     const geminiPrompt = `
-      You are an expert in cheminformatics and academic writing. The molecule provided is newly generated, so exact research papers about it do not exist. However, you can infer potential research based on its structure, properties, and related literature. Use the following molecule details to generate a research paper in IEEE format:
+    You are an expert in cheminformatics, molecular modeling, and academic writing. The molecule provided is newly generated, so exact research papers about it do not exist. However, you will infer potential applications, synthesis, and significance based on its structure, properties, and related literature. Use the following molecule details to generate a research paper in IEEE format:
 
-      - Molecule Title: "${selectedMol.newmoleculetitle}"
-      - SMILES String: "${selectedMol.newSmiles}"
-      - IUPAC Name: "${selectedMol.newIupacName}"
-      - Conversion Details: "${selectedMol.conversionDetails}"
-      - Potential Diseases: "${selectedMol.potentialDiseases}"
-      - Additional Information: "${selectedMol.information}"
+    - Molecule Title: "${selectedMol.newmoleculetitle}"
+    - SMILES String: "${selectedMol.newSmiles}"
+    - IUPAC Name: "${selectedMol.newIupacName}"
+    - Conversion Details (Synthesis Pathway): "${selectedMol.conversionDetails}"
+    - Potential Diseases (Therapeutic Targets): "${selectedMol.potentialDiseases}"
+    - Additional Information (Pharmacokinetics, Toxicity, or Mechanism of Action): "${selectedMol.information}"
 
-      ### Instructions:
-      1. **Generate a Research Paper in IEEE Format**:
-         - **Title**: Use the molecule title as the paper title.
-         - **Authors**: Use the placeholder "Author Name" (to be replaced by the user's name later).
-         - **Abstract**: Write a 150-200 word abstract summarizing the molecule's structure, synthesis, potential therapeutic applications, and relevance to existing research.
-         - **Keywords**: Provide 4-5 keywords related to the molecule (e.g., drug discovery, cheminformatics, SMILES, potential diseases).
-         - **Introduction**: Introduce the molecule, its significance in drug discovery, and the motivation for studying it (1-2 paragraphs).
-         - **Methodology**: Describe the synthesis process (use the conversion details) and how the molecule was analyzed (e.g., computational methods, structural analysis).
-         - **Results and Discussion**: Discuss the molecule's properties (SMILES, IUPAC name), potential biological activity (based on potential diseases), and compare with existing research (infer from related drug classes).
-         - **Conclusion**: Summarize the findings and suggest future research directions.
-         - **References**: Simulate 3-5 references by summarizing the latest research related to the molecule's potential diseases or structural class from PubMed, arXiv, and Google Scholar. Format references in IEEE style (e.g., [1] Author(s), "Title," Journal, vol., no., pp., year.).
+    ### Instructions:
+    1. **Generate a Research Paper in IEEE Format**:
+       - **Title**: Refine the molecule title to reflect its scientific importance.
+       - **Authors**: Use the placeholder "Author Name" (to be replaced by the user's name later).
+       - **Abstract**: Write a 150-200 word abstract summarizing the molecule’s chemical structure, synthesis, pharmacological relevance, and connection to existing research.
+       - **Keywords**: Provide 4-5 relevant keywords such as "cheminformatics," "drug discovery," "bioactivity prediction," "synthetic pathway."
+       - **Introduction**: Explain the motivation behind this molecule’s study, its significance in drug discovery, and how it differs from known compounds (1-2 paragraphs).
+       - **Methodology**: Describe the synthesis process (use the conversion details) and structural analysis techniques (e.g., NMR, Mass Spectrometry, Molecular Docking).
+       - **Results and Discussion**: Discuss the molecule's properties (SMILES, IUPAC name), potential biological activity (based on potential diseases), and compare with existing drugs (using structure-activity relationships).
+       - **Conclusion**: Summarize key findings, highlight the molecule’s novelty, and suggest future research directions.
+       - **References**: Generate 3-5 **authentic references** based on related molecules or therapeutic areas from sources like PubMed, Google Scholar, or ACS Publications. Format references in IEEE style (e.g., [1] Author(s), "Title," Journal, vol., no., pp., year.).
 
-      2. **Return the Paper in a Structured JSON Format**:
-         Provide the following in a structured JSON format **and nothing else**:
-         {
-           "title": "Paper title",
-           "authors": "Author Name",
-           "abstract": "Abstract text",
-           "keywords": ["keyword1", "keyword2", "keyword3", "keyword4"],
-           "introduction": "Introduction text",
-           "methodology": "Methodology text",
-           "resultsAndDiscussion": "Results and discussion text",
-           "conclusion": "Conclusion text",
-           "references": [
-             "[1] Author(s), \"Title,\" Journal, vol., no., pp., year.",
-             "[2] Author(s), \"Title,\" Journal, vol., no., pp., year."
-           ]
-         }
-    `;
+    2. **Return the Paper in a Structured JSON Format**:
+       Provide the following in a structured JSON format **and nothing else**:
+       {
+         "title": "Refined Paper Title",
+         "authors": "Author Name",
+         "abstract": "Abstract text summarizing the molecule’s significance.",
+         "keywords": ["keyword1", "keyword2", "keyword3", "keyword4"],
+         "introduction": "Introduction text providing scientific context.",
+         "methodology": "Synthesis pathway and structural analysis methods.",
+         "resultsAndDiscussion": "Molecular properties, bioactivity, and comparison with existing drugs.",
+         "conclusion": "Summary of key insights and future directions.",
+         "references": [
+           "[1] Author(s), 'Title,' Journal, vol., no., pp., year.",
+           "[2] Author(s), 'Title,' Journal, vol., no., pp., year."
+         ]
+       }
+  `;
 
     try {
       const geminiResponse = await axiosInstance.post("/api/protein/proxy/gemini", {
