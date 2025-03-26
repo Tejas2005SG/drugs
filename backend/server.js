@@ -3,7 +3,6 @@ import dotenv from "dotenv";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import path from "path";
-import { fileURLToPath } from "url";
 import { connectionDb } from "./lib/db.js";
 import { Server } from "socket.io";
 import http from "http";
@@ -19,8 +18,7 @@ dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const __dirname = path.resolve();
 
 // Create HTTP server
 const server = http.createServer(app);
@@ -45,9 +43,10 @@ io.on("connection", (socket) => {
 
 // Middleware
 const corsOptions = {
-  origin: "http://localhost:5173",
+  origin: process.env.CLIENT_URL||"http://localhost:5173",
   credentials: true,
-};
+}; 
+
 app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
