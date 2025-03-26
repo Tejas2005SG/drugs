@@ -14,14 +14,14 @@ export const useAuthStore = create(
       loading: false,
       checkingAuth: true,
 
-      signup: async ({ firstName, lastName, email, password, confirmPassword }) => {
+      signup: async ({ firstName, lastName,username, email, password, confirmPassword }) => {
         set({ loading: true });
         if (password !== confirmPassword) {
           set({ loading: false });
           return toast.error('Passwords do not match');
         }
         try {
-          const res = await axios.post(`${API_URL}/signup`, { firstName, lastName, email, password, confirmPassword });
+          const res = await axios.post(`${API_URL}/signup`, { firstName, lastName,username, email, password, confirmPassword });
           set({ user: res.data.user, loading: false });
           console.log('Signup - Updated State:', get().user);
         } catch (error) {

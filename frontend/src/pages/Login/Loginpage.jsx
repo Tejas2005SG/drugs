@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useAuthStore } from '../../Store/auth.store.js'; // Adjust the import path
-// import { toast } from 'react-hot-toast';
+import { useAuthStore } from '../../Store/auth.store.js';
 
 function Loginpage() {
   const [formData, setFormData] = useState({
@@ -9,13 +8,12 @@ function Loginpage() {
     password: '',
   });
 
-  const { login, loading } = useAuthStore(); // Use 'loading' instead of 'isLoading'
+  const { login, loading } = useAuthStore();
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     await login({ email: formData.email, password: formData.password });
-    // Success toast is already in the store, navigate on success
     if (useAuthStore.getState().user) {
       navigate('/dashboard');
     }

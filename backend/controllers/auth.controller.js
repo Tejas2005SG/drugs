@@ -1,19 +1,22 @@
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
-import { User } from '../models/auth.model.js';
+import { User } from '../models/auth.model.js'; // Update the import to use user.model.js
 import { generateTokenAndCookie } from '../utils/generateTokenAndCookie.js';
 
 export const signup = async (req, res) => {
-  const { firstName, lastName, email, password, confirmPassword } = req.body;
+  const { firstName, lastName, username, email, password, confirmPassword } = req.body;
 
   try {
-    if (!firstName || !lastName || !email || !password || !confirmPassword) {
+    if (!firstName || !lastName || !username || !email || !password || !confirmPassword) {
       throw new Error('All fields are required');
     }
 
-    const userAlreadyExists = await User.findOne({ email });
+    const userAlreadyExists = await User.findOne({ $or: [{ email }, { username }] });
     if (userAlreadyExists) {
-      return res.status(400).json({ success: false, message: 'User already exists' });
+      return res.status(400).json({
+        success: false,
+        message: userAlreadyExists.email === email ? 'Email already exists' : 'Username already exists',
+      });
     }
 
     if (password !== confirmPassword) {
@@ -21,7 +24,13 @@ export const signup = async (req, res) => {
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    const user = new User({ firstName, lastName, email, password: hashedPassword, confirmPassword: hashedPassword });
+    const user = new User({
+      firstName,
+      lastName,
+      username,
+      email,
+      password: hashedPassword,
+    });
 
     await user.save();
     generateTokenAndCookie(res, user._id);
@@ -29,7 +38,7 @@ export const signup = async (req, res) => {
     res.status(201).json({
       success: true,
       message: 'User created successfully',
-      user: { ...user._doc, password: undefined, confirmPassword: undefined },
+      user: { ...user._doc, password: undefined },
     });
   } catch (error) {
     res.status(400).json({ success: false, message: error.message });
@@ -53,7 +62,7 @@ export const login = async (req, res) => {
     res.status(200).json({
       success: true,
       message: 'Logged in Successfully',
-      user: { ...user._doc, password: undefined, confirmPassword: undefined },
+      user: { ...user._doc, password: undefined },
     });
   } catch (error) {
     res.status(400).json({ success: false, message: `Login Failed: ${error.message}` });
@@ -67,13 +76,12 @@ export const logout = async (req, res) => {
 
 export const getProfile = async (req, res) => {
   try {
-    // req.user is set by protectRoute middleware
     if (!req.user) {
       return res.status(401).json({ success: false, message: 'Not authenticated' });
     }
     res.status(200).json({
       success: true,
-      user: { ...req.user._doc, password: undefined, confirmPassword: undefined },
+      user: { ...req.user._doc, password: undefined },
     });
   } catch (error) {
     console.error('Get profile error:', error);
