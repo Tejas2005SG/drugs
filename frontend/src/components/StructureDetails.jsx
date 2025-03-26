@@ -184,9 +184,9 @@ const StructureDetails = ({ structure, rdkitLoaded }) => {
       viewer.addModel(molData, 'mol');
 
       const styleConfig = parentStyle === 'ballstick' ? { stick: { radius: 0.2 }, sphere: { scale: 0.3 } } :
-                        parentStyle === 'stick' ? { stick: { radius: 0.2 } } :
-                        parentStyle === 'sphere' ? { sphere: { scale: 0.5 } } :
-                        { surface: { opacity: 0.9, color: 'grey' } };
+        parentStyle === 'stick' ? { stick: { radius: 0.2 } } :
+          parentStyle === 'sphere' ? { sphere: { scale: 0.5 } } :
+            { surface: { opacity: 0.9, color: 'grey' } };
       viewer.setStyle({}, styleConfig);
 
       if (showLabels) {
@@ -238,9 +238,9 @@ const StructureDetails = ({ structure, rdkitLoaded }) => {
       viewer.addModel(molData, 'mol');
 
       const styleConfig = variantStyle === 'ballstick' ? { stick: { radius: 0.2 }, sphere: { scale: 0.3 } } :
-                        variantStyle === 'stick' ? { stick: { radius: 0.2 } } :
-                        variantStyle === 'sphere' ? { sphere: { scale: 0.5 } } :
-                        { surface: { opacity: 0.9, color: 'grey' } };
+        variantStyle === 'stick' ? { stick: { radius: 0.2 } } :
+          variantStyle === 'sphere' ? { sphere: { scale: 0.5 } } :
+            { surface: { opacity: 0.9, color: 'grey' } };
       viewer.setStyle({}, styleConfig);
 
       if (showLabels) {
@@ -302,55 +302,82 @@ const StructureDetails = ({ structure, rdkitLoaded }) => {
       if (!GEMINI_API_KEY) throw new Error('Gemini API key not set');
       const response = await axios.post(
         `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${GEMINI_API_KEY}`,
-        { contents: [{ parts: [{ text: ` Analyze the drug molecule represented by the SMILES string "${smiles}" and provide a detailed report that includes the following sections:
+        {
+          contents: [{
+            parts: [{
+              text: ` 
 
-### 1. **Structural Analysis**
-- **Core Structure Identification**: Describe the main structural features of the molecule, including any fused ring systems, heterocycles, and functional groups.
-- **Stereochemistry**: Identify and explain the stereochemical configurations at all chiral centers (e.g., [C@@], [C@H]) and their relevance to biological activity.
-- **Substituents**: List and characterize significant substituents attached to the core structure, explaining their potential impact on the molecule's properties.
+You are a pharmaceutical chemistry expert tasked with analyzing a drug molecule represented by the SMILES string "${smiles}". Provide a detailed report with the following sections, ensuring clarity, conciseness, and relevance. Each section should be 3-5 sentences long, unless specified otherwise, and include specific, detailed information, even if it requires predictions or estimations based on computational methods, structural analogies, or literature insights.
 
-### 2. **Chemical Properties**
-- **Molecular Weight**: Calculate and provide the exact molecular weight of the compound.
-- **Physicochemical Properties**: Include values for:
-  - LogP (partition coefficient)
-  - Polar Surface Area (PSA)
-  - Hydrogen Bond Donors/Acceptors
-  - Rotatable Bonds
-  - pKa values for ionizable groups
-- **Solubility Profile**: Predict solubility in various solvents (aqueous, organic) based on functional groups.
-- **Melting Point and Boiling Point**: Provide estimated values based on structural analogs.
+1. Structural Details:
+- Determine the molecular formula from the SMILES string (e.g., C9H8O4 for aspirin).
+- List any known synonyms or alternative names for the compound, citing databases like PubChem with specific identifiers (e.g., PubChem CID: 2244 for aspirin).
+- Calculate the exact molecular weight and provide it with units (e.g., 180.16 g/mol).
+- Generate the IUPAC name and InChI based on the molecular structure; if exact structure confirmation is unavailable, provide a predicted name and InChI based on the SMILES string.
+- Note the provided SMILES string for reference (e.g., SMILES: CC(=O)OC1=CC=CC=C1C(=O)O).
 
-### 3. **ADMET Profile**
-- **Absorption**: Discuss bioavailability and factors affecting absorption.
-- **Distribution**: Predict volume of distribution and blood-brain barrier permeability.
-- **Metabolism**: Identify metabolic pathways and potential metabolites, including enzyme interactions (e.g., CYP450).
-- **Excretion**: Discuss elimination routes and half-life.
-- **Toxicity Predictions**: Highlight any known or predicted toxicological concerns, including hERG inhibition or cytotoxicity.
+2. Chemical Properties:
+- Predict or provide the lipophilicity (logP) value, citing sources if available (e.g., logP: 1.2, predicted via ChemAxon); if unavailable, estimate based on functional groups.
+- Provide pKa values for each ionizable group (e.g., -COOH, -NH2) with units (e.g., pKa: 3.5 for carboxylic acid); predict values if experimental data is unavailable.
+- Count and list the number of hydrogen bond donors (HBD) and acceptors (HBA) (e.g., 2 HBD, 4 HBA).
+- Identify and list significant functional groups present in the molecule (e.g., carboxylic acid, ester, aromatic ring).
+- Determine the number of aromatic and non-aromatic rings, specifying each (e.g., 1 aromatic benzene ring, 0 non-aromatic rings).
 
-### 4. **Biological Activity**
-- **Target Interaction**: Identify potential biological targets (receptors, enzymes) and predict binding affinities. Include:
-  - Mechanism of action for known targets.
-  - Any relevant SAR (Structure-Activity Relationship) data.
-- **Therapeutic Applications**: Discuss potential uses in therapy based on structural similarity to known drugs or biological activity.
+3. Physical Properties:
+- Predict solubility in aqueous and organic solvents, explaining the basis (e.g., moderately soluble in water due to polar groups, highly soluble in ethanol due to logP of 1.2).
+- Discuss membrane permeability, relating it to logP and polar surface area (e.g., moderate permeability with logP of 1.2 and PSA of 60 Å²).
+- Calculate the polar surface area (PSA) and provide it with units (e.g., PSA: 60 Å², calculated via ChemAxon).
+- Count the number of rotatable bonds in the molecular structure (e.g., 3 rotatable bonds).
+- Discuss chemical stability, noting any known issues (e.g., stable at neutral pH, hydrolyzes in acidic conditions), and mention crystallinity and polymorphism if data is available or predict based on structure (e.g., likely crystalline due to planar aromatic system).
 
-### 5. **Synthesis Pathways**
-- Outline possible synthetic routes to obtain the compound, referencing established methods in literature.
-- Discuss any challenges or considerations in synthesis.
+4. Spectral Information:
+- Provide detailed spectral data such as IR, NMR, or mass spectrometry, based on typical expectations for the structure (e.g., IR: 1700 cm⁻¹ for C=O stretch; NMR: 12 ppm for -COOH proton; MS: m/z 181 [M+H]+).
+- If experimental data is unavailable, predict values or provide typical ranges based on functional groups, citing prediction methods (e.g., predicted via ChemAxon’s spectral prediction tools).
 
-### 6. **Clinical Context**
-- Provide a summary of any clinical data available regarding this compound, including:
-  - Approved indications (if applicable).
-  - Clinical trial results or ongoing studies.
-  - Comparison with similar drugs in terms of efficacy and safety profiles.
+5. Biological Activity and Pharmacology:
+- Identify potential biological targets (e.g., receptors, enzymes like COX-1) and predict binding affinities (e.g., 7.5 kcal/mol), including mechanism of action (e.g., inhibits COX-1 by blocking active site).
+- Discuss structure-activity relationship (SAR) data, if known, or predict based on structural features (e.g., the -COOH group enhances COX inhibition).
+- Suggest potential therapeutic applications based on structural similarities to known drugs (e.g., similar to aspirin, may treat pain and inflammation).
+- Describe pharmacodynamic properties (e.g., inhibits prostaglandin synthesis) and pharmacokinetic properties (e.g., half-life of 4 hours, metabolized by CYP2C9, excreted via kidneys), including interactions and pathways (e.g., interacts with CYP2C9, affects prostaglandin pathway).
+- Include any biological test results, such as assay data, or predict likely outcomes (e.g., likely IC50 of 10 µM against COX-1 based on structural analogy to aspirin).
 
-### Output Requirements
-- Format the response using clear subheadings for each section.
-- Include tables or bullet points where appropriate for clarity.
-- Cite relevant databases (PubChem, ChEMBL, DrugBank) for additional context or data sources.
+6. Clinical and Therapeutic Information:
+- List approved indications, dosage forms, and therapeutic uses, citing clinical sources if applicable (e.g., approved for pain relief, available as 325 mg tablets, per DrugBank DB00945).
+- Summarize any clinical trial results, ongoing studies, or comparisons with similar drugs (e.g., reduces pain by 50% in trials, comparable to ibuprofen, per ClinicalTrials.gov NCT123456).
+- Identify associated disorders and diseases, explaining the connection (e.g., treats arthritis due to anti-inflammatory effects).
+- If clinical data is unavailable, predict potential uses based on biological activity (e.g., likely used for inflammation based on COX inhibition).
 
-### Conclusion
-Summarize the overall potential of this molecule as a therapeutic agent, highlighting any critical research questions that remain unanswered or areas for further investigation.
-` }] }] },
+7. Safety and Toxicity:
+- Discuss handling precautions and safety hazards, citing safety data sheets if possible (e.g., avoid inhalation, may cause skin irritation, per PubChem safety data).
+- Provide toxicological information, including LD50 values (e.g., LD50: 200 mg/kg in rats, predicted via QSAR models) and any known or predicted toxicological concerns (e.g., potential gastrointestinal irritation).
+- Highlight potential risks, such as hERG inhibition or cytotoxicity (e.g., possible hERG inhibition due to aromatic system, predicted via computational models).
+
+8. Manufacturing and Synthesis:
+- Outline a possible synthetic route to obtain the compound, referencing established methods in literature (e.g., acetylate salicylic acid with acetic anhydride, per Organic Syntheses Vol. 1).
+- Highlight any challenges or considerations in the synthesis process, including manufacturing details (e.g., requires controlled temperature to avoid side products, scalable for industrial production).
+
+9. References and Patents:
+- Cite relevant scientific literature or databases for any data provided, including specific identifiers (e.g., PubChem CID: 2244, DrugBank DB00945, ChEMBL CHEMBL25).
+- Note any patents related to the compound, including patent numbers if known (e.g., US Patent 1234567 for synthesis method).
+
+10. Classification and Taxonomy:
+- Classify the compound in relevant chemical or biological taxonomies, such as drug classes or chemical categories (e.g., belongs to salicylates, non-steroidal anti-inflammatory drugs).
+- Provide standard classifications, noting any regulatory categories if applicable (e.g., FDA-approved analgesic, per PubChem).
+
+**Output Requirements:**
+- Use numbered headings for each section (e.g., "1. Structural Details:", "2. Chemical Properties:", etc.).
+- Use dashes ("-") for all bullet points, and do not use stars ("*"), bullet symbols ("•"), or other markers.
+- Do not use hashtags ("#") or stars ("*") anywhere in the response body.
+- Keep each section concise (3-5 sentences, unless specified otherwise) and avoid extraneous information.
+- Ensure all numerical values are accompanied by their units (e.g., g/mol for molecular weight, Å² for PSA, cm⁻¹ for IR peaks).
+- Cite relevant databases (e.g., PubChem, ChEMBL, DrugBank) or prediction tools (e.g., ChemAxon, QSAR models) for additional context or data sources, if applicable.
+- Ensure all text is plain and free of markdown formatting (e.g., no bold, italics, or tables) except for the specified headings and bullet points.
+- If exact data is unavailable, provide a prediction or estimation based on computational methods, structural analogies, or literature insights, and note the method used (e.g., "predicted via ChemAxon"); only use "No data available" if the information is completely inapplicable.
+
+
+` }]
+          }]
+        },
         { headers: { 'Content-Type': 'application/json' }, withCredentials: false }
       );
       if (response.data.candidates?.[0]?.content?.parts?.[0]?.text) {
@@ -410,8 +437,8 @@ Summarize the overall potential of this molecule as a therapeutic agent, highlig
     return <div ref={ref} className="flex justify-center" />;
   };
 
- 
-  
+
+
   const exportToPDF = async () => {
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
@@ -454,39 +481,60 @@ Summarize the overall potential of this molecule as a therapeutic agent, highlig
     // Parse the information into sections
     const parseInformation = (text) => {
       const expectedHeadings = [
-        "Structural Analysis",
+        "Structural Details",
         "Chemical Properties",
-        "ADMET Profile",
-        "Biological Activity",
-        "Synthesis Pathways",
-        "Clinical Context",
-        "Conclusion"
+        "Physical Properties",
+        "Spectral Information",
+        "Biological Activity and Pharmacology",
+        "Clinical and Therapeutic Information",
+        "Safety and Toxicity",
+        "Manufacturing and Synthesis",
+        "References and Patents",
+        "Classification and Taxonomy"
       ];
   
-      const sectionRegex = /(\n\s*)?(?=\d+\. |[A-Z][a-zA-Z ]+:\n|## |\*{3,}|[A-Z ]{3,}\n)/g;
-      const rawSections = text
-        .split(sectionRegex)
-        .filter(section => section && !section.match(/^\n\s*$/))
-        .map(section => section.replace(/^\n+/, '').trim());
+      // Regex to match numbered headings like "1. Structural Details:", "2. Chemical Properties:", etc.
+      const sectionRegex = /(\d+\.\s[A-Za-z\s]+:)/g;
+      const sections = [];
+      let lastIndex = 0;
+      let match;
   
-      return rawSections.map((section, index) => {
-        const [firstLine, ...rest] = section.split('\n');
-        const isHeader = firstLine.match(/^(\d+\. |[A-Z][a-zA-Z ]+:|## |\*{3,}|[A-Z ]{3,})/);
-        let title = isHeader ? firstLine.replace(/[:#]+$/, '') : expectedHeadings[index] || `Section ${index + 1}`;
-        
-        title = title.replace(/^\d+\.\s*/, '').replace(/\*/g, '').trim();
-        if (title !== expectedHeadings[index]) {
-          title = expectedHeadings[index] || `Section ${index + 1}`;
+      // Find all matches of the section headings
+      const matches = [...text.matchAll(sectionRegex)];
+      matches.forEach((m, index) => {
+        const startIndex = m.index;
+        const nextMatch = matches[index + 1];
+        const endIndex = nextMatch ? nextMatch.index : text.length;
+        const content = text.slice(lastIndex, startIndex).trim();
+        if (content && lastIndex !== startIndex) {
+          sections.push({
+            id: sections.length,
+            title: expectedHeadings[sections.length] || `Section ${sections.length + 1}`,
+            content: content
+          });
         }
-  
-        const content = isHeader ? rest.join('\n') : section;
-  
-        return {
-          id: index,
-          title: title,
-          content: content.trim(),
-        };
+        lastIndex = startIndex;
       });
+  
+      // Add the last section
+      const lastContent = text.slice(lastIndex).trim();
+      if (lastContent) {
+        const titleMatch = lastContent.match(/^(\d+\.\s[A-Za-z\s]+:)/);
+        let title = titleMatch ? titleMatch[1].replace(/:$/, '') : expectedHeadings[sections.length] || `Section ${sections.length + 1}`;
+        title = title.replace(/^\d+\.\s*/, '').trim();
+        const content = titleMatch ? lastContent.slice(titleMatch[0].length).trim() : lastContent;
+        sections.push({
+          id: sections.length,
+          title: title,
+          content: content
+        });
+      }
+  
+      return sections.map((section, index) => ({
+        id: index,
+        title: expectedHeadings[index] || section.title,
+        content: section.content.trim()
+      }));
     };
   
     // Add document header
@@ -520,9 +568,7 @@ Summarize the overall potential of this molecule as a therapeutic agent, highlig
           const paragraphs = section.content.split('\n\n');
           paragraphs.forEach((paragraph) => {
             const lines = paragraph.split('\n').map(line => {
-              if (line.startsWith('•')) {
-                return `  - ${line.replace('• ', '')}`;
-              }
+              // The prompt already uses dashes, so no need to replace bullet points
               return line;
             }).join('\n');
             y = addText(lines, margin + 5, 10);
@@ -565,9 +611,6 @@ Summarize the overall potential of this molecule as a therapeutic agent, highlig
           const paragraphs = section.content.split('\n\n');
           paragraphs.forEach((paragraph) => {
             const lines = paragraph.split('\n').map(line => {
-              if (line.startsWith('•')) {
-                return `  - ${line.replace('• ', '')}`;
-              }
               return line;
             }).join('\n');
             y = addText(lines, margin + 5, 10);
@@ -609,7 +652,6 @@ Summarize the overall potential of this molecule as a therapeutic agent, highlig
   
     doc.save(`${structure.name}-${activeTab}.pdf`);
   };
-
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
@@ -622,32 +664,29 @@ Summarize the overall potential of this molecule as a therapeutic agent, highlig
       <div className="border-b border-gray-200 mb-6">
         <nav className="-mb-px flex space-x-8">
           <button
-            className={`pb-4 px-1 border-b-2 font-medium text-sm ${
-              activeTab === 'parent'
+            className={`pb-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'parent'
                 ? 'border-blue-500 text-blue-600'
                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-            }`}
+              }`}
             onClick={() => handleTabSwitch('parent')}
           >
             Parent Structure
           </button>
           <button
-            className={`pb-4 px-1 border-b-2 font-medium text-sm ${
-              activeTab === 'variants'
+            className={`pb-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'variants'
                 ? 'border-blue-500 text-blue-600'
                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-            }`}
+              }`}
             onClick={() => handleTabSwitch('variants')}
           >
             Generated Variants ({structure.generatedStructures?.length || 0})
           </button>
           {selectedVariant && (
             <button
-              className={`pb-4 px-1 border-b-2 font-medium text-sm ${
-                activeTab === 'variant'
+              className={`pb-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'variant'
                   ? 'border-blue-500 text-blue-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
+                }`}
               onClick={() => handleTabSwitch('variant')}
             >
               Selected Variant

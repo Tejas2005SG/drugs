@@ -2,39 +2,14 @@ import React, { useState } from 'react';
 import { Icon } from '@iconify/react';
 
 const EnhancedGeminiInfo = ({ information, isLoading, error }) => {
-  const [expandedSection, setExpandedSection] = useState(null);
-  const [copiedSections, setCopiedSections] = useState({});
-
-  const handleCopy = async (text, sectionId) => {
-    await navigator.clipboard.writeText(text);
-    setCopiedSections(prev => ({ ...prev, [sectionId]: true }));
-    setTimeout(() => {
-      setCopiedSections(prev => ({ ...prev, [sectionId]: false }));
-    }, 2000);
-  };
+  const [isExpanded, setIsExpanded] = useState(false);
 
   // Loading state
   if (isLoading) {
     return (
-      <div className="animate-pulse bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden">
-        <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-4 border-b border-gray-100">
-          <div className="h-5 bg-gray-200 rounded w-40 mb-1"></div>
-          <div className="h-3 bg-gray-100 rounded w-60"></div>
-        </div>
-        <div className="p-6 space-y-6">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="space-y-4">
-              <div className="flex items-center space-x-3">
-                <div className="h-8 w-8 bg-gray-200 rounded-lg"></div>
-                <div className="h-4 bg-gray-200 rounded w-32"></div>
-              </div>
-              <div className="space-y-2">
-                <div className="h-3 bg-gray-100 rounded w-full"></div>
-                <div className="h-3 bg-gray-100 rounded w-5/6"></div>
-              </div>
-            </div>
-          ))}
-        </div>
+      <div className="animate-pulse bg-white rounded-lg shadow-md border border-gray-100 p-4">
+        <div className="h-5 bg-gray-200 rounded w-40 mb-1"></div>
+        <div className="h-3 bg-gray-100 rounded w-60"></div>
       </div>
     );
   }
@@ -42,191 +17,111 @@ const EnhancedGeminiInfo = ({ information, isLoading, error }) => {
   // Error state
   if (error) {
     return (
-      <div className="bg-gradient-to-br from-red-50/80 to-red-100/50 border border-red-200 rounded-xl p-5 flex items-start animate-shake-x animate-duration-300">
+      <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start">
         <Icon 
           icon="ph:warning-circle-fill" 
-          className="flex-shrink-0 w-6 h-6 text-red-600 mr-3 mt-0.5 animate-pulse" 
+          className="w-5 h-5 text-red-600 mr-2 mt-0.5" 
         />
         <div>
-          <h4 className="text-red-900 font-semibold mb-1 text-lg">Analysis Error</h4>
-          <p className="text-red-800/90 text-sm leading-relaxed">{error}</p>
+          <h4 className="text-red-900 font-semibold text-sm">Analysis Error</h4>
+          <p className="text-red-800 text-xs">{error}</p>
         </div>
       </div>
     );
   }
 
   // Empty state
-  if (!information) {
+  if (!information || information.includes('Failed to retrieve detailed information')) {
     return (
-      <div className="bg-gradient-to-br from-gray-50/80 to-gray-100/50 border border-gray-200 rounded-xl p-6 text-center">
-        <div className="mx-auto mb-4 w-12 h-12 bg-blue-100 rounded-2xl flex items-center justify-center">
-          <Icon icon="ph:atom" className="w-6 h-6 text-blue-600/80" />
-        </div>
-        <h4 className="text-gray-700 font-medium mb-2">No Analysis Available</h4>
-        <p className="text-gray-500/90 text-sm max-w-xs mx-auto">
-          Detailed compound information will appear here once generated
-        </p>
+      <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-center">
+        <Icon icon="ph:atom" className="w-6 h-6 text-blue-600 mx-auto mb-2" />
+        <h4 className="text-gray-700 font-medium text-sm">No Analysis Available</h4>
+        <p className="text-gray-500 text-xs">Detailed compound information will appear here once generated</p>
       </div>
     );
   }
 
-  // Information parsing logic
+  // Parse the information into sections and bullet points
   const parseInformation = (text) => {
-    const sectionRegex = /(\n\s*)?(?=\d+\. |[A-Z][a-zA-Z ]+:\n|## |\*{3,}|[A-Z ]{3,}\n)/g;
-    return text.split(sectionRegex)
-      .filter(section => section && !section.match(/^\n\s*$/))
-      .map((section, index) => {
-        const cleanSection = section.replace(/^\n+/, '').trim();
-        const [firstLine, ...rest] = cleanSection.split('\n');
-        
-        const isHeader = firstLine.match(/^(\d+\. |[A-Z][a-zA-Z ]+:|## |\*{3,}|[A-Z ]{3,})/);
-        const title = isHeader ? firstLine.replace(/[:#]+$/, '') : `Details ${index + 1}`;
-        const content = isHeader ? rest.join('\n') : cleanSection;
+    // Split into sections based on numbered headings (e.g., "1. Structural Analysis:")
+    const sectionRegex = /(\d+\.\s[A-Za-z\s]+:)/g;
+    const sections = text.split(sectionRegex).filter(Boolean);
 
-        return {
-          id: index,
-          title: title.replace(/\*/g, '').trim(),
-          content: content.trim(),
-          icon: getSectionIcon(title),
-          color: getSectionColor(title)
-        };
-      });
-  };
+    const parsedSections = [];
+    let currentSection = null;
 
-  // Icon mapping
-  const getSectionIcon = (title) => {
-    const lowerTitle = title.toLowerCase();
-    if (lowerTitle.includes('property')) return 'ph:flask-fill';
-    if (lowerTitle.includes('synthesis')) return 'ph:test-tube-fill';
-    if (lowerTitle.includes('medical')) return 'ph:first-aid-kit-fill';
-    if (lowerTitle.includes('safety')) return 'ph:warning-fill';
-    return 'ph:info-fill';
-  };
+    for (let i = 0; i < sections.length; i++) {
+      const item = sections[i].trim();
+      if (item.match(sectionRegex)) {
+        // If this is a section title, store it and prepare to collect its content
+        if (currentSection) {
+          parsedSections.push(currentSection);
+        }
+        currentSection = { title: item, bulletPoints: [] };
+      } else if (currentSection) {
+        // Collect bullet points for the current section
+        const bulletPoints = item
+          .split('\n')
+          .map(line => line.trim())
+          .filter(line => line.startsWith('-') || line.length > 0) // Include non-empty lines
+          .map(line => line.replace(/^-/, '').trim()); // Remove leading dash
+        currentSection.bulletPoints.push(...bulletPoints);
+      }
+    }
 
-  // Color mapping
-  const getSectionColor = (title) => {
-    const lowerTitle = title.toLowerCase();
-    if (lowerTitle.includes('warning') || lowerTitle.includes('safety')) return 'red';
-    if (lowerTitle.includes('medical') || lowerTitle.includes('benefit')) return 'green';
-    if (lowerTitle.includes('property') || lowerTitle.includes('chemical')) return 'blue';
-    return 'gray';
+    // Push the last section if it exists
+    if (currentSection) {
+      parsedSections.push(currentSection);
+    }
+
+    // Filter out sections with no bullet points
+    return parsedSections.filter(section => section.bulletPoints.length > 0);
   };
 
   const sections = parseInformation(information);
 
   return (
-    <div className="bg-white rounded-xl shadow-lg border border-gray-200/80 overflow-hidden transition-all duration-200 hover:shadow-xl">
-      <div className="bg-gradient-to-r from-blue-600 to-blue-500 px-6 py-4">
-        <h3 className="text-sm font-semibold text-white/90 flex items-center space-x-3">
-          <Icon 
-            icon="ph:atom-fill" 
-            className="w-5 h-5 text-white/80" 
-          />
-          <span>Compound Analysis Report</span>
-        </h3>
-      </div>
+    <div className="bg-white rounded-lg shadow-md border border-gray-200">
+      {/* Dropdown Header */}
+      <button
+        onClick={() => setIsExpanded(!isExpanded)}
+        className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 hover:bg-gray-100 transition-colors"
+      >
+        <div className="flex items-center space-x-2">
+          <Icon icon="ph:info-fill" className="w-5 h-5 text-orange-500" />
+          <span className="text-sm font-medium text-gray-800">Details <span className='text-xs text-blue-700'>(Powered by Gemini)</span></span>
+        </div>
+        <Icon
+          icon={isExpanded ? 'ph:caret-up' : 'ph:caret-down'}
+          className="w-5 h-5 text-gray-500"
+        />
+      </button>
 
-      <div className="divide-y divide-gray-200/60">
-        {sections.map((section) => (
-          <div 
-            key={section.id} 
-            className="group transition-all duration-200 hover:bg-gray-50/30"
-          >
-            <button
-              onClick={() => setExpandedSection(prev => prev === section.id ? null : section.id)}
-              className="w-full flex items-center justify-between px-6 py-4"
-            >
-              <div className="flex items-center space-x-4">
-                <div className={`bg-${section.color}-100/80 p-2 rounded-xl shadow-sm`}>
-                  <Icon 
-                    icon={section.icon} 
-                    className={`w-6 h-6 text-${section.color}-700/90`}
-                  />
-                </div>
-                <h4 className="text-left font-semibold text-gray-800 text-sm">
-                  {section.title}
-                </h4>
-              </div>
-              <Icon 
-                icon={expandedSection === section.id ? 'ph:caret-up' : 'ph:caret-down'} 
-                className={`w-5 h-5 text-gray-400 transition-transform duration-300 ${
-                  expandedSection === section.id ? 'rotate-180' : ''
-                }`}
-              />
-            </button>
-
-            {(expandedSection === section.id || sections.length === 1) && (
-              <div className="px-6 pb-5 pt-2 bg-gradient-to-b from-white to-gray-50/60 border-t border-gray-200/50">
-                <div className="prose-sm max-w-none relative space-y-4">
-                  <button
-                    onClick={() => handleCopy(section.content, section.id)}
-                    className="absolute top-0 right-0 p-2 hover:bg-gray-200/50 rounded-lg transition-colors duration-200 group/copy"
-                  >
-                    <Icon 
-                      icon={copiedSections[section.id] ? 'ph:check-circle-fill' : 'ph:copy-simple'} 
-                      className={`w-5 h-5 transition-all ${
-                        copiedSections[section.id] 
-                          ? 'text-green-600' 
-                          : 'text-gray-500 hover:text-gray-700'
-                      }`}
-                    />
-                  </button>
-                  
-                  {section.content.split('\n\n').map((paragraph, i) => (
-                    <div key={i} className="text-gray-700/90 leading-relaxed space-y-3">
-                      {paragraph.split('\n').map((line, j) => (
-                        <p key={j} className="flex items-start">
-                          {line.startsWith('•') && (
-                            <span className="text-blue-500/80 mr-2 mt-1">•</span>
-                          )}
-                          <span className="flex-1">
-                            {line.replace('• ', '')}
-                            {line.match(/^(Molecular Weight|Solubility|LogP):/) && (
-                              <span className="ml-3 px-2.5 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded-full">
-                                Key Property
-                              </span>
-                            )}
-                          </span>
-                        </p>
-                      ))}
-                    </div>
+      {/* Expanded Content */}
+      {isExpanded && (
+        <div className="px-4 py-3 border-t border-gray-200">
+          {sections.length > 0 ? (
+            sections.map((section, index) => (
+              <div key={index} className="mb-4">
+                <h4 className="text-sm font-semibold text-gray-800 mb-2">{section.title}</h4>
+                <ul className="space-y-1">
+                  {section.bulletPoints.map((point, i) => (
+                    <li key={i} className="flex items-start text-sm text-gray-700">
+                      <span className="text-orange-500 mr-2">•</span>
+                      <span>{point || 'No detailed information available for this section.'}</span>
+                    </li>
                   ))}
-
-                  {section.content.toLowerCase().includes('warning') && (
-                    <div className="mt-4 p-4 bg-red-50/80 border border-red-200/60 rounded-xl flex items-start space-x-3 animate-pulse-slow">
-                      <Icon 
-                        icon="ph:warning-fill" 
-                        className="w-5 h-5 text-red-600/90 flex-shrink-0 mt-0.5" 
-                      />
-                      <div>
-                        <p className="text-red-800/90 text-sm font-medium mb-1">
-                          Safety Notice
-                        </p>
-                        <p className="text-red-700/90 text-sm leading-relaxed">
-                          Critical safety information - handle with proper precautions
-                        </p>
-                      </div>
-                    </div>
-                  )}
-                </div>
+                </ul>
               </div>
-            )}
-          </div>
-        ))}
-      </div>
-
-      <div className="px-6 py-4 bg-gray-100/60 border-t border-gray-200/50">
-        <p className="text-xs text-gray-600/90 flex items-center space-x-2">
-          <Icon 
-            icon="ph:info" 
-            className="w-4 h-4 text-gray-500/80" 
-          />
-          <span>
-            AI-generated analysis •{' '}
-            <span className="font-medium">Always verify critical data</span>
-          </span>
-        </p>
-      </div>
+            ))
+          ) : (
+            <p className="text-sm text-gray-700">
+              No detailed information available. Raw content: <br />
+              {information}
+            </p>
+          )}
+        </div>
+      )}
     </div>
   );
 };
