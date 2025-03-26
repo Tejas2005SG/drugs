@@ -50,12 +50,12 @@ function DashboardPage() {
           navigation: () => navigate('/dashboard/ai-driven-target-prediction'), 
           roles: ['admin', 'citizen', 'guest']
       },
-      { 
-          name: 'Drug Discovery Recommendation', 
-          icon: <Pill size={20} className="mr-3" />, // Pill for drug-related features
-          navigation: () => navigate('/dashboard/drug-discovery-recommendation'), 
-          roles: ['admin', 'citizen', 'guest']
-      },
+      // { 
+      //     name: 'Drug Discovery Recommendation', 
+      //     icon: <Pill size={20} className="mr-3" />, // Pill for drug-related features
+      //     navigation: () => navigate('/dashboard/drug-discovery-recommendation'), 
+      //     roles: ['admin', 'citizen', 'guest']
+      // },
       { 
           name: 'Live News', 
           icon: <Newspaper size={20} className="mr-3" />, // Newspaper for news updates
@@ -115,7 +115,7 @@ function DashboardPage() {
 
           {/* Navigation */}
           <div className="flex-1 p-4 overflow-y-auto">
-            <h3 className="text-xs uppercase text-gray-500 font-semibold tracking-wider mb-4 ml-3">Main Navigation</h3>
+            {/* <h3 className="text-xs uppercase text-gray-500 font-semibold tracking-wider mb-4 ml-3">Main Navigation</h3> */}
             <ul className="space-y-2">
               {listNav.length > 0 ? (
                 listNav

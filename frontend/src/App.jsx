@@ -81,14 +81,14 @@ function App() {
               </ProtectedRoute>
             }
           />
-           <Route
+           {/* <Route
             path="drug-discovery-recommendation"
             element={
               <ProtectedRoute>
                 <DrugDiscoveryRecommendation/>
               </ProtectedRoute>
             }
-          />
+          /> */}
            <Route
             path="live-news"
             element={

@@ -130,24 +130,19 @@ const ProteinStructureApp = () => {
           </button>
         </div>
       )}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-1">
-          <div className="bg-white p-6 rounded-lg shadow-md mb-8">
+      <div className="grid grid-cols-1 gap-8">
+        {/* Section 1: Generate New Structure */}
+        <div>
+          <div className="bg-white p-6 rounded-lg shadow-md">
             <h2 className="text-xl font-semibold mb-4">Generate New Structure</h2>
             <StructureForm onSubmit={handleSubmit} loading={loading} />
           </div>
-          <div className="bg-white p-6 rounded-lg shadow-md">
-            <h2 className="text-xl font-semibold mb-4">Saved Structures</h2>
-            <StructureList
-              structures={structures}
-              onSelect={selectStructure}
-              selected={selectedStructure}
-              loading={loading}
-            />
-          </div>
         </div>
-        <div className="lg:col-span-2">
+
+        {/* Section 2: Select a structure to view details */}
+        <div>
           <div className="bg-white p-6 rounded-lg shadow-md">
+            <h2 className="text-xl font-semibold mb-4">Structure Details</h2>
             {selectedStructure ? (
               <StructureDetails structure={selectedStructure} rdkitLoaded={rdkitLoaded} />
             ) : (
@@ -156,6 +151,19 @@ const ProteinStructureApp = () => {
                 <p className="text-gray-400 text-sm">or generate a new one</p>
               </div>
             )}
+          </div>
+        </div>
+
+        {/* Section 3: Saved Structures */}
+        <div>
+          <div className="bg-white p-6 rounded-lg shadow-md">
+            <h2 className="text-xl font-semibold mb-4">Saved Structures</h2>
+            <StructureList
+              structures={structures}
+              onSelect={selectStructure}
+              selected={selectedStructure}
+              loading={loading}
+            />
           </div>
         </div>
       </div>
