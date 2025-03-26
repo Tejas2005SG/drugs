@@ -302,7 +302,55 @@ const StructureDetails = ({ structure, rdkitLoaded }) => {
       if (!GEMINI_API_KEY) throw new Error('Gemini API key not set');
       const response = await axios.post(
         `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${GEMINI_API_KEY}`,
-        { contents: [{ parts: [{ text: `Provide detailed information about the molecule with SMILES "${smiles}".` }] }] },
+        { contents: [{ parts: [{ text: ` Analyze the drug molecule represented by the SMILES string "${smiles}" and provide a detailed report that includes the following sections:
+
+### 1. **Structural Analysis**
+- **Core Structure Identification**: Describe the main structural features of the molecule, including any fused ring systems, heterocycles, and functional groups.
+- **Stereochemistry**: Identify and explain the stereochemical configurations at all chiral centers (e.g., [C@@], [C@H]) and their relevance to biological activity.
+- **Substituents**: List and characterize significant substituents attached to the core structure, explaining their potential impact on the molecule's properties.
+
+### 2. **Chemical Properties**
+- **Molecular Weight**: Calculate and provide the exact molecular weight of the compound.
+- **Physicochemical Properties**: Include values for:
+  - LogP (partition coefficient)
+  - Polar Surface Area (PSA)
+  - Hydrogen Bond Donors/Acceptors
+  - Rotatable Bonds
+  - pKa values for ionizable groups
+- **Solubility Profile**: Predict solubility in various solvents (aqueous, organic) based on functional groups.
+- **Melting Point and Boiling Point**: Provide estimated values based on structural analogs.
+
+### 3. **ADMET Profile**
+- **Absorption**: Discuss bioavailability and factors affecting absorption.
+- **Distribution**: Predict volume of distribution and blood-brain barrier permeability.
+- **Metabolism**: Identify metabolic pathways and potential metabolites, including enzyme interactions (e.g., CYP450).
+- **Excretion**: Discuss elimination routes and half-life.
+- **Toxicity Predictions**: Highlight any known or predicted toxicological concerns, including hERG inhibition or cytotoxicity.
+
+### 4. **Biological Activity**
+- **Target Interaction**: Identify potential biological targets (receptors, enzymes) and predict binding affinities. Include:
+  - Mechanism of action for known targets.
+  - Any relevant SAR (Structure-Activity Relationship) data.
+- **Therapeutic Applications**: Discuss potential uses in therapy based on structural similarity to known drugs or biological activity.
+
+### 5. **Synthesis Pathways**
+- Outline possible synthetic routes to obtain the compound, referencing established methods in literature.
+- Discuss any challenges or considerations in synthesis.
+
+### 6. **Clinical Context**
+- Provide a summary of any clinical data available regarding this compound, including:
+  - Approved indications (if applicable).
+  - Clinical trial results or ongoing studies.
+  - Comparison with similar drugs in terms of efficacy and safety profiles.
+
+### Output Requirements
+- Format the response using clear subheadings for each section.
+- Include tables or bullet points where appropriate for clarity.
+- Cite relevant databases (PubChem, ChEMBL, DrugBank) for additional context or data sources.
+
+### Conclusion
+Summarize the overall potential of this molecule as a therapeutic agent, highlighting any critical research questions that remain unanswered or areas for further investigation.
+` }] }] },
         { headers: { 'Content-Type': 'application/json' }, withCredentials: false }
       );
       if (response.data.candidates?.[0]?.content?.parts?.[0]?.text) {
@@ -362,136 +410,205 @@ const StructureDetails = ({ structure, rdkitLoaded }) => {
     return <div ref={ref} className="flex justify-center" />;
   };
 
+ 
+  
   const exportToPDF = async () => {
-  const doc = new jsPDF();
-  const pageWidth = doc.internal.pageSize.getWidth();
-  const pageHeight = doc.internal.pageSize.getHeight();
-  const margin = 10;
-  let y = margin;
-  const lineHeight = 3; // Reduced line height for tighter spacing
-
-  const checkPageBreak = (additionalHeight) => {
-    if (y + additionalHeight > pageHeight - margin) {
-      doc.addPage();
-      y = margin;
-    }
-  };
-
-  const addText = (text, x, size = 12) => {
-    doc.setFontSize(size);
-    const lines = doc.splitTextToSize(text, pageWidth - 2 * margin);
-    const textHeight = lines.length * size * 0.5;
-    checkPageBreak(textHeight);
-    doc.text(lines, x, y);
-    y += textHeight + lineHeight;
-    return y;
-  };
-
-  const addSvgToPDF = async (svgString, x, yPos, width, height) => {
-    if (!svgString) return yPos;
-    checkPageBreak(height + 10);
-    const canvas = document.createElement('canvas');
-    canvas.width = width * 2;
-    canvas.height = height * 2;
-    const ctx = canvas.getContext('2d');
-    const v = Canvg.fromString(ctx, svgString);
-    await v.render();
-    const imgData = canvas.toDataURL('image/png');
-    doc.addImage(imgData, 'PNG', x, yPos, width, height);
-    return yPos + height + 5; // Reduced spacing after image
-  };
-
-  addText(`${structure.name} Details`, margin, 16);
-  addText(`Created: ${new Date(structure.created).toLocaleString()}`, margin, 10);
-
-  if (activeTab === 'parent') {
-    addText('Parent Structure', margin, 14);
-    addText(`SMILES: ${structure.smiles}`, margin);
-
-    if (rdkitLoaded && window.RDKit && structure.smiles) {
-      const mol = window.RDKit.get_mol(structure.smiles);
-      if (mol) {
-        const svg = mol.get_svg(300, 200);
-        y = await addSvgToPDF(svg, margin, y, 90, 60);
-        mol.delete();
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const margin = 10;
+    let y = margin;
+    const lineHeight = 3;
+  
+    const checkPageBreak = (additionalHeight) => {
+      if (y + additionalHeight > pageHeight - margin) {
+        doc.addPage();
+        y = margin;
       }
-    }
-
-    // Add properties if available
-    if (structure.properties) {
-      addText('Properties:', margin, 12);
-      addText(`QED: ${structure.properties?.qed?.toFixed(3) || 'N/A'}`, margin + 5, 10);
-      addText(`LogP: ${structure.properties?.logp?.toFixed(3) || 'N/A'}`, margin + 5, 10);
-    }
-
-    addText('Detailed Information:', margin, 12);
-    const infoText = structure.information && structure.information.trim() !== ''
-      ? structure.information
-      : 'No detailed information available.';
-    y = addText(infoText, margin + 5, 10);
-
-    if (aiDescription && aiDescription.trim() !== '') {
-      addText('AI Insight:', margin, 12);
-      y = addText(aiDescription, margin + 5, 10);
-    }
-
-  } else if (activeTab === 'variant' && selectedVariant) {
-    addText('Selected Variant', margin, 14);
-    addText(`SMILES: ${selectedVariant.smiles}`, margin);
-
-    if (rdkitLoaded && window.RDKit && selectedVariant.smiles) {
-      const mol = window.RDKit.get_mol(selectedVariant.smiles);
-      if (mol) {
-        const svg = mol.get_svg(300, 200);
-        y = await addSvgToPDF(svg, margin, y, 90, 60);
-        mol.delete();
-      }
-    }
-
-    addText('Property Comparison:', margin, 12);
-    addText(`Parent QED: ${structure.properties?.qed?.toFixed(3) || 'N/A'}`, margin + 5, 10);
-    addText(`Parent LogP: ${structure.properties?.logp?.toFixed(3) || 'N/A'}`, margin + 5, 10);
-    addText(`Variant QED: ${selectedVariant.properties?.qed?.toFixed(3) || 'N/A'}`, margin + 5, 10);
-    addText(`Variant LogP: ${selectedVariant.properties?.logp?.toFixed(3) || 'N/A'}`, margin + 5, 10);
-    addText(`Similarity: ${(selectedVariant.similarity * 100).toFixed(1)}%`, margin + 5, 10);
-
-    addText('Detailed Information:', margin, 12);
-    const variantText = variantInfo && variantInfo.trim() !== ''
-      ? variantInfo
-      : variantInfoError || 'No detailed information available.';
-    y = addText(variantText, margin + 5, 10);
-
-    if (aiDescription && aiDescription.trim() !== '') {
-      addText('AI Insight:', margin, 12);
-      y = addText(aiDescription, margin + 5, 10);
-    }
-
-  } else if (activeTab === 'variants') {
-    addText('Generated Variants', margin, 14);
-    if (structure.generatedStructures) {
-      for (let i = 0; i < structure.generatedStructures.length; i++) {
-        const variant = structure.generatedStructures[i];
-        addText(`Variant ${i + 1}:`, margin, 12);
-        addText(`SMILES: ${variant.smiles}`, margin + 5);
-        addText(`QED: ${variant.properties?.qed?.toFixed(3) || 'N/A'}`, margin + 5, 10);
-        addText(`LogP: ${variant.properties?.logp?.toFixed(3) || 'N/A'}`, margin + 5, 10);
-        addText(`Similarity: ${(variant.similarity * 100).toFixed(1)}%`, margin + 5, 10);
-
-        if (rdkitLoaded && window.RDKit && variant.smiles) {
-          const mol = window.RDKit.get_mol(variant.smiles);
-          if (mol) {
-            const svg = mol.get_svg(160, 120);
-            y = await addSvgToPDF(svg, margin, y, 90, 60);
-            mol.delete();
-          }
+    };
+  
+    const addText = (text, x, size = 12) => {
+      doc.setFontSize(size);
+      const lines = doc.splitTextToSize(text, pageWidth - 2 * margin);
+      const textHeight = lines.length * size * 0.5;
+      checkPageBreak(textHeight);
+      doc.text(lines, x, y);
+      y += textHeight + lineHeight;
+      return y;
+    };
+  
+    const addSvgToPDF = async (svgString, x, yPos, width, height) => {
+      if (!svgString) return yPos;
+      checkPageBreak(height + 10);
+      const canvas = document.createElement('canvas');
+      canvas.width = width * 2;
+      canvas.height = height * 2;
+      const ctx = canvas.getContext('2d');
+      const v = Canvg.fromString(ctx, svgString);
+      await v.render();
+      const imgData = canvas.toDataURL('image/png');
+      doc.addImage(imgData, 'PNG', x, yPos, width, height);
+      return yPos + height + 5;
+    };
+  
+    // Parse the information into sections
+    const parseInformation = (text) => {
+      const expectedHeadings = [
+        "Structural Analysis",
+        "Chemical Properties",
+        "ADMET Profile",
+        "Biological Activity",
+        "Synthesis Pathways",
+        "Clinical Context",
+        "Conclusion"
+      ];
+  
+      const sectionRegex = /(\n\s*)?(?=\d+\. |[A-Z][a-zA-Z ]+:\n|## |\*{3,}|[A-Z ]{3,}\n)/g;
+      const rawSections = text
+        .split(sectionRegex)
+        .filter(section => section && !section.match(/^\n\s*$/))
+        .map(section => section.replace(/^\n+/, '').trim());
+  
+      return rawSections.map((section, index) => {
+        const [firstLine, ...rest] = section.split('\n');
+        const isHeader = firstLine.match(/^(\d+\. |[A-Z][a-zA-Z ]+:|## |\*{3,}|[A-Z ]{3,})/);
+        let title = isHeader ? firstLine.replace(/[:#]+$/, '') : expectedHeadings[index] || `Section ${index + 1}`;
+        
+        title = title.replace(/^\d+\.\s*/, '').replace(/\*/g, '').trim();
+        if (title !== expectedHeadings[index]) {
+          title = expectedHeadings[index] || `Section ${index + 1}`;
         }
-        y += 3; // Reduced spacing between variants
+  
+        const content = isHeader ? rest.join('\n') : section;
+  
+        return {
+          id: index,
+          title: title,
+          content: content.trim(),
+        };
+      });
+    };
+  
+    // Add document header
+    addText(`${structure.name} Details`, margin, 16);
+    addText(`Created: ${new Date(structure.created).toLocaleString()}`, margin, 10);
+  
+    if (activeTab === 'parent') {
+      addText('Parent Structure', margin, 14);
+      addText(`SMILES: ${structure.smiles}`, margin);
+  
+      if (rdkitLoaded && window.RDKit && structure.smiles) {
+        const mol = window.RDKit.get_mol(structure.smiles);
+        if (mol) {
+          const svg = mol.get_svg(300, 200);
+          y = await addSvgToPDF(svg, margin, y, 90, 60);
+          mol.delete();
+        }
+      }
+  
+      if (structure.properties) {
+        addText('Properties:', margin, 12);
+        addText(`QED: ${structure.properties?.qed?.toFixed(3) || 'N/A'}`, margin + 5, 10);
+        addText(`LogP: ${structure.properties?.logp?.toFixed(3) || 'N/A'}`, margin + 5, 10);
+      }
+  
+      // Add detailed information sections
+      if (structure.information && structure.information.trim() !== '') {
+        const sections = parseInformation(structure.information);
+        sections.forEach((section) => {
+          addText(section.title, margin, 12);
+          const paragraphs = section.content.split('\n\n');
+          paragraphs.forEach((paragraph) => {
+            const lines = paragraph.split('\n').map(line => {
+              if (line.startsWith('•')) {
+                return `  - ${line.replace('• ', '')}`;
+              }
+              return line;
+            }).join('\n');
+            y = addText(lines, margin + 5, 10);
+          });
+        });
+      } else {
+        addText('Detailed Information:', margin, 12);
+        y = addText('No detailed information available.', margin + 5, 10);
+      }
+  
+      if (aiDescription && aiDescription.trim() !== '') {
+        addText('AI Insight:', margin, 12);
+        y = addText(aiDescription, margin + 5, 10);
+      }
+  
+    } else if (activeTab === 'variant' && selectedVariant) {
+      addText('Selected Variant', margin, 14);
+      addText(`SMILES: ${selectedVariant.smiles}`, margin);
+  
+      if (rdkitLoaded && window.RDKit && selectedVariant.smiles) {
+        const mol = window.RDKit.get_mol(selectedVariant.smiles);
+        if (mol) {
+          const svg = mol.get_svg(300, 200);
+          y = await addSvgToPDF(svg, margin, y, 90, 60);
+          mol.delete();
+        }
+      }
+  
+      addText('Property Comparison:', margin, 12);
+      addText(`Parent QED: ${structure.properties?.qed?.toFixed(3) || 'N/A'}`, margin + 5, 10);
+      addText(`Parent LogP: ${structure.properties?.logp?.toFixed(3) || 'N/A'}`, margin + 5, 10);
+      addText(`Variant QED: ${selectedVariant.properties?.qed?.toFixed(3) || 'N/A'}`, margin + 5, 10);
+      addText(`Variant LogP: ${selectedVariant.properties?.logp?.toFixed(3) || 'N/A'}`, margin + 5, 10);
+      addText(`Similarity: ${(selectedVariant.similarity * 100).toFixed(1)}%`, margin + 5, 10);
+  
+      if (variantInfo && variantInfo.trim() !== '') {
+        const sections = parseInformation(variantInfo);
+        sections.forEach((section) => {
+          addText(section.title, margin, 12);
+          const paragraphs = section.content.split('\n\n');
+          paragraphs.forEach((paragraph) => {
+            const lines = paragraph.split('\n').map(line => {
+              if (line.startsWith('•')) {
+                return `  - ${line.replace('• ', '')}`;
+              }
+              return line;
+            }).join('\n');
+            y = addText(lines, margin + 5, 10);
+          });
+        });
+      } else {
+        addText('Detailed Information:', margin, 12);
+        y = addText(variantInfoError || 'No detailed information available.', margin + 5, 10);
+      }
+  
+      if (aiDescription && aiDescription.trim() !== '') {
+        addText('AI Insight:', margin, 12);
+        y = addText(aiDescription, margin + 5, 10);
+      }
+  
+    } else if (activeTab === 'variants') {
+      addText('Generated Variants', margin, 14);
+      if (structure.generatedStructures) {
+        for (let i = 0; i < structure.generatedStructures.length; i++) {
+          const variant = structure.generatedStructures[i];
+          addText(`Variant ${i + 1}:`, margin, 12);
+          addText(`SMILES: ${variant.smiles}`, margin + 5);
+          addText(`QED: ${variant.properties?.qed?.toFixed(3) || 'N/A'}`, margin + 5, 10);
+          addText(`LogP: ${variant.properties?.logp?.toFixed(3) || 'N/A'}`, margin + 5, 10);
+          addText(`Similarity: ${(variant.similarity * 100).toFixed(1)}%`, margin + 5, 10);
+  
+          if (rdkitLoaded && window.RDKit && variant.smiles) {
+            const mol = window.RDKit.get_mol(variant.smiles);
+            if (mol) {
+              const svg = mol.get_svg(160, 120);
+              y = await addSvgToPDF(svg, margin, y, 90, 60);
+              mol.delete();
+            }
+          }
+          y += 3;
+        }
       }
     }
-  }
-
-  doc.save(`${structure.name}-${activeTab}.pdf`);
-};
+  
+    doc.save(`${structure.name}-${activeTab}.pdf`);
+  };
 
   return (
     <div>
@@ -624,6 +741,7 @@ const StructureDetails = ({ structure, rdkitLoaded }) => {
               information={structure.information}
               isLoading={false}
               error={null}
+              rdkitLoaded={rdkitLoaded}
             />
           </div>
 
@@ -797,8 +915,23 @@ const StructureDetails = ({ structure, rdkitLoaded }) => {
                 <h3 className="text-lg font-semibold mb-2">Detailed Information</h3>
                 <EnhancedGeminiInfo
                   information={variantInfo}
+                  variantData={{
+                    smiles: selectedVariant.smiles,
+                    properties: {
+                      parent: {
+                        qed: structure.properties?.qed?.toFixed(3) || 'N/A',
+                        logp: structure.properties?.logp?.toFixed(3) || 'N/A',
+                      },
+                      variant: {
+                        qed: selectedVariant.properties?.qed?.toFixed(3) || 'N/A',
+                        logp: selectedVariant.properties?.logp?.toFixed(3) || 'N/A',
+                      },
+                      similarity: `${(selectedVariant.similarity * 100).toFixed(1)}%`,
+                    },
+                  }}
                   isLoading={loadingVariantInfo}
                   error={variantInfoError}
+                  rdkitLoaded={rdkitLoaded}
                 />
               </div>
 

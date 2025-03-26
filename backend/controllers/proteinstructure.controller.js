@@ -6,6 +6,7 @@ import dotenv from 'dotenv';
 import OpenAI from 'openai';
 import ResearchPaper from '../models/researchPapers.model.js';
 import GeneratedResearchPaper from '../models/GeneratedResearchPaper.js';
+import { SavedSearch } from '../models/savedSearch.model.js';
 
 dotenv.config();
 
@@ -860,6 +861,24 @@ const openai = new OpenAI({
 
 
 
+const mockFingerprintExtraction = (smiles) => {
+  // In a real implementation, you'd use a JS cheminformatics library or an external API
+  // For now, we'll return mock fingerprint data
+  const morgan = Array(2048).fill(0).map(() => Math.random() > 0.5 ? "1" : "0").join("");
+  const maccs = Array(166).fill(0).map(() => Math.random() > 0.5 ? "1" : "0").join("");
+  return { morgan, maccs };
+};
+
+// Mock function to simulate molecular docking (since AutoDock is not available in JS)
+const mockDocking = (smiles) => {
+  // In a real implementation, you'd call an external docking API (e.g., DockThor)
+  // For now, we'll return mock docking results
+  return {
+    bindingEnergy: (Math.random() * -10).toFixed(2), // Mock binding energy in kcal/mol
+    pose: "Mock pose data",
+    details: "Mock docking details",
+  };
+};
 
 export const getProteinStructure = async (req, res) => {
   try {
@@ -1394,5 +1413,131 @@ export const checkSavedGeneratedPapers = async (req, res) => {
   } catch (err) {
     console.error("Error checking saved generated papers:", err);
     res.status(500).json({ message: "Failed to check saved generated papers", error: err.message });
+  }
+};
+
+
+
+// AI driven controllers
+
+export const convertFileToSmiles = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: "No file uploaded" });
+    }
+
+    // Use PubChem PUG REST API to convert MOL/SDF to SMILES
+    const pubchemUrl = "https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/molfile/SMILES/txt";
+    const formData = new FormData();
+    formData.append("molfile", req.file.buffer.toString("utf-8"));
+
+    const response = await axios.post(pubchemUrl, formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+
+    const smiles = response.data.trim();
+    if (!smiles) {
+      return res.status(400).json({ message: "Failed to convert file to SMILES" });
+    }
+
+    res.status(200).json({ smiles });
+  } catch (error) {
+    console.error("Error converting file to SMILES:", error.message);
+    res.status(500).json({ message: "Server error while converting file to SMILES" });
+  }
+};
+
+// Controller to extract fingerprints (mocked for now)
+export const getFingerprints = async (req, res) => {
+  try {
+    const { smiles } = req.body;
+    if (!smiles) {
+      return res.status(400).json({ message: "SMILES string is required" });
+    }
+
+    // Mock fingerprint extraction (replace with a real implementation using a JS library or API)
+    const fingerprints = mockFingerprintExtraction(smiles);
+
+    res.status(200).json({ fingerprints });
+  } catch (error) {
+    console.error("Error computing fingerprints:", error.message);
+    res.status(500).json({ message: "Server error while computing fingerprints" });
+  }
+};
+
+// Controller to perform molecular docking (mocked for now)
+export const performDocking = async (req, res) => {
+  try {
+    const { smiles } = req.body;
+    if (!smiles) {
+      return res.status(400).json({ message: "SMILES string is required" });
+    }
+
+    // Mock docking (replace with a real implementation using an external docking API)
+    const dockingResults = mockDocking(smiles);
+
+    res.status(200).json({ results: dockingResults });
+  } catch (error) {
+    console.error("Error performing molecular docking:", error.message);
+    res.status(500).json({ message: "Server error while performing docking" });
+  }
+};
+
+// Controller to save search results
+export const saveSearch = async (req, res) => {
+  try {
+    const { userId, smiles, targets, research, docking } = req.body;
+    if (!userId || !smiles) {
+      return res.status(400).json({ message: "User ID and SMILES are required" });
+    }
+
+    const newSearch = new SavedSearch({
+      userId,
+      smiles,
+      targets: targets || [],
+      research: research || [],
+      docking: docking || null,
+    });
+    await newSearch.save();
+    console.log("Saved search:", newSearch);
+    res.status(201).json({ message: "Search saved successfully", search: newSearch });
+  } catch (error) {
+    console.error("Error saving search:", error);
+    res.status(500).json({ message: "Server error while saving search", error: error.message });
+  }
+};;
+
+export const getSavedSearches = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const searches = await SavedSearch.find({ userId }).sort({ createdAt: -1 });
+    console.log("Fetched searches:", searches); // Debug log
+    res.status(200).json({ searches });
+  } catch (error) {
+    console.error("Error retrieving saved searches:", error);
+    res.status(500).json({ message: "Server error while retrieving saved searches" });
+  }
+};
+
+// Controller to retrieve saved searches
+
+
+// Controller to check if a search exists
+export const checkSavedSearches = async (req, res) => {
+  try {
+    const userId = req.user._id; // From protectRoute middleware
+    const { smiles } = req.query;
+
+    if (!smiles) {
+      return res.status(400).json({ message: "SMILES string is required" });
+    }
+
+    const searchExists = await SavedSearch.findOne({ userId, smiles });
+    res.status(200).json({ exists: !!searchExists });
+  } catch (error) {
+    console.error("Error checking saved searches:", error.message);
+    res.status(500).json({ message: "Server error while checking saved searches" });
   }
 };
