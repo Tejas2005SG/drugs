@@ -27,7 +27,7 @@ const server = http.createServer(app);
 // Initialize Socket.IO
 export const io = new Server(server, {
   cors: {
-    origin: process.env.CLIENT_URL || "http://localhost:5173",
+    origin: process.env.CLIENT_URL,
     methods: ["GET", "POST"],
     credentials: true,
   },
@@ -47,8 +47,9 @@ io.on("connection", (socket) => {
 const upload = multer({ storage: multer.memoryStorage() });
 
 const corsOptions = {
-  origin: process.env.CLIENT_URL || "http://localhost:5173",
+  origin: process.env.CLIENT_URL,
   credentials: true,
+  methods: ["GET", "POST"],
 };
 
 app.use(cors(corsOptions));
