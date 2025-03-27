@@ -193,7 +193,9 @@ const ProteinStructureEvolution = () => {
     <div className="min-h-screen bg-gray-100 py-8 px-4">
       <div className="max-w-5xl mx-auto"> {/* Changed from max-w-3xl to max-w-5xl */}
         <h1 className="text-3xl font-bold text-gray-800 mb-8 text-center">
-          Protein Structure Evolution
+          New Drug Molecule Generation
+          <p className="text-xs p-1 text-blue-700 font-semibold">(Powered by Gemini)</p>
+
         </h1>
 
         {error && (

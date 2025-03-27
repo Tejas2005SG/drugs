@@ -24,9 +24,6 @@ function Navbar() {
               <a href="#features" className="text-gray-600 hover:text-blue-600 font-medium">
                 Features
               </a>
-              <a href="#about" className="text-gray-600 hover:text-blue-600 font-medium">
-                About
-              </a>
               <a href="#contact" className="text-gray-600 hover:text-blue-600 font-medium">
                 Contact
               </a>

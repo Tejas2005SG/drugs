@@ -121,7 +121,11 @@ const ProteinStructureApp = () => {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold text-gray-800 mb-8">Protein Structure Generator</h1>
+      <h1 className="text-3xl text-center font-bold text-gray-800 mb-8">Protein Structure Generator
+
+      <p className="text-xs  p-1 text-blue-700 font-semibold">(Powered by Gemini and MolMIM Nvidia Model)</p>
+
+      </h1>
       {error && (
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
           <p>{error}</p>

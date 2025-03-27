@@ -1,74 +1,93 @@
-// components/Dashboard.jsx
-import React, { useEffect } from 'react';
+import React, { useEffect,useRef } from 'react';
 import { useAuthStore } from '../Store/auth.store.js';
 import { Outlet, Link, useNavigate } from 'react-router-dom';
 import { UserPlus, LogIn, LogOut, Menu, ChevronRight, Activity, Settings, Home, Layers, Dna, DollarSign, FileText, Target, Pill, Newspaper, MessageSquare } from 'lucide-react';
+import { toast, Toaster } from 'react-hot-toast';
 
 function DashboardPage() {
   const { user, logout } = useAuthStore();
   const navigate = useNavigate();
+  const toastShown = useRef(false); // Ref to track if the toast has been shown
+
+    useEffect(() => {
+    if (!toastShown.current) {
+      toast(
+        "Our system is under development, integrating Gemini, MolMIM, and Grok models to train the AI model with the right mentorship. Stay tuned!",
+        {
+          position: "top-right",
+          duration: 8000, // 6 seconds
+          style: {
+            background: "#fefcbf", // Yellow background for warning
+            color: "#92400e", // Dark yellow text
+            border: "1px solid #f59e0b",
+          },
+          icon: "⚠️", // Warning icon
+        }
+      );
+      toastShown.current = true; // Mark the toast as shown
+    }
+  }, []); // Empty dependency array to run only on mount
 
   useEffect(() => {
     console.log('DashboardPage - User:', user); // Debug user object
   }, [user]);
 
-
   const navElements = [
-      { 
-          name: 'Dashboard Home', 
-          icon: <Home size={20} className="mr-3" />, // Home fits a main dashboard
-          navigation: () => navigate('/dashboard'), 
-          roles: ['admin', 'citizen', 'guest']
-      },
-      { 
-          name: 'Protein Structure Generation', 
-          icon: <Dna size={20} className="mr-3" />, // Dna represents molecular/protein work
-          navigation: () => navigate('/dashboard/protein-structure'), 
-          roles: ['admin', 'citizen', 'guest']
-      },
-      { 
-          name: 'Protein Structure Evolution', 
-          icon: <Layers size={20} className="mr-3" />, // Layers suggests evolution or stacking changes
-          navigation: () => navigate('/dashboard/protein-structure-mutation'), 
-          roles: ['admin', 'citizen', 'guest']
-      },
-      { 
-          name: 'Cost Estimation', 
-          icon: <DollarSign size={20} className="mr-3" />, // DollarSign for anything cost-related
-          navigation: () => navigate('/dashboard/cost-estimation'), 
-          roles: ['admin', 'citizen', 'guest']
-      },
-      { 
-          name: 'AI Research Paper Generator', 
-          icon: <FileText size={20} className="mr-3" />, // FileText for generating papers/documents
-          navigation: () => navigate('/dashboard/ai-research-paper-generator'), 
-          roles: ['admin', 'citizen', 'guest']
-      },
-      { 
-          name: 'AI Driven Target Prediction', 
-          icon: <Target size={20} className="mr-3" />, // Target for predicting targets
-          navigation: () => navigate('/dashboard/ai-driven-target-prediction'), 
-          roles: ['admin', 'citizen', 'guest']
-      },
-      // { 
-      //     name: 'Drug Discovery Recommendation', 
-      //     icon: <Pill size={20} className="mr-3" />, // Pill for drug-related features
-      //     navigation: () => navigate('/dashboard/drug-discovery-recommendation'), 
-      //     roles: ['admin', 'citizen', 'guest']
-      // },
-      { 
-          name: 'Live News', 
-          icon: <Newspaper size={20} className="mr-3" />, // Newspaper for news updates
-          navigation: () => navigate('/dashboard/live-news'), 
-          roles: ['admin', 'citizen', 'guest']
-      },
-      { 
-          name: 'Message Board', 
-          icon: <MessageSquare size={20} className="mr-3" />, // MessageSquare for communication
-          navigation: () => navigate('/dashboard/message'), 
-          roles: ['admin', 'citizen', 'guest']
-      },
-  ];;
+    { 
+      name: 'Dashboard Home', 
+      icon: <Home size={20} className="mr-3" />, // Home fits a main dashboard
+      navigation: () => navigate('/dashboard'), 
+      roles: ['admin', 'citizen', 'guest']
+    },
+    { 
+      name: 'Protein Structure Generation', 
+      icon: <Dna size={20} className="mr-3" />, // Dna represents molecular/protein work
+      navigation: () => navigate('/dashboard/protein-structure'), 
+      roles: ['admin', 'citizen', 'guest']
+    },
+    { 
+      name: 'New Drug Discovery', 
+      icon: <Layers size={20} className="mr-3" />, // Layers suggests evolution or stacking changes
+      navigation: () => navigate('/dashboard/protein-structure-mutation'), 
+      roles: ['admin', 'citizen', 'guest']
+    },
+    { 
+      name: 'Cost Estimation', 
+      icon: <DollarSign size={20} className="mr-3" />, // DollarSign for anything cost-related
+      navigation: () => navigate('/dashboard/cost-estimation'), 
+      roles: ['admin', 'citizen', 'guest']
+    },
+    { 
+      name: 'AI Research Paper Generator', 
+      icon: <FileText size={20} className="mr-3" />, // FileText for generating papers/documents
+      navigation: () => navigate('/dashboard/ai-research-paper-generator'), 
+      roles: ['admin', 'citizen', 'guest']
+    },
+    { 
+      name: 'AI Driven Target Prediction', 
+      icon: <Target size={20} className="mr-3" />, // Target for predicting targets
+      navigation: () => navigate('/dashboard/ai-driven-target-prediction'), 
+      roles: ['admin', 'citizen', 'guest']
+    },
+    // { 
+    //   name: 'Drug Discovery Recommendation', 
+    //   icon: <Pill size={20} className="mr-3" />, // Pill for drug-related features
+    //   navigation: () => navigate('/dashboard/drug-discovery-recommendation'), 
+    //   roles: ['admin', 'citizen', 'guest']
+    // },
+    { 
+      name: 'Live News', 
+      icon: <Newspaper size={20} className="mr-3" />, // Newspaper for news updates
+      navigation: () => navigate('/dashboard/live-news'), 
+      roles: ['admin', 'citizen', 'guest']
+    },
+    { 
+      name: 'Message Board', 
+      icon: <MessageSquare size={20} className="mr-3" />, // MessageSquare for communication
+      navigation: () => navigate('/dashboard/message'), 
+      roles: ['admin', 'citizen', 'guest']
+    },
+  ];
 
   const listNav = navElements
     .filter(navElement => {
@@ -97,6 +116,9 @@ function DashboardPage() {
 
   return (
     <div className="flex flex-row min-h-screen bg-gray-100">
+      {/* Toaster for toast notifications */}
+      <Toaster />
+
       {/* Sidebar */}
       <div className="md:block w-64 bg-white shadow-lg z-10 md:relative h-[calc(100vh-48px)] mt-[48px]">
         <div className="flex flex-col h-full">
