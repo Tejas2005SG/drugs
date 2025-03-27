@@ -450,7 +450,11 @@ function AIdriventargetprediction() {
   return (
     <div className="min-h-screen bg-gray-100 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto">
-        <h1 className="text-4xl font-bold text-blue-700 mb-10 text-center">AI-Driven Target Prediction</h1>
+        <h1 className="text-4xl font-bold text-blue-700 mb-10 text-center">AI-Driven Target Prediction
+
+        <p className="text-xs  p-1 text-blue-700 font-semibold">(Powered by Gemini)</p>
+
+        </h1>
 
         <div className="flex justify-center mb-8 space-x-4 flex-wrap">
           {["moleculeInput", "savedSearches"].map((tab) => (

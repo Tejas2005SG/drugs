@@ -533,6 +533,8 @@ function Airesearchgenerator() {
       <div className="max-w-7xl mx-auto">
         <h1 className="text-4xl font-bold text-blue-700 mb-10 text-center">
           AI Research Generator
+          <p className="text-xs  p-1 text-blue-700 font-semibold">(Powered by Gemini)</p>
+
         </h1>
 
         <div className="flex justify-center mb-8 space-x-4">
