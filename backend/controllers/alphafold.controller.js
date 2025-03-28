@@ -1,7 +1,5 @@
 import axios from 'axios';
 import { Job } from '../models/alphafold.model.js';
-import fs from 'fs/promises';
-import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 
 const UNIPROT_API = 'https://www.ebi.ac.uk/proteins/api';
@@ -19,54 +17,31 @@ const validateUniprotId = (uniprotId) => {
   return { valid: true };
 };
 
-const fetchUniprotSequence = async (uniprotId) => {
-  try {
-    const response = await axios.get(`${UNIPROT_API}/proteins/${uniprotId}`, { timeout: TIMEOUT });
-    const sequence = response.data.sequence;
-    if (!sequence) throw new Error('No sequence found in UniProt response');
-    return sequence;
-  } catch (error) {
-    console.error(`Failed to fetch UniProt sequence for ${uniprotId}: ${error.message}`);
-    throw new Error(`UniProt fetch failed: ${error.message}`);
-  }
-};
-
 const fetchAlphaFoldPDB = async (uniprotId) => {
   try {
     const pdbUrl = `${ALPHAFOLD_API}/AF-${uniprotId}-F1-model_v4.pdb`;
     const response = await axios.get(pdbUrl, { responseType: 'text', timeout: TIMEOUT });
-    return response.data;
+    return { data: response.data, url: pdbUrl };
   } catch (error) {
     console.error(`Failed to fetch AlphaFold PDB for ${uniprotId}: ${error.message}`);
     throw new Error(`AlphaFold PDB fetch failed: ${error.message}`);
   }
 };
 
-const runAlphaFold = async (job) => {
+const processAlphaFold = async (job) => {
   try {
-    const sequence = await fetchUniprotSequence(job.uniprot_id);
-    const workDir = path.join('jobs', job.pythonJobId);
-    await fs.mkdir(workDir, { recursive: true });
-
-    const fastaPath = path.join(workDir, 'input.fasta');
-    await fs.writeFile(fastaPath, `>query\n${sequence}`);
-
-    const outputDir = path.join(workDir, 'output');
-    await fs.mkdir(outputDir, { recursive: true });
-
-    const pdbPath = path.join(outputDir, 'ranked_0.pdb');
-    const pdbData = await fetchAlphaFoldPDB(job.uniprot_id);
-    await fs.writeFile(pdbPath, pdbData);
-    console.log(`PDB file created at: ${pdbPath}`);
-
+    const { data, url } = await fetchAlphaFoldPDB(job.uniprot_id);
+    job.pdbUrl = url;
     job.status = 'completed';
-    job.pdbUrl = `/results/${job.pythonJobId}/output/ranked_0.pdb`;
+    job.completedAt = new Date();
+    job.updatedAt = new Date();
     await job.save();
-    console.log(`Job ${job.pythonJobId} completed successfully`);
+    console.log(`Job ${job.pythonJobId} for ${job.uniprot_id} completed successfully`);
   } catch (error) {
     console.error(`Error processing job ${job.pythonJobId}: ${error.message}`);
     job.status = 'failed';
     job.error = error.message;
+    job.updatedAt = new Date();
     await job.save();
   }
 };
@@ -82,38 +57,84 @@ export const submitPrediction = async (req, res) => {
       return res.status(400).json({ error: validation.message });
     }
 
-    const jobId = uuidv4();
+    // Check if job already exists for this user and uniprot_id
+    job = await Job.findOne({ uniprot_id, userId: req.user?._id });
+    if (job && job.status === 'completed') {
+      return res.status(200).json({
+        jobId: job._id,
+        pythonJobId: job.pythonJobId,
+        status: job.status,
+        uniprotId: job.uniprot_id,
+        pdbUrl: job.pdbUrl,
+        createdAt: job.createdAt,
+        updatedAt: job.updatedAt,
+        completedAt: job.completedAt,
+      });
+    }
+
+    // Create new job with a unique pythonJobId
     job = new Job({
       uniprot_id,
+      pythonJobId: uuidv4(),
       status: 'pending',
+      userId: req.user?._id,
       createdAt: new Date(),
-      pythonJobId: jobId,
+      updatedAt: new Date(),
     });
     await job.save();
 
     job.status = 'processing';
+    job.updatedAt = new Date();
     await job.save();
 
-    runAlphaFold(job).catch(async (err) => {
-      console.error(`Background AlphaFold error: ${err.message}`);
+    // Process in background
+    processAlphaFold(job).catch(async (err) => {
+      console.error(`Background AlphaFold error for ${job.pythonJobId}: ${err.message}`);
       job.status = 'failed';
       job.error = err.message;
+      job.updatedAt = new Date();
       await job.save();
     });
 
     res.status(202).json({
       jobId: job._id,
+      pythonJobId: job.pythonJobId,
       status: job.status,
       uniprotId: uniprot_id,
+      createdAt: job.createdAt,
+      updatedAt: job.updatedAt,
     });
   } catch (error) {
     console.error('Submission error:', error);
     if (job) {
       job.status = 'failed';
       job.error = error.message;
+      job.updatedAt = new Date();
       await job.save();
     }
     res.status(500).json({ error: error.message || 'Failed to submit prediction' });
+  }
+};
+
+export const getPreviousJobs = async (req, res) => {
+  try {
+    const jobs = await Job.find({ userId: req.user?._id })
+      .sort({ createdAt: -1 })
+      .limit(10);
+    res.json(jobs.map(job => ({
+      jobId: job._id,
+      pythonJobId: job.pythonJobId,
+      uniprotId: job.uniprot_id,
+      status: job.status,
+      pdbUrl: job.pdbUrl,
+      createdAt: job.createdAt,
+      updatedAt: job.updatedAt,
+      completedAt: job.completedAt,
+      error: job.error,
+    })));
+  } catch (error) {
+    console.error('Previous jobs error:', error);
+    res.status(500).json({ error: 'Failed to fetch previous jobs' });
   }
 };
 
@@ -152,9 +173,13 @@ export const getJobStatus = async (req, res) => {
     }
     res.json({
       jobId: job._id,
+      pythonJobId: job.pythonJobId,
       status: job.status,
       uniprotId: job.uniprot_id,
-      pdb_url: job.pdbUrl,
+      pdbUrl: job.pdbUrl,
+      createdAt: job.createdAt,
+      updatedAt: job.updatedAt,
+      completedAt: job.completedAt,
       error: job.error,
     });
   } catch (error) {
@@ -162,3 +187,4 @@ export const getJobStatus = async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch job status' });
   }
 };
+
