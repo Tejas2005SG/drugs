@@ -3,7 +3,6 @@ import dotenv from "dotenv";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import path from "path";
-import { fileURLToPath } from "url";
 import { connectionDb } from "./lib/db.js";
 import multer from "multer";
 import { Server } from "socket.io";
@@ -15,6 +14,7 @@ import authRoutes from "./routes/auth.routes.js";
 import costestiminationRoutes from "./routes/costestimination.routes.js";
 import newsRoutes from "./routes/news.routes.js";
 import messageRoutes from "./routes/message.routes.js";
+import alphafoldRoutes from "./routes/alphafold.routes.js";
 
 dotenv.config();
 
@@ -22,9 +22,7 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 const __dirname = path.resolve();
 
-// Create HTTP server
 const server = http.createServer(app);
-// Initialize Socket.IO
 export const io = new Server(server, {
   cors: {
     origin: process.env.CLIENT_URL,
@@ -33,21 +31,18 @@ export const io = new Server(server, {
   },
 });
 
-// Socket.IO connection
 io.on("connection", (socket) => {
   console.log("A user connected:", socket.id);
   setupSocket(socket);
-
   socket.on("disconnect", () => {
     console.log("User disconnected:", socket.id);
   });
 });
 
-// Middleware and routes setup
 const upload = multer({ storage: multer.memoryStorage() });
 
 const corsOptions = {
-  origin: process.env.CLIENT_URL,
+  origin: process.env.CLIENT_URL || "http://localhost:3000",
   credentials: true,
   methods: ["GET", "POST"],
 };
@@ -57,23 +52,31 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
+// Serve static files from the 'jobs' directory under '/results'
+app.use('/results', express.static(path.join(__dirname, 'jobs')));
+
 // API Routes
 app.use("/api/protein", upload.single("file"), proteinRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/costestimation", costestiminationRoutes);
 app.use("/api/news", newsRoutes);
 app.use("/api/message", messageRoutes);
+app.use("/api/alphafold", alphafoldRoutes);
 
-// Production static file serving
 if (process.env.NODE_ENV === "production") {
   app.use(express.static(path.join(__dirname, "/frontend/dist")));
-
   app.get("*", (req, res) => {
     res.sendFile(path.resolve(__dirname, "frontend", "dist", "index.html"));
   });
 }
 
-// Start server
+console.log('Environment Variables:', {
+  PORT: process.env.PORT,
+  NODE_ENV: process.env.NODE_ENV,
+  CLIENT_URL: process.env.CLIENT_URL,
+  PYTHON_SERVICE_URL: process.env.PYTHON_SERVICE_URL || 'http://localhost:5000'
+});
+
 server.listen(PORT, () => {
   connectionDb();
   console.log(`Server running on port ${PORT}`);

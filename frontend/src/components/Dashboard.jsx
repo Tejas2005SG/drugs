@@ -40,6 +40,12 @@ function DashboardPage() {
       roles: ['admin', 'citizen', 'guest']
     },
     { 
+      name: 'Alphafold Structure Generation', 
+      icon: <MessageSquare size={20} className="mr-3" />, // MessageSquare for communication
+      navigation: () => navigate('/dashboard/getalphafoldstrcture'), 
+      roles: ['admin', 'citizen', 'guest']
+    },
+    { 
       name: 'Protein Structure Generation', 
       icon: <Dna size={20} className="mr-3" />, // Dna represents molecular/protein work
       navigation: () => navigate('/dashboard/protein-structure'), 
@@ -87,6 +93,8 @@ function DashboardPage() {
       navigation: () => navigate('/dashboard/message'), 
       roles: ['admin', 'citizen', 'guest']
     },
+    
+    
   ];
 
   const listNav = navElements
