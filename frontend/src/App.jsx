@@ -18,6 +18,7 @@ import Costestimation from "./pages/Costestimination/Costestimination.jsx";
 import DrugDiscoveryRecommendation from "./pages/Drugdiscoveryrecommendation/Drugdiscoveryrecommendation.jsx";
 import LiveNews from "./pages/Livenews/Livenews.jsx";
 import Message from "./pages/Message/Message.jsx";
+import GetAlphaFoldStructure from "./pages/Alphafold/Alphafold.jsx"
 
 const ProtectedRoute = ({ children }) => {
   const { user } = useAuthStore();
@@ -44,41 +45,41 @@ function App() {
           <Route
             path="protein-structure"
             element={
-              <ProtectedRoute>
+              // <ProtectedRoute>
                 <ProteinStructureApp />
-              </ProtectedRoute>
+              // </ProtectedRoute>
             }
           />
           <Route
             path="protein-structure-mutation"
             element={
-              <ProtectedRoute>
+              // <ProtectedRoute>
                 <ProteinStructureEvolution />
-              </ProtectedRoute>
+              // </ProtectedRoute>
             }
           />
            <Route
             path="cost-estimation"
             element={
-              <ProtectedRoute>
+              // <ProtectedRoute>
                 <Costestimation />
-              </ProtectedRoute>
+              // </ProtectedRoute>
             }
           />
            <Route
             path="ai-research-paper-generator"
             element={
-              <ProtectedRoute>
+              // <ProtectedRoute>
                 <AIResearchPaperGenerator/>
-              </ProtectedRoute>
+              // </ProtectedRoute>
             }
           />
            <Route
             path="ai-driven-target-prediction"
             element={
-              <ProtectedRoute>
+              // <ProtectedRoute>
                 <AIDrivenTargetPrediction/>
-              </ProtectedRoute>
+              // </ProtectedRoute>
             }
           />
            {/* <Route
@@ -92,17 +93,25 @@ function App() {
            <Route
             path="live-news"
             element={
-              <ProtectedRoute>
+              // <ProtectedRoute>
                 <LiveNews/>
-              </ProtectedRoute>
+              // {/* </ProtectedRoute> */}
             }
           />
            <Route
             path="message"
             element={
-              <ProtectedRoute>
+              // <ProtectedRoute>
                 <Message/>
-              </ProtectedRoute>
+              // </ProtectedRoute>
+            }
+          />
+          <Route
+            path="getalphafoldstrcture"
+            element={
+              // <ProtectedRoute>
+                <GetAlphaFoldStructure/>
+              // </ProtectedRoute>
             }
           />
            
