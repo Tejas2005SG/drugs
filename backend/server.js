@@ -23,10 +23,14 @@ const PORT = process.env.PORT || 5000;
 const __dirname = path.resolve();
 
 const server = http.createServer(app);
+
+// Updated Socket.io configuration to handle both development and production
 export const io = new Server(server, {
   cors: {
-    origin: process.env.CLIENT_URL,
-    methods: ["GET", "POST"],
+    origin: process.env.NODE_ENV === "production"
+      ? ["https://drugs-assistant.onrender.com", process.env.CLIENT_URL]
+      : [process.env.CLIENT_URL, "http://localhost:5173"],
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     credentials: true,
   },
 });
@@ -41,10 +45,13 @@ io.on("connection", (socket) => {
 
 const upload = multer({ storage: multer.memoryStorage() });
 
+// Updated CORS options to handle both development and production
 const corsOptions = {
-  origin: process.env.CLIENT_URL || "http://localhost:5173",
+  origin: process.env.NODE_ENV === "production"
+    ? ["https://drugs-assistant.onrender.com", process.env.CLIENT_URL]
+    : [process.env.CLIENT_URL, "http://localhost:5173"],
   credentials: true,
-  methods: ["GET", "POST"],
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
 };
 
 app.use(cors(corsOptions));
@@ -69,7 +76,6 @@ if (process.env.NODE_ENV === "production") {
     res.sendFile(path.resolve(__dirname, "frontend", "dist", "index.html"));
   });
 }
-
 
 server.listen(PORT, () => {
   connectionDb();
