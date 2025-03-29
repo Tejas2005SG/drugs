@@ -9,6 +9,7 @@ import { Server } from "socket.io";
 import http from "http";
 import { setupSocket } from "./controllers/message.controller.js";
 
+// Import routes
 import proteinRoutes from "./routes/proteinstructure.routes.js";
 import authRoutes from "./routes/auth.routes.js";
 import costestiminationRoutes from "./routes/costestimination.routes.js";
@@ -24,15 +25,41 @@ const __dirname = path.resolve();
 
 const server = http.createServer(app);
 
-// Updated Socket.io configuration to handle both development and production
+// Validate and prepare allowed origins
+const getAllowedOrigins = () => {
+  const origins = [];
+  
+  // Add CLIENT_URL if present
+  if (process.env.CLIENT_URL) {
+    if (Array.isArray(process.env.CLIENT_URL)) {
+      origins.push(...process.env.CLIENT_URL);
+    } else {
+      origins.push(process.env.CLIENT_URL);
+    }
+  }
+
+  // Add additional origins if needed
+  if (process.env.ADDITIONAL_ALLOWED_ORIGINS) {
+    const additionalOrigins = process.env.ADDITIONAL_ALLOWED_ORIGINS.split(',');
+    origins.push(...additionalOrigins.map(origin => origin.trim()));
+  }
+
+  // Add localhost for development
+  if (process.env.NODE_ENV !== 'production') {
+    origins.push('http://localhost:5173');
+  }
+
+  return origins.length > 0 ? origins : '*';
+};
+
+// Socket.IO configuration
 export const io = new Server(server, {
   cors: {
-    origin: process.env.NODE_ENV === "production"
-      ? ["https://drugs-assistant.onrender.com", process.env.CLIENT_URL]
-      : [process.env.CLIENT_URL, "http://localhost:5173"],
+    origin: getAllowedOrigins(),
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     credentials: true,
   },
+  transports: ['websocket', 'polling']
 });
 
 io.on("connection", (socket) => {
@@ -45,11 +72,9 @@ io.on("connection", (socket) => {
 
 const upload = multer({ storage: multer.memoryStorage() });
 
-// Updated CORS options to handle both development and production
+// CORS configuration
 const corsOptions = {
-  origin: process.env.NODE_ENV === "production"
-    ? ["https://drugs-assistant.onrender.com", process.env.CLIENT_URL]
-    : [process.env.CLIENT_URL, "http://localhost:5173"],
+  origin: getAllowedOrigins(),
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
 };
@@ -59,7 +84,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
-// Serve static files from the 'jobs' directory under '/results'
+// Serve static files
 app.use('/results', express.static(path.join(__dirname, 'jobs')));
 
 // API Routes
@@ -70,6 +95,7 @@ app.use("/api/news", newsRoutes);
 app.use("/api/message", messageRoutes);
 app.use("/api/alphafold", alphafoldRoutes);
 
+// Production static file serving
 if (process.env.NODE_ENV === "production") {
   app.use(express.static(path.join(__dirname, "/frontend/dist")));
   app.get("*", (req, res) => {
@@ -80,4 +106,5 @@ if (process.env.NODE_ENV === "production") {
 server.listen(PORT, () => {
   connectionDb();
   console.log(`Server running on port ${PORT}`);
+  console.log(`Allowed origins: ${getAllowedOrigins().join(', ')}`);
 });
