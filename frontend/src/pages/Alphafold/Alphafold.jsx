@@ -114,7 +114,6 @@ const AlphaFoldExplorer = () => {
   // Initialize NGL stage and load structure
   useEffect(() => {
     if (jobStatus?.pdbUrl && !structureRendered) {
-      // Initialize stage if it doesn't exist
       if (!stageRef.current) {
         stageRef.current = new NGL.Stage('viewport', {
           backgroundColor: 'black',
@@ -125,7 +124,6 @@ const AlphaFoldExplorer = () => {
           clipDist: 10
         });
       } else {
-        // Clear existing components if re-rendering
         stageRef.current.removeAllComponents();
       }
 
@@ -139,16 +137,13 @@ const AlphaFoldExplorer = () => {
       setError(null);
 
       stageRef.current.loadFile(jobStatus.pdbUrl, { ext: 'pdb' }).then((structure) => {
-        // Main cartoon representation
         structure.addRepresentation('cartoon', {
           colorScheme: 'residueindex',
           colorScale: 'rainbow',
           opacity: 0.85,
           side: 'front'
         });
-       
 
-        // Secondary structure coloring (hidden by default)
         structure.addRepresentation('cartoon', {
           colorScheme: 'sstruc',
           opacity: 0.7,
@@ -156,7 +151,6 @@ const AlphaFoldExplorer = () => {
           name: 'secondary_structure'
         });
 
-        // Ligands and hetero atoms
         structure.addRepresentation('ball+stick', {
           sele: 'hetero and not water',
           colorScheme: 'element',
@@ -164,7 +158,6 @@ const AlphaFoldExplorer = () => {
           multipleBond: 'symmetric'
         });
 
-        // Surface representation (hidden by default)
         structure.addRepresentation('surface', {
           sele: 'protein',
           colorScheme: 'electrostatic',
@@ -173,7 +166,6 @@ const AlphaFoldExplorer = () => {
           name: 'surface_view'
         });
 
-        // Active site residues
         structure.addRepresentation('licorice', {
           sele: 'CYS or HIS or ASP or GLU or LYS or ARG',
           colorValue: 'red',
@@ -183,7 +175,6 @@ const AlphaFoldExplorer = () => {
 
         structure.autoView(500);
 
-        // Store component references for UI control
         setNglComponents({
           main: structure,
           secondary: stageRef.current.getRepresentationsByName('secondary_structure')[0],
@@ -200,7 +191,6 @@ const AlphaFoldExplorer = () => {
         setStructureRendered(true);
       });
 
-      // Cleanup function
       return () => {
         window.removeEventListener('resize', handleResize);
       };
@@ -227,7 +217,6 @@ const AlphaFoldExplorer = () => {
     setStructureRendered(false);
   };
 
-  // Toggle visualization features
   const toggleRepresentation = (repName) => {
     if (nglComponents && nglComponents[repName]) {
       nglComponents[repName].toggleVisibility();
@@ -389,39 +378,86 @@ const AlphaFoldExplorer = () => {
             {activeTab === 'uniprot' && summary && (
               <div className="mt-8 bg-blue-50 rounded-lg p-6 border border-blue-100">
                 <h2 className="text-xl font-semibold text-blue-800 mb-4">Protein Information</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-gray-700">
+                <div className="flex flex-col md:flex-col gap-4 text-gray-700">
                   <div>
                     <h3 className="font-medium text-blue-700 mb-2">Basic Information</h3>
-                    <p><span className="font-medium">Name:</span> {summary.proteinName}</p>
-                    <p><span className="font-medium">Gene:</span> {summary.geneName}</p>
-                    <p><span className="font-medium">Organism:</span> {summary.organism}</p>
-                    <p><span className="font-medium">Length:</span> {summary.sequence.length} amino acids</p>
+                    <p><span className="font-medium">Protien Name:</span> {summary.protein?.recommendedName?.fullName?.value || 'Not available'}</p>
+                    <p><span className="font-medium">Gene:</span> {summary.gene?.[0]?.name?.value || 'Not available'}</p>
+                    <p><span className="font-medium">Organism:</span> {summary.organism?.scientificName || 'Not available'}</p>
+                    <p><span className="font-medium">Length:</span> {summary.sequence?.length ? `${summary.sequence.length} amino acids` : 'Not available'}</p>
+                    <p><span className="font-medium">Length:</span> {summary.protein?.recommendedName?.fullName?.value ? `${summary.sequence.length} amino acids` : 'Not available'}</p>
                   </div>
-                  <div>
-                    <h3 className="font-medium text-blue-700 mb-2">Functional Data</h3>
-                    <p><span className="font-medium">Function:</span> {summary.function || 'Not available'}</p>
-                    {annotations?.features?.length > 0 && (
-                      <div className="mt-2">
-                        <p className="font-medium">Key Features:</p>
-                        <ul className="list-disc pl-5">
-                          {annotations.features.slice(0, 3).map((feat, i) => (
-                            <li key={i}>{feat.type}: {feat.description}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                  </div>
+                  <div className="bg-blue-50 rounded-lg p-4 border border-blue-100">
+  <h3 className="text-lg font-semibold text-blue-800 mb-3 border-b border-blue-200 pb-2">
+    Functional Summary
+  </h3>
+
+  {/* Function Section */}
+  <div className="mb-4">
+    <h4 className="font-medium text-blue-700 flex items-center mb-2">
+      <svg className="w-4 h-4 mr-2 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+      Protein Function
+    </h4>
+    <div className="bg-white p-3 rounded-md shadow-sm">
+      {summary.comments?.find(c => c.type === 'FUNCTION')?.text?.[0]?.value || (
+        <span className="text-gray-500">Not specified</span>
+      )}
+    </div>
+  </div>
+
+  {/* Key Features */}
+  {annotations?.features?.length > 0 && (
+    <div className="mb-4">
+      <h4 className="font-medium text-blue-700 flex items-center mb-2">
+        <svg className="w-4 h-4 mr-2 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+        </svg>
+        Key Features
+      </h4>
+      <div className="bg-white p-3 rounded-md shadow-sm">
+        <ul className="space-y-2">
+          {annotations.features.slice(0, 5).map((feat, i) => (
+            <li key={i} className="flex items-start">
+              <span className="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full mr-2 mt-1">
+                {feat.type}
+              </span>
+              <span className="flex-1">{feat.description || 'No description available'}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  )}
+
+  {/* Additional Info (example) */}
+  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div>
+      <h4 className="font-medium text-blue-700 mb-1">Subcellular Location</h4>
+      <div className="bg-white p-2 rounded text-sm">
+        {summary.comments?.find(c => c.type === 'SUBCELLULAR_LOCATION')?.text?.[0]?.value || 'Unknown'}
+      </div>
+    </div>
+    <div>
+      <h4 className="font-medium text-blue-700 mb-1">Catalytic Activity</h4>
+      <div className="bg-white p-2 rounded text-sm">
+        {summary.comments?.find(c => c.type === 'CATALYTIC_ACTIVITY')?.text?.[0]?.value || 'Not enzymatic'}
+      </div>
+    </div>
+  </div>
+</div>
                 </div>
-                {annotations?.features?.length > 0 && (
+                {summary?.sequence?.sequence && typeof summary.sequence.sequence === 'string' && (
                   <div className="mt-4">
                     <h3 className="font-medium text-blue-700 mb-2">Sequence Features</h3>
                     <div className="bg-white p-3 rounded border border-gray-200 overflow-x-auto">
                       <pre className="text-xs font-mono">
-                        {summary.sequence.match(/.{1,10}/g).map((chunk, i) => (
+                        {summary.sequence.sequence.match(/.{1,10}/g)?.map((chunk, i) => (
                           <div key={i}>
                             {(i * 10 + 1).toString().padStart(6, ' ')} {chunk.split('').join(' ')}
                           </div>
-                        ))}
+                        )) || 'No sequence data available'}
                       </pre>
                     </div>
                   </div>
