@@ -87,12 +87,12 @@ function DashboardPage() {
       navigation: () => navigate('/dashboard/live-news'), 
       roles: ['admin', 'citizen', 'guest']
     },
-    { 
-      name: 'Message Board', 
-      icon: <MessageSquare size={20} className="mr-3" />,
-      navigation: () => navigate('/dashboard/message'), 
-      roles: ['admin', 'citizen', 'guest']
-    },
+    // { 
+    //   name: 'Message Board', 
+    //   icon: <MessageSquare size={20} className="mr-3" />,
+    //   navigation: () => navigate('/dashboard/message'), 
+    //   roles: ['admin', 'citizen', 'guest']
+    // },
   ];
 
   const listNav = navElements
