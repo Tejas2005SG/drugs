@@ -77,7 +77,7 @@ console.log('Environment Variables:', {
   PYTHON_SERVICE_URL: process.env.PYTHON_SERVICE_URL || 'http://localhost:5000'
 });
 
-server.listen(PORT, () => {
+app.listen(PORT, () => {
   connectionDb();
   console.log(`Server running on port ${PORT}`);
 });
