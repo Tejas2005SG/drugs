@@ -17,7 +17,7 @@ import AIDrivenTargetPrediction from "./pages/AIdriventargetprediction/AIdrivent
 import Costestimation from "./pages/Costestimination/Costestimination.jsx";
 import DrugDiscoveryRecommendation from "./pages/Drugdiscoveryrecommendation/Drugdiscoveryrecommendation.jsx";
 import LiveNews from "./pages/Livenews/Livenews.jsx";
-import Message from "./pages/Message/Message.jsx";
+// import Message from "./pages/Message/Message.jsx";
 import GetAlphaFoldStructure from "./pages/Alphafold/Alphafold.jsx"
 
 const ProtectedRoute = ({ children }) => {
@@ -98,14 +98,14 @@ function App() {
               // {/* </ProtectedRoute> */}
             }
           />
-           <Route
+           {/* <Route
             path="message"
             element={
               // <ProtectedRoute>
                 <Message/>
               // </ProtectedRoute>
             }
-          />
+          /> */}
           <Route
             path="getalphafoldstrcture"
             element={
