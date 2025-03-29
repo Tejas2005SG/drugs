@@ -70,12 +70,6 @@ if (process.env.NODE_ENV === "production") {
   });
 }
 
-console.log('Environment Variables:', {
-  PORT: process.env.PORT,
-  NODE_ENV: process.env.NODE_ENV,
-  CLIENT_URL: process.env.CLIENT_URL,
-  PYTHON_SERVICE_URL: process.env.PYTHON_SERVICE_URL || 'http://localhost:5000'
-});
 
 app.listen(PORT, () => {
   connectionDb();
