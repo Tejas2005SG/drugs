@@ -1,106 +1,103 @@
-import React, { useEffect,useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useAuthStore } from '../Store/auth.store.js';
 import { Outlet, Link, useNavigate } from 'react-router-dom';
-import { UserPlus, LogIn, LogOut, Menu, ChevronRight, Activity, Settings, Home, Layers, Dna, DollarSign, FileText, Target, Pill, Newspaper, MessageSquare } from 'lucide-react';
+import { UserPlus, LogIn, LogOut, Menu, ChevronRight, Activity, Settings, Home, Layers, Dna, DollarSign, FileText, Target, Pill, Newspaper, MessageSquare, X } from 'lucide-react';
 import { toast, Toaster } from 'react-hot-toast';
 
 function DashboardPage() {
   const { user, logout } = useAuthStore();
   const navigate = useNavigate();
-  const toastShown = useRef(false); // Ref to track if the toast has been shown
+  const toastShown = useRef(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-    useEffect(() => {
+  useEffect(() => {
     if (!toastShown.current) {
       toast(
         "Our system is under development, integrating Gemini, MolMIM, and Grok models to train the AI model with the right mentorship. Stay tuned!",
         {
           position: "top-right",
-          duration: 8000, // 6 seconds
+          duration: 8000,
           style: {
-            background: "#fefcbf", // Yellow background for warning
-            color: "#92400e", // Dark yellow text
+            background: "#fefcbf",
+            color: "#92400e",
             border: "1px solid #f59e0b",
           },
-          icon: "⚠️", // Warning icon
+          icon: "⚠️",
         }
       );
-      toastShown.current = true; // Mark the toast as shown
+      toastShown.current = true;
     }
-  }, []); // Empty dependency array to run only on mount
+  }, []);
 
   useEffect(() => {
-    console.log('DashboardPage - User:', user); // Debug user object
+    console.log('DashboardPage - User:', user);
   }, [user]);
+
+  // Close sidebar when route changes
+  useEffect(() => {
+    setIsSidebarOpen(false);
+  }, [location.pathname]);
 
   const navElements = [
     { 
       name: 'Dashboard Home', 
-      icon: <Home size={20} className="mr-3" />, // Home fits a main dashboard
+      icon: <Home size={20} className="mr-3" />,
       navigation: () => navigate('/dashboard'), 
       roles: ['admin', 'citizen', 'guest']
     },
     { 
       name: 'Alphafold Structure Generation', 
-      icon: <MessageSquare size={20} className="mr-3" />, // MessageSquare for communication
+      icon: <MessageSquare size={20} className="mr-3" />,
       navigation: () => navigate('/dashboard/getalphafoldstrcture'), 
       roles: ['admin', 'citizen', 'guest']
     },
     { 
       name: 'Protein Structure Generation', 
-      icon: <Dna size={20} className="mr-3" />, // Dna represents molecular/protein work
+      icon: <Dna size={20} className="mr-3" />,
       navigation: () => navigate('/dashboard/protein-structure'), 
       roles: ['admin', 'citizen', 'guest']
     },
     { 
       name: 'New Drug Discovery', 
-      icon: <Layers size={20} className="mr-3" />, // Layers suggests evolution or stacking changes
+      icon: <Layers size={20} className="mr-3" />,
       navigation: () => navigate('/dashboard/protein-structure-mutation'), 
       roles: ['admin', 'citizen', 'guest']
     },
     { 
       name: 'Cost Estimation', 
-      icon: <DollarSign size={20} className="mr-3" />, // DollarSign for anything cost-related
+      icon: <DollarSign size={20} className="mr-3" />,
       navigation: () => navigate('/dashboard/cost-estimation'), 
       roles: ['admin', 'citizen', 'guest']
     },
     { 
       name: 'AI Research Paper Generator', 
-      icon: <FileText size={20} className="mr-3" />, // FileText for generating papers/documents
+      icon: <FileText size={20} className="mr-3" />,
       navigation: () => navigate('/dashboard/ai-research-paper-generator'), 
       roles: ['admin', 'citizen', 'guest']
     },
     { 
       name: 'AI Driven Target Prediction', 
-      icon: <Target size={20} className="mr-3" />, // Target for predicting targets
+      icon: <Target size={20} className="mr-3" />,
       navigation: () => navigate('/dashboard/ai-driven-target-prediction'), 
       roles: ['admin', 'citizen', 'guest']
     },
-    // { 
-    //   name: 'Drug Discovery Recommendation', 
-    //   icon: <Pill size={20} className="mr-3" />, // Pill for drug-related features
-    //   navigation: () => navigate('/dashboard/drug-discovery-recommendation'), 
-    //   roles: ['admin', 'citizen', 'guest']
-    // },
     { 
       name: 'Live News', 
-      icon: <Newspaper size={20} className="mr-3" />, // Newspaper for news updates
+      icon: <Newspaper size={20} className="mr-3" />,
       navigation: () => navigate('/dashboard/live-news'), 
       roles: ['admin', 'citizen', 'guest']
     },
     { 
       name: 'Message Board', 
-      icon: <MessageSquare size={20} className="mr-3" />, // MessageSquare for communication
+      icon: <MessageSquare size={20} className="mr-3" />,
       navigation: () => navigate('/dashboard/message'), 
       roles: ['admin', 'citizen', 'guest']
     },
-    
-    
   ];
 
   const listNav = navElements
     .filter(navElement => {
       const userRole = user?.role || 'guest';
-      console.log('Filtering navElement:', navElement.name, 'User Role:', userRole, 'Allowed Roles:', navElement.roles);
       return navElement.roles.includes(userRole);
     })
     .map((navElement, index) => (
@@ -108,6 +105,7 @@ function DashboardPage() {
         key={index}
         onClick={() => {
           navElement.navigation();
+          setIsSidebarOpen(false);
         }}
         className="w-full bg-white hover:bg-blue-50 text-gray-700 hover:text-blue-600 rounded-lg p-3 flex items-center my-1 cursor-pointer transition-all duration-200 shadow-sm"
       >
@@ -123,12 +121,34 @@ function DashboardPage() {
   };
 
   return (
-    <div className="flex flex-row min-h-screen bg-gray-100">
-      {/* Toaster for toast notifications */}
-      <Toaster />
+    <div className="flex flex-col md:flex-row h-screen overflow-hidden bg-gray-100">
+      {/* Mobile Header */}
+      <div className="fixed top-0 left-0 right-0 h-[48px] bg-white shadow-md flex items-center justify-between px-4 md:hidden z-50">
+        <button
+          onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+          className="p-2 hover:bg-gray-100 rounded-lg"
+        >
+          {isSidebarOpen ? <X size={24} /> : <Menu size={24} />}
+        </button>
+        <span className="font-semibold text-gray-800">Dashboard</span>
+        <div className="w-8" /> {/* Spacer for balance */}
+      </div>
+
+      {/* Overlay for mobile */}
+      {isSidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden"
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
 
       {/* Sidebar */}
-      <div className="md:block w-64 bg-white shadow-lg z-10 md:relative h-[calc(100vh-48px)] mt-[48px]">
+      <div className={`
+        fixed md:static w-[280px] md:w-64 bg-white shadow-lg z-40 h-[calc(100vh-48px)] md:h-screen
+        transition-transform duration-300 ease-in-out
+        ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
+        mt-[48px] md:mt-0 overflow-hidden
+      `}>
         <div className="flex flex-col h-full">
           {/* User Welcome Section */}
           <div className="p-6 bg-gradient-to-r from-blue-500 to-blue-600 text-white">
@@ -145,7 +165,6 @@ function DashboardPage() {
 
           {/* Navigation */}
           <div className="flex-1 p-4 overflow-y-auto">
-            {/* <h3 className="text-xs uppercase text-gray-500 font-semibold tracking-wider mb-4 ml-3">Main Navigation</h3> */}
             <ul className="space-y-2">
               {listNav.length > 0 ? (
                 listNav
@@ -188,9 +207,16 @@ function DashboardPage() {
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 p-6 mt-[48px] h-[calc(100vh-48px)] overflow-y-auto">
-        <Outlet />
+      <div className="flex-1 flex flex-col h-screen md:h-screen">
+        <div className="flex-1 overflow-y-auto pt-[48px] md:pt-0">
+          <div className="p-4 md:p-6 h-full">
+            <Outlet />
+          </div>
+        </div>
       </div>
+
+      {/* Toaster */}
+      <Toaster />
     </div>
   );
 }

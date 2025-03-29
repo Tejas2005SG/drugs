@@ -31,7 +31,7 @@ function App() {
 
   return (
     <div className="min-h-screen bg-gray-100">
-    <Navbar />
+    {/* <Navbar /> */}
       <Routes>
         <Route path="/" element={<Homepage />} />
         <Route path="/signup" element={<Signup />} />
