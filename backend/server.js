@@ -42,7 +42,7 @@ io.on("connection", (socket) => {
 const upload = multer({ storage: multer.memoryStorage() });
 
 const corsOptions = {
-  origin: process.env.CLIENT_URL || "http://localhost:3000",
+  origin: process.env.CLIENT_URL || "http://localhost:5173",
   credentials: true,
   methods: ["GET", "POST"],
 };
@@ -71,7 +71,7 @@ if (process.env.NODE_ENV === "production") {
 }
 
 
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   connectionDb();
   console.log(`Server running on port ${PORT}`);
 });
