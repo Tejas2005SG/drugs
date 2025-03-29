@@ -1,7 +1,7 @@
 "use client"
 
-import { useState, useEffect } from "react";
-import io from "socket.io-client";
+import { useState, useEffect, useRef } from "react";
+import { io } from "socket.io-client";
 import axios from "axios";
 import { useAuthStore } from "../../Store/auth.store.js";
 import { toast, Toaster } from "react-hot-toast";
@@ -13,124 +13,145 @@ const axiosInstance = axios.create({
   withCredentials: true,
 });
 
-const socket = io(API_BASE_URL, {
-  withCredentials: true,
-  reconnection: true,
-});
-
 function Message() {
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState("");
   const [users, setUsers] = useState([]);
   const [selectedUser, setSelectedUser] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState({
+    auth: true,
+    users: false,
+    messages: false
+  });
   const [error, setError] = useState(null);
-  const { user, checkAuth, checkingAuth } = useAuthStore();
+  const [socketConnected, setSocketConnected] = useState(false);
+  const { user, checkAuth } = useAuthStore();
+  const socketRef = useRef(null);
+  const messageEndRef = useRef(null);
 
-  // Load selectedUser from localStorage on component mount
+  // Initialize socket connection and authentication
   useEffect(() => {
-    const storedUser = localStorage.getItem("selectedUser");
-    if (storedUser) {
-      setSelectedUser(JSON.parse(storedUser));
-    }
-  }, []);
-
-  // Save selectedUser to localStorage whenever it changes
-  useEffect(() => {
-    if (selectedUser) {
-      localStorage.setItem("selectedUser", JSON.stringify(selectedUser));
-      toast(
-        "This messaging feature is currently under development. The page will automatically refresh after sending a message.",
-        {
-          position: "top-right",
-          duration: 5000,
-          style: {
-            background: "#fefcbf", // Yellow background for warning
-            color: "#92400e", // Dark yellow text
-            border: "1px solid #f59e0b",
-          },
-          icon: "⚠️", // Warning icon
-        }
-      );
-    } else {
-      localStorage.removeItem("selectedUser");
-    }
-  }, [selectedUser]);
-
-  useEffect(() => {
-    const initializeChat = async () => {
-      setLoading(true);
-      await checkAuth();
-      const currentUser = useAuthStore.getState().user;
-
-      if (!currentUser) {
-        setError("Authentication failed. Please log in.");
-        setLoading(false);
-        return;
-      }
-
-      const userId = currentUser._id;
-      socket.emit("join", userId);
-
-      socket.on("connect", () => {
-        console.log(`Client: Connected to socket server for user ${userId}`);
-      });
-
-      socket.on("newMessage", (message) => {
-        setMessages((prev) => {
-          const isRelevant =
-            (message.sender._id === userId && message.receiver._id === selectedUser?._id) ||
-            (message.sender._id === selectedUser?._id && message.receiver._id === userId);
-          if (!isRelevant) return prev;
-          if (prev.some((msg) => msg._id === message._id)) return prev;
-          return [...prev, message];
-        });
-      });
-
-      socket.on("connect_error", (err) => {
-        console.error("Client: Socket connection error:", err.message);
-      });
-
+    const initialize = async () => {
       try {
-        const response = await axiosInstance.get("/api/message/users/list");
-        const validUsers = response.data.filter((u) => u.username && typeof u.username === "string");
-        setUsers(validUsers);
+        await checkAuth();
+        const currentUser = useAuthStore.getState().user;
+        
+        if (!currentUser) {
+          setError("Authentication failed. Please log in.");
+          setLoading(prev => ({ ...prev, auth: false }));
+          return;
+        }
+
+        // Initialize socket connection
+        socketRef.current = io(API_BASE_URL, {
+          path: '/socket.io',
+          transports: ['websocket', 'polling'],
+          withCredentials: true,
+          autoConnect: false,
+          reconnectionAttempts: 5,
+          reconnectionDelay: 1000,
+        });
+
+        // Socket event handlers
+        socketRef.current.on('connect', () => {
+          console.log('Socket connected');
+          setSocketConnected(true);
+          socketRef.current.emit("join", currentUser._id);
+        });
+
+        socketRef.current.on('disconnect', () => {
+          console.log('Socket disconnected');
+          setSocketConnected(false);
+        });
+
+        socketRef.current.on('connect_error', (err) => {
+          console.error('Socket connection error:', err.message);
+          setSocketConnected(false);
+          toast.error('Connection to chat server failed. Trying to reconnect...');
+        });
+
+        socketRef.current.on('newMessage', (message) => {
+          handleNewMessage(message, currentUser._id);
+        });
+
+        // Connect socket after setting up handlers
+        socketRef.current.connect();
+
+        // Load users list
+        await loadUsers();
+
+        setLoading(prev => ({ ...prev, auth: false }));
       } catch (err) {
-        setError(err.response?.data?.message || "Failed to fetch users");
-      } finally {
-        setLoading(false);
+        setError(err.response?.data?.message || "Initialization failed");
+        setLoading(prev => ({ ...prev, auth: false }));
       }
     };
 
-    initializeChat();
+    initialize();
 
     return () => {
-      socket.off("connect");
-      socket.off("newMessage");
-      socket.off("connect_error");
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+        socketRef.current.off('connect');
+        socketRef.current.off('disconnect');
+        socketRef.current.off('connect_error');
+        socketRef.current.off('newMessage');
+      }
     };
-  }, [checkAuth, selectedUser]);
+  }, [checkAuth]);
 
+  // Handle incoming messages
+  const handleNewMessage = (message, currentUserId) => {
+    if (!selectedUser) return;
+    
+    const isRelevant = 
+      (message.sender._id === currentUserId && message.receiver._id === selectedUser._id) ||
+      (message.sender._id === selectedUser._id && message.receiver._id === currentUserId);
+    
+    if (isRelevant) {
+      setMessages(prev => {
+        const exists = prev.some(msg => msg._id === message._id);
+        return exists ? prev : [...prev, message];
+      });
+    }
+  };
+
+  // Load users list
+  const loadUsers = async () => {
+    try {
+      setLoading(prev => ({ ...prev, users: true }));
+      const response = await axiosInstance.get("/api/message/users/list");
+      const validUsers = response.data.filter(u => u.username && typeof u.username === "string");
+      setUsers(validUsers);
+    } catch (err) {
+      setError(err.response?.data?.message || "Failed to fetch users");
+    } finally {
+      setLoading(prev => ({ ...prev, users: false }));
+    }
+  };
+
+  // Load messages when selected user changes
   useEffect(() => {
-    const fetchMessages = async () => {
+    const loadMessages = async () => {
       if (!selectedUser || !user) return;
       try {
-        setLoading(true);
+        setLoading(prev => ({ ...prev, messages: true }));
         const response = await axiosInstance.get(`/api/message/${selectedUser._id}`);
         setMessages(response.data);
       } catch (err) {
         setError(err.response?.data?.message || "Failed to fetch messages");
       } finally {
-        setLoading(false);
+        setLoading(prev => ({ ...prev, messages: false }));
       }
     };
 
-    fetchMessages();
+    loadMessages();
   }, [selectedUser, user]);
 
+  // Handle sending messages
   const handleSendMessage = async (e) => {
     e.preventDefault();
-    if (!newMessage.trim() || !selectedUser || !user) return;
+    if (!newMessage.trim() || !selectedUser || !user || !socketRef.current) return;
 
     try {
       const response = await axiosInstance.post("/api/message/send", {
@@ -140,37 +161,59 @@ function Message() {
 
       if (response.status === 201) {
         setNewMessage("");
-        toast.success(
-          "Message sent successfully! Refreshing the page to display the new message...",
-          {
-            position: "top-right",
-            duration: 3000,
-          }
-        );
-        setTimeout(() => {
-          window.location.reload();
-        }, 3000);
+        toast.success("Message sent successfully!", {
+          position: "top-right",
+          duration: 2000,
+        });
       }
     } catch (error) {
       setError(error.response?.data?.message || "Failed to send message");
+      toast.error("Failed to send message", {
+        position: "top-right",
+        duration: 2000,
+      });
     }
   };
 
+  // Auto-scroll to bottom of messages
   useEffect(() => {
-    const messageContainer = document.getElementById("message-container");
-    if (messageContainer) {
-      messageContainer.scrollTop = messageContainer.scrollHeight;
-    }
+    messageEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  if (checkingAuth || (loading && !selectedUser)) {
+  // Load selectedUser from localStorage on component mount
+  useEffect(() => {
+    const storedUser = localStorage.getItem("selectedUser");
+    if (storedUser) {
+      setSelectedUser(JSON.parse(storedUser));
+    }
+  }, []);
+
+  // Save selectedUser to localStorage when it changes
+  useEffect(() => {
+    if (selectedUser) {
+      localStorage.setItem("selectedUser", JSON.stringify(selectedUser));
+      toast(
+        "This messaging feature is currently under development.",
+        {
+          position: "top-right",
+          duration: 5000,
+          style: {
+            background: "#fefcbf",
+            color: "#92400e",
+            border: "1px solid #f59e0b",
+          },
+          icon: "⚠️",
+        }
+      );
+    }
+  }, [selectedUser]);
+
+  if (loading.auth) {
     return (
       <div className="flex items-center justify-center h-screen bg-gray-100">
         <div className="text-center space-y-2">
           <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-t-transparent border-blue-500"></div>
-          <p className="text-gray-600">
-            {checkingAuth ? "Verifying authentication..." : "Loading messages..."}
-          </p>
+          <p className="text-gray-600">Verifying authentication...</p>
         </div>
       </div>
     );
@@ -197,11 +240,27 @@ function Message() {
     <div className="flex h-[90vh] bg-gray-100">
       <Toaster />
       <div className="w-1/4 min-w-[250px] bg-white border-r border-gray-200 flex flex-col">
-        <div className="p-4 border-b border-gray-200">
+        <div className="p-4 border-b border-gray-200 flex items-center justify-between">
           <h2 className="text-lg font-semibold text-gray-800">Messages</h2>
+          <div className={`flex items-center ${socketConnected ? 'text-green-500' : 'text-red-500'}`}>
+            <div className={`w-2 h-2 rounded-full mr-1 ${socketConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
+            <span className="text-xs">{socketConnected ? 'Online' : 'Offline'}</span>
+          </div>
         </div>
-        <div className="flex-1">
-          {users.length === 0 ? (
+        <div className="flex-1 overflow-y-auto">
+          {loading.users ? (
+            <div className="p-4 space-y-3">
+              {[...Array(5)].map((_, i) => (
+                <div key={i} className="flex items-center space-x-3">
+                  <div className="w-10 h-10 bg-gray-200 rounded-full animate-pulse"></div>
+                  <div className="flex-1 space-y-1">
+                    <div className="h-4 bg-gray-200 rounded w-3/4 animate-pulse"></div>
+                    <div className="h-3 bg-gray-200 rounded w-1/2 animate-pulse"></div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : users.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full p-4 text-center">
               <p className="text-gray-500">No users available</p>
               <p className="text-sm text-gray-400 mt-1">Users will appear here once they join</p>
@@ -218,16 +277,16 @@ function Message() {
                 <div className="w-10 h-10 rounded-full bg-gray-300 flex items-center justify-center text-white font-medium">
                   {u.profilePicture ? (
                     <img
-                      src={u.profilePicture || "/placeholder.svg"}
+                      src={u.profilePicture}
                       alt={u.username}
                       className="w-full h-full rounded-full object-cover"
                     />
                   ) : (
-                    <span>{u.username ? u.username[0]?.toUpperCase() : "?"}</span>
+                    <span>{u.username[0]?.toUpperCase()}</span>
                   )}
                 </div>
                 <div className="ml-3 flex-1 overflow-hidden">
-                  <p className="text-gray-800 font-medium truncate">{u.username || "Unknown User"}</p>
+                  <p className="text-gray-800 font-medium truncate">{u.username}</p>
                   <p className="text-gray-500 text-sm truncate">Click to start chatting</p>
                 </div>
                 <div className="w-2 h-2 rounded-full bg-green-500 ml-2"></div>
@@ -244,16 +303,16 @@ function Message() {
               <div className="w-10 h-10 rounded-full bg-gray-300 flex items-center justify-center text-white font-medium">
                 {selectedUser.profilePicture ? (
                   <img
-                    src={selectedUser.profilePicture || "/placeholder.svg"}
+                    src={selectedUser.profilePicture}
                     alt={selectedUser.username}
                     className="w-full h-full rounded-full object-cover"
                   />
                 ) : (
-                  <span>{selectedUser.username ? selectedUser.username[0]?.toUpperCase() : "?"}</span>
+                  <span>{selectedUser.username[0]?.toUpperCase()}</span>
                 )}
               </div>
               <div className="ml-3">
-                <h2 className="text-lg font-semibold text-gray-800">{selectedUser.username || "Unknown User"}</h2>
+                <h2 className="text-lg font-semibold text-gray-800">{selectedUser.username}</h2>
                 <p className="text-xs text-gray-500">Online</p>
               </div>
             </div>
@@ -262,7 +321,7 @@ function Message() {
               id="message-container"
               className="flex-1 p-4 overflow-y-auto bg-gray-50"
             >
-              {loading && !messages.length ? (
+              {loading.messages && messages.length === 0 ? (
                 <div className="space-y-4">
                   {[...Array(3)].map((_, i) => (
                     <div key={i} className="animate-pulse flex space-x-4">
@@ -292,7 +351,7 @@ function Message() {
               ) : messages.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-full">
                   <p className="text-gray-600 font-medium">
-                    Start a conversation with {selectedUser.username || "this user"}!
+                    Start a conversation with {selectedUser.username}!
                   </p>
                   <p className="text-gray-500 text-sm mt-2">Your messages will appear here</p>
                 </div>
@@ -306,7 +365,7 @@ function Message() {
                       <div key={msg._id} className={`flex ${isCurrentUser ? "justify-end" : "justify-start"}`}>
                         {!isCurrentUser && showAvatar && (
                           <div className="w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center text-white text-xs mr-2">
-                            {selectedUser.username ? selectedUser.username[0]?.toUpperCase() : "?"}
+                            {selectedUser.username[0]?.toUpperCase()}
                           </div>
                         )}
 
@@ -329,12 +388,13 @@ function Message() {
 
                         {isCurrentUser && showAvatar && (
                           <div className="w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center text-white text-xs ml-2">
-                            {user.username ? user.username[0]?.toUpperCase() : "?"}
+                            {user.username[0]?.toUpperCase()}
                           </div>
                         )}
                       </div>
                     );
                   })}
+                  <div ref={messageEndRef} />
                 </div>
               )}
             </div>
@@ -347,11 +407,12 @@ function Message() {
                   onChange={(e) => setNewMessage(e.target.value)}
                   placeholder="Type a message..."
                   className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  disabled={!socketConnected}
                 />
                 <button
                   type="submit"
                   className="p-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  disabled={!newMessage.trim()}
+                  disabled={!newMessage.trim() || !socketConnected}
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path
