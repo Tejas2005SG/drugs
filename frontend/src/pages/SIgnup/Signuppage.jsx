@@ -33,7 +33,7 @@ function Signuppage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-900 to-purple-900">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-100 to-indigo-100">
       <div className="max-w-md w-full space-y-8 p-10 bg-white/90 backdrop-blur-sm rounded-xl shadow-2xl border border-white/20">
         <div className="text-center">
           <div className="flex justify-center mb-4">
