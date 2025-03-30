@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../Store/auth.store.js';
-import { LogOut, UserPlus, LogIn, Menu, X, Atom, User } from 'lucide-react';
+import { LogOut, UserPlus, LogIn, Menu, X, Atom, User, ChevronRight  } from 'lucide-react';
 
 function Navbar() {
   const { user, logout } = useAuthStore();
@@ -71,7 +71,7 @@ function Navbar() {
               <div className="flex items-center space-x-4 ml-4">
                 <Link
                   to="/login"
-                  className="group relative px-4 py-2 overflow-hidden rounded-md border border-gray-300 text-gray-700 transition-all duration-300 ease-out hover:border-gray-400 hover:bg-gray-50"
+                  className="group relative px-4 py-2 overflow-hidden rounded-md border border-gray-300 text-white transition-all duration-300 ease-out hover:border-gray-400 hover:bg-gray-50 hover:text-black"
                 >
                   <span className="relative font-medium flex items-center">
                     Login
