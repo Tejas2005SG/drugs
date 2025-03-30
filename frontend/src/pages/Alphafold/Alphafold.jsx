@@ -16,8 +16,12 @@ const AlphaFoldExplorer = () => {
   const [nglComponents, setNglComponents] = useState(null);
   const stageRef = useRef(null);
 
-  const API_BASE_URL = 'http://localhost:5000/api/alphafold';
-
+  // const API_BASE_URL = 'http://localhost:5000/api/alphafold';
+  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+  const axiosInstance = axios.create({
+    baseURL: import.meta.mode==="development" ? API_BASE_URL : '/api',
+    withCredentials: true,
+  });
   // Handle prediction submission
   const handlePredictionSubmit = async (e) => {
     e.preventDefault();
@@ -31,7 +35,7 @@ const AlphaFoldExplorer = () => {
     setJobStatus(null);
     setStructureRendered(false);
     try {
-      const response = await axios.post(`${API_BASE_URL}/predict`, { uniprot_id: uniprotId }, {
+      const response = await axiosInstance.post(`${API_BASE_URL}/alphafold/predict`, { uniprot_id: uniprotId }, {
         timeout: 30000,
         headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
       });
@@ -56,8 +60,8 @@ const AlphaFoldExplorer = () => {
 
     try {
       const [summaryRes, annotationsRes] = await Promise.all([
-        axios.get(`${API_BASE_URL}/uniprot/summary/${uniprotId}`, { timeout: 30000 }),
-        axios.get(`${API_BASE_URL}/uniprot/annotations/${uniprotId}`, { timeout: 30000 }),
+        axiosInstance.get(`${API_BASE_URL}/alphafold/uniprot/summary/${uniprotId}`, { timeout: 30000 }),
+        axiosInstance.get(`${API_BASE_URL}/alphafold/uniprot/annotations/${uniprotId}`, { timeout: 30000 }),
       ]);
       setSummary(summaryRes.data);
       setAnnotations(annotationsRes.data);
@@ -71,7 +75,7 @@ const AlphaFoldExplorer = () => {
   // Fetch previous jobs
   const fetchPreviousJobs = async () => {
     try {
-      const response = await axios.get(`${API_BASE_URL}/previous-jobs`, {
+      const response = await axiosInstance.get(`${API_BASE_URL}/alphafold/previous-jobs`, {
         headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
       });
       setPreviousJobs(response.data);
@@ -87,7 +91,7 @@ const AlphaFoldExplorer = () => {
       setLoading(true);
       const pollStatus = async () => {
         try {
-          const response = await axios.get(`${API_BASE_URL}/status/${predictionResult.jobId}`, {
+          const response = await axiosInstance.get(`${API_BASE_URL}/alphafold/status/${predictionResult.jobId}`, {
             headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
           });
           setJobStatus(response.data);

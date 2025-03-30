@@ -2,9 +2,9 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useAuthStore } from '../../Store/auth.store.js';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
 const axiosInstance = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: import.meta.mode==="development" ? API_BASE_URL : '/api',
   withCredentials: true,
 });
 
@@ -22,7 +22,7 @@ function LiveNews() {
       try {
         setLoading(true);
         const response = await axiosInstance.get(
-          '/api/news/top-headlines?q=drugs&category=health',
+          '/news/top-headlines?q=drugs&category=health',
           {
             headers: {
               Authorization: `Bearer ${token}`,

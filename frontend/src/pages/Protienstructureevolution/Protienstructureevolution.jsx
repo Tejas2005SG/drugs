@@ -5,9 +5,9 @@ import { useAuthStore } from "../../Store/auth.store.js";
 import { jsPDF } from "jspdf";
 import { FiCopy } from "react-icons/fi";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
 const axiosInstance = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: import.meta.mode==="development" ? API_BASE_URL : '/api',
   withCredentials: true,
 });
 
@@ -38,7 +38,7 @@ const ProteinStructureEvolution = () => {
     if (!user?._id) return;
     setLoading(true);
     try {
-      const { data } = await axiosInstance.get("/api/protein/generatednewmolecule");
+      const { data } = await axiosInstance.get("/protein/generatednewmolecule");
       const fetchedMolecules = data.molecules || [];
       setMolecules(fetchedMolecules);
     } catch (err) {
@@ -73,7 +73,7 @@ const ProteinStructureEvolution = () => {
 
     try {
       console.log("Generating molecule for user ID:", user._id);
-      const response = await fetch(`${API_BASE_URL}/api/protein/generatenewmolecule/${user._id}`, {
+      const response = await fetch(`${API_BASE_URL}/protein/generatenewmolecule/${user._id}`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "Accept": "text/event-stream" },
         credentials: "include",
@@ -95,7 +95,7 @@ const ProteinStructureEvolution = () => {
         if (done) {
           setLoading(false);
           toast.success("Molecule generated successfully!");
-          const { data } = await axiosInstance.get("/api/protein/generatednewmolecule");
+          const { data } = await axiosInstance.get("/protein/generatednewmolecule");
           const fetchedMolecules = data.molecules || [];
           setMolecules(fetchedMolecules);
           if (fetchedMolecules.length > 0) {

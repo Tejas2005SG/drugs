@@ -9,10 +9,10 @@ import { useAuthStore } from '../../Store/auth.store.js';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
 const axiosInstance = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: import.meta.mode==="development" ? API_BASE_URL : '/api',
   withCredentials: true,
 });
-
+// baseURL: import.meta.mode === "development" ? "http://localhost:5000/api" : "/api",
 const ProteinStructureApp = () => {
   const [structures, setStructures] = useState([]);
   const [selectedStructure, setSelectedStructure] = useState(null);
@@ -47,7 +47,7 @@ const ProteinStructureApp = () => {
     const fetchStructures = async () => {
       try {
         setLoading(true);
-        const response = await axiosInstance.get(`/api/protein/getproteinstructure/${user._id}`);
+        const response = await axiosInstance.get(`/protein/getproteinstructure/${user._id}`);
         setStructures(response.data);
       } catch (err) {
         setError(err.response?.data?.message || 'Failed to fetch structures');
@@ -77,7 +77,7 @@ const ProteinStructureApp = () => {
     try {
       setLoading(true);
       setError(null);
-      const response = await axiosInstance.post(`/api/protein/postproteinstructure/${user._id}`, formData);
+      const response = await axiosInstance.post(`/protein/postproteinstructure/${user._id}`, formData);
       setStructures((prev) => [response.data.structure, ...prev]);
       setSelectedStructure(response.data.structure);
       toast.success('Structure generated successfully!');
