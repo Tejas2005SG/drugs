@@ -4,8 +4,14 @@ import { persist } from 'zustand/middleware'; // Add persist middleware
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
 
-const API_URL = 'http://localhost:5000/api/auth';
-axios.defaults.withCredentials = true;
+// const API_BASE_URL = 'http://localhost:5000/api/auth';
+
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+const axiosInstance = axios.create({
+  baseURL: import.meta.mode==="development" ? API_BASE_URL : '/api',
+  withCredentials: true,
+});
 
 export const useAuthStore = create(
   persist(
@@ -21,7 +27,7 @@ export const useAuthStore = create(
           return toast.error('Passwords do not match');
         }
         try {
-          const res = await axios.post(`${API_URL}/signup`, { firstName, lastName,username, email, password, confirmPassword });
+          const res = await axiosInstance.post(`${API_BASE_URL}/auth/signup`, { firstName, lastName,username, email, password, confirmPassword });
           set({ user: res.data.user, loading: false });
           console.log('Signup - Updated State:', get().user);
         } catch (error) {
@@ -33,7 +39,7 @@ export const useAuthStore = create(
       login: async ({ email, password }) => {
         set({ loading: true });
         try {
-          const res = await axios.post(`${API_URL}/login`, { email, password });
+          const res = await axiosInstance.post(`${API_BASE_URL}/auth/login`, { email, password });
           console.log('Login Response:', res.data);
           set({ user: res.data.user, loading: false });
           console.log('Login - Updated State:', get().user);
@@ -46,7 +52,7 @@ export const useAuthStore = create(
 
       logout: async () => {
         try {
-          await axios.post(`${API_URL}/logout`);
+          await axiosInstance.post(`${API_BASE_URL}/auth/logout`);
           set({ user: null });
           console.log('Logout - Updated State:', get().user);
         } catch (error) {
@@ -57,7 +63,7 @@ export const useAuthStore = create(
       checkAuth: async () => {
         set({ checkingAuth: true });
         try {
-          const response = await axios.get(`${API_URL}/profile`);
+          const response = await axiosInstance.get(`${API_BASE_URL}/auth/profile`);
           console.log('checkAuth Response:', response.data);
           set({ user: response.data.user, checkingAuth: false });
           console.log('checkAuth - Updated State:', get().user);

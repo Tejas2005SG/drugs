@@ -7,7 +7,7 @@ import StructureDetails from '../../components/StructureDetails.jsx';
 import { toast } from 'react-hot-toast';
 import { useAuthStore } from '../../Store/auth.store.js';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
 const axiosInstance = axios.create({
   baseURL: import.meta.mode==="development" ? API_BASE_URL : '/api',
   withCredentials: true,
