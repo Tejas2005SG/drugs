@@ -45,41 +45,41 @@ function App() {
           <Route
             path="protein-structure"
             element={
-              // <ProtectedRoute>
+              <ProtectedRoute>
                 <ProteinStructureApp />
-              // </ProtectedRoute>
+               </ProtectedRoute>
             }
           />
           <Route
             path="protein-structure-mutation"
             element={
-              // <ProtectedRoute>
+               <ProtectedRoute>
                 <ProteinStructureEvolution />
-              // </ProtectedRoute>
+               </ProtectedRoute>
             }
           />
            <Route
             path="cost-estimation"
             element={
-              // <ProtectedRoute>
+               <ProtectedRoute>
                 <Costestimation />
-              // </ProtectedRoute>
+               </ProtectedRoute>
             }
           />
            <Route
             path="ai-research-paper-generator"
             element={
-              // <ProtectedRoute>
+               <ProtectedRoute>
                 <AIResearchPaperGenerator/>
-              // </ProtectedRoute>
+              </ProtectedRoute>
             }
           />
            <Route
             path="ai-driven-target-prediction"
             element={
-              // <ProtectedRoute>
+               <ProtectedRoute>
                 <AIDrivenTargetPrediction/>
-              // </ProtectedRoute>
+               </ProtectedRoute>
             }
           />
            {/* <Route
@@ -93,9 +93,9 @@ function App() {
            <Route
             path="live-news"
             element={
-              // <ProtectedRoute>
+               <ProtectedRoute>
                 <LiveNews/>
-              // {/* </ProtectedRoute> */}
+               </ProtectedRoute>
             }
           />
            {/* <Route
@@ -109,9 +109,9 @@ function App() {
           <Route
             path="getalphafoldstrcture"
             element={
-              // <ProtectedRoute>
+               <ProtectedRoute>
                 <GetAlphaFoldStructure/>
-              // </ProtectedRoute>
+             </ProtectedRoute>
             }
           />
            
