@@ -34,7 +34,7 @@ function Signuppage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-100 to-indigo-100">
-      <div className="max-w-md w-full space-y-8 p-10 bg-white/90 backdrop-blur-sm rounded-xl shadow-2xl border border-white/20">
+      <div className="max-w-md w-full space-y-8 p-4 bg-white/90 backdrop-blur-sm rounded-xl shadow-2xl border border-white/20">
         <div className="text-center">
           <div className="flex justify-center mb-4">
             <div className="bg-blue-100 p-3 rounded-full">
@@ -84,9 +84,9 @@ function Signuppage() {
             </div>
           </div>
 
-          {/* <div>
+          <div>
             <label htmlFor="username" className="block text-sm font-medium text-gray-700">
-              Research ID
+              Username
             </label>
             <input
               id="username"
@@ -98,7 +98,7 @@ function Signuppage() {
               onChange={handleChange}
               placeholder="Researcher123"
             />
-          </div> */}
+          </div> 
 
           <div>
             <label htmlFor="email" className="block text-sm font-medium text-gray-700">
