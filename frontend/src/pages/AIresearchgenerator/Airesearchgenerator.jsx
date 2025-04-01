@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect ,useRef} from "react";
 import axios from "axios";
 import { toast } from "react-hot-toast";
 import { useAuthStore } from "../../Store/auth.store.js";
@@ -40,8 +40,27 @@ function Airesearchgenerator() {
   const [generatedPaper, setGeneratedPaper] = useState(null); // Store the generated research paper
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-
+ const toastShown = useRef(false);
   const { user, checkAuth, checkingAuth } = useAuthStore();
+
+      useEffect(() => {
+      if (!toastShown.current) {
+        toast(
+          "First , Generate a new molecule ",
+          {
+            position: "top-right",
+            duration: 8000, // 6 seconds
+            style: {
+              background: "#fefcbf", // Yellow background for warning
+              color: "#92400e", // Dark yellow text
+              border: "1px solid #f59e0b",
+            },
+            icon: "⚠️", // Warning icon
+          }
+        );
+        toastShown.current = true; // Mark the toast as shown
+      }
+    }, []); 
 
   useEffect(() => {
     const initializeApp = async () => {
@@ -616,7 +635,7 @@ function Airesearchgenerator() {
                 {loading ? "Fetching Research..." : "Fetch Related Research"}
               </button>
 
-              {error && (
+              {/* {error && (
                 <div className="mt-6 bg-red-50 border border-red-300 text-red-700 px-4 py-3 rounded-lg flex justify-between items-center">
                   <p>{error}</p>
                   <button
@@ -626,7 +645,7 @@ function Airesearchgenerator() {
                     Dismiss
                   </button>
                 </div>
-              )}
+              )} */}
 
               {(researchSummary || researchPapers.length > 0) && (
                 <div className="mt-8 bg-blue-50 p-6 rounded-xl border border-blue-200">
