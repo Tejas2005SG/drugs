@@ -1,19 +1,18 @@
 // src/api/costEstimation.js
 import axios from 'axios';
 
-const API_URL = 'http://localhost:5000/api/costestimation'; // Matches server.js PORT and /api prefix
-
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
 const axiosInstance = axios.create({
-  baseURL: API_URL,
-  withCredentials: true, // Enable cookies/credentials for CORS
+  baseURL: import.meta.mode==="development" ? API_BASE_URL : '/api',
+  withCredentials: true,
 });
 
 export const postCostEstimation = async (smiles) => {
-  const response = await axiosInstance.post('/cost-estimation', { smiles });
+  const response = await axiosInstance.post('/costestimation/cost-estimation', { smiles });
   return response.data;
 };
 
 export const getCostEstimations = async (userId) => {
-  const response = await axiosInstance.get(`/getcostestimation/${userId}`);
+  const response = await axiosInstance.get(`/costestimation/getcostestimation/${userId}`);
   return response.data;
 };

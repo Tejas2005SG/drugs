@@ -2,11 +2,12 @@
   "name": "drugs",
   "version": "1.0.0",
   "main": "backend/server.js",
-  "scripts": {
-    "dev": "nodemon backend/server.js",
-    "start": "node backend/server.js",
-    "build": "npm install && npm install --prefix frontend && npm run build --prefix frontend"
-  },
+"scripts": {
+  "dev": "nodemon backend/server.js",
+  "start": "node backend/server.js",
+  "build": "npm install && cd frontend && npm install --include=dev && npm run build",
+  "install-all": "npm install && cd frontend && npm install"
+},
   "keywords": [],
   "author": "",
   "type": "module",
@@ -31,7 +32,11 @@
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "socket.io": "^4.8.1",
-    "socket.io-client": "^4.8.1"
+    "socket.io-client": "^4.8.1",
+    "uuid": "^11.1.0"
   },
-  "description": ""
+  "description": "",
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
 }
