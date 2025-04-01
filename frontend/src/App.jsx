@@ -17,7 +17,8 @@ import AIDrivenTargetPrediction from "./pages/AIdriventargetprediction/AIdrivent
 import Costestimation from "./pages/Costestimination/Costestimination.jsx";
 import DrugDiscoveryRecommendation from "./pages/Drugdiscoveryrecommendation/Drugdiscoveryrecommendation.jsx";
 import LiveNews from "./pages/Livenews/Livenews.jsx";
-import Message from "./pages/Message/Message.jsx";
+// import Message from "./pages/Message/Message.jsx";
+import GetAlphaFoldStructure from "./pages/Alphafold/Alphafold.jsx"
 
 const ProtectedRoute = ({ children }) => {
   const { user } = useAuthStore();
@@ -30,7 +31,7 @@ function App() {
 
   return (
     <div className="min-h-screen bg-gray-100">
-      <Navbar />
+    {/* <Navbar /> */}
       <Routes>
         <Route path="/" element={<Homepage />} />
         <Route path="/signup" element={<Signup />} />
@@ -46,29 +47,29 @@ function App() {
             element={
               <ProtectedRoute>
                 <ProteinStructureApp />
-              </ProtectedRoute>
+               </ProtectedRoute>
             }
           />
           <Route
             path="protein-structure-mutation"
             element={
-              <ProtectedRoute>
+               <ProtectedRoute>
                 <ProteinStructureEvolution />
-              </ProtectedRoute>
+               </ProtectedRoute>
             }
           />
            <Route
             path="cost-estimation"
             element={
-              <ProtectedRoute>
+               <ProtectedRoute>
                 <Costestimation />
-              </ProtectedRoute>
+               </ProtectedRoute>
             }
           />
            <Route
             path="ai-research-paper-generator"
             element={
-              <ProtectedRoute>
+               <ProtectedRoute>
                 <AIResearchPaperGenerator/>
               </ProtectedRoute>
             }
@@ -76,9 +77,9 @@ function App() {
            <Route
             path="ai-driven-target-prediction"
             element={
-              <ProtectedRoute>
+               <ProtectedRoute>
                 <AIDrivenTargetPrediction/>
-              </ProtectedRoute>
+               </ProtectedRoute>
             }
           />
            {/* <Route
@@ -92,17 +93,25 @@ function App() {
            <Route
             path="live-news"
             element={
-              <ProtectedRoute>
+               <ProtectedRoute>
                 <LiveNews/>
-              </ProtectedRoute>
+               </ProtectedRoute>
             }
           />
-           <Route
+           {/* <Route
             path="message"
             element={
-              <ProtectedRoute>
+              // <ProtectedRoute>
                 <Message/>
-              </ProtectedRoute>
+              // </ProtectedRoute>
+            }
+          /> */}
+          <Route
+            path="getalphafoldstrcture"
+            element={
+               <ProtectedRoute>
+                <GetAlphaFoldStructure/>
+             </ProtectedRoute>
             }
           />
            
