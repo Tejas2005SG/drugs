@@ -7,6 +7,7 @@ import OpenAI from 'openai';
 import ResearchPaper from '../models/researchPapers.model.js';
 import GeneratedResearchPaper from '../models/GeneratedResearchPaper.js';
 import { SavedSearch } from '../models/savedSearch.model.js';
+import drugName from '../models/drugName.js';
 
 dotenv.config();
 
@@ -1526,5 +1527,178 @@ export const checkSavedSearches = async (req, res) => {
   } catch (error) {
     console.error("Error checking saved searches:", error.message);
     res.status(500).json({ message: "Server error while checking saved searches" });
+  }
+};
+
+
+
+// ai-naming
+// src/controllers/proteinstructure.controller.js
+
+
+export const generateDrugName = async (req, res) => {
+  try {
+    const { id } = req.params; // User ID
+    const { moleculeTitle, smiles } = req.body;
+
+    if (!id || !moleculeTitle || !smiles) {
+      return res.status(400).json({ message: "User ID, molecule title, and SMILES are required" });
+    }
+
+    // Check if the name already exists for this molecule
+    const existingName = await drugName.findOne({ userId: id, moleculeTitle, smiles });
+    if (existingName) {
+      return res.status(409).json({ 
+        message: "Drug name already generated for this molecule. Check Saved Names.",
+        redirectTo: "savedNames",
+      });
+    }
+
+    // Fetch the molecule details from GeneratenewMolecule
+    const molecule = await GeneratenewMolecule.findOne({ userId: id, newmoleculetitle: moleculeTitle, newSmiles: smiles });
+    if (!molecule) {
+      return res.status(404).json({ message: "Molecule not found" });
+    }
+
+    const prompt = `
+      Analyze the provided SMILES structure and generate 3 candidate drug names that meet these requirements:
+
+      1. **Structural Accuracy**  
+         - Include IUPAC-recognized stems reflecting:  
+           * Functional groups (e.g., '-mab' for monoclonal antibodies, '-tinib' for kinase inhibitors)  
+           * Molecular topology (e.g., 'cyclo-' for cyclic structures, 'naphtha-' for naphthalene-like)  
+           * Pharmacological class indicators (e.g., '-vir' for antivirals, '-zole' for antifungals)  
+
+      2. **Ethical & Regulatory Compliance**  
+         - Avoid:  
+           * Cultural insensitivities/linguistic offensiveness in 10 major languages (English, Spanish, Mandarin, Hindi, Arabic, French, Russian, German, Japanese, Portuguese)  
+           * Phonetic similarities to existing drugs (cross-reference FDA Orange Book)  
+           * Therapeutic misrepresentation (e.g., no 'cure-' prefixes)  
+
+      3. **Validation Requirements**  
+         - Check name availability via OpenFDA API (simulated access, assume a basic uniqueness check)  
+         - Confirm ≤50% phonetic similarity to existing names using Levenshtein distance  
+         - Verify no trademark conflicts in USPTO database (simulated check)  
+
+      4. **Output Format**  
+         | Rank | Name Candidate | Structural Rationale | Compliance Status |  
+         |------|----------------|----------------------|-------------------|  
+         | 1    | [Name]         | [Matching features]  | [Pass/Fail flags] |  
+
+      Molecule Details:  
+      - SMILES: "${molecule.newSmiles}"  
+      - Title: "${molecule.newmoleculetitle}"  
+      - IUPAC Name: "${molecule.newIupacName}"  
+      - Conversion Details: "${molecule.conversionDetails}"  
+      - Potential Diseases: "${molecule.potentialDiseases}"  
+      - Additional Information: "${molecule.information}"  
+
+      **Fallback Protocol**  
+      If no compliant names meet criteria:  
+      a) Propose modified stems with structural justification  
+      b) Suggest pharmacological class alternatives  
+      c) Flag need for human pharmaceutical linguist review  
+
+      Return the response in JSON format:  
+      {
+        "candidates": [
+          {
+            "rank": 1,
+            "name": "CandidateName1",
+            "rationale": "Explanation of structural features and naming",
+            "compliance": "Pass/Fail with details"
+          },
+          {
+            "rank": 2,
+            "name": "CandidateName2",
+            "rationale": "Explanation",
+            "compliance": "Pass/Fail with details"
+          },
+          {
+            "rank": 3,
+            "name": "CandidateName3",
+            "rationale": "Explanation",
+            "compliance": "Pass/Fail with details"
+          }
+        ],
+        "fallback": "Optional message if fallback protocol triggered"
+      }
+    `;
+
+    const geminiResponse = await axios.post(
+      `${GEMINI_API_URL}?key=${GEMINI_API_KEY}`,
+      { contents: [{ parts: [{ text: prompt }] }] },
+      { headers: { "Content-Type": "application/json" } }
+    );
+
+    const geminiContent = geminiResponse.data.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!geminiContent) {
+      throw new Error("No content returned from Gemini API");
+    }
+
+    const jsonMatch = geminiContent.match(/{[\s\S]*}/);
+    if (!jsonMatch) {
+      throw new Error("No valid JSON found in Gemini response");
+    }
+
+    const { candidates, fallback } = JSON.parse(jsonMatch[0]);
+
+    if (!candidates || candidates.length === 0) {
+      return res.status(500).json({ 
+        message: "No valid drug name candidates generated",
+        fallback: fallback || "No fallback provided",
+      });
+    }
+
+    // Select the top-ranked candidate (Rank 1) to save
+    const topCandidate = candidates.find(c => c.rank === 1);
+
+    const newDrugName = new drugName({
+      moleculeTitle,
+      smiles,
+      suggestedName: topCandidate.name,
+      namingDetails: `${topCandidate.rationale} | Compliance: ${topCandidate.compliance}`,
+      userId: id,
+    });
+    await newDrugName.save();
+
+    res.status(201).json({
+      message: "Drug name generated and saved successfully",
+      drugName: newDrugName,
+      allCandidates: candidates, // Return all candidates for frontend display
+      fallback: fallback || null,
+    });
+  } catch (error) {
+    console.error("Error generating drug name:", error);
+    res.status(500).json({ message: "Server error while generating drug name", error: error.message });
+  }
+};
+
+// Other existing functions (getSavedDrugNames, checkSavedDrugName, etc.) remain unchanged
+export const getSavedDrugNames = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const savedNames = await drugName.find({ userId }).sort({ createdAt: -1 });
+    res.status(200).json({ drugNames: savedNames });
+  } catch (error) {
+    console.error("Error fetching saved drug names:", error);
+    res.status(500).json({ message: "Server error while fetching saved drug names", error: error.message });
+  }
+};
+
+export const checkSavedDrugName = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const { moleculeTitle, smiles } = req.query;
+
+    if (!moleculeTitle || !smiles) {
+      return res.status(400).json({ message: "Molecule title and SMILES are required" });
+    }
+
+    const exists = await drugName.findOne({ userId, moleculeTitle, smiles });
+    res.status(200).json({ exists: !!exists });
+  } catch (error) {
+    console.error("Error checking saved drug name:", error);
+    res.status(500).json({ message: "Server error while checking saved drug name", error: error.message });
   }
 };

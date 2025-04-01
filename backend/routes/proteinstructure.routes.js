@@ -16,7 +16,10 @@ import {
   performDocking, // New controller for molecular docking (mocked)
   saveSearch, // New controller for saving searches
   getSavedSearches, // New controller for retrieving saved searches
-  checkSavedSearches, // New controller for checking if a search exists
+  checkSavedSearches,
+  generateDrugName,
+  getSavedDrugNames,
+  checkSavedDrugName, // New controller for checking if a search exists
 } from "../controllers/proteinstructure.controller.js";
 import { protectRoute } from "../middleware/auth.middleware.js";
 
@@ -43,4 +46,10 @@ router.post("/save-search", protectRoute, saveSearch); // Save search results
 router.get("/saved-searches", protectRoute, getSavedSearches); // Retrieve saved searches
 router.get("/check-saved-searches", protectRoute, checkSavedSearches); // Check if a search exists
 
+
+
+// ai-naming
+router.post("/generate-drug-name/:id", protectRoute, generateDrugName);
+router.get("/saved-drug-names", protectRoute, getSavedDrugNames);
+router.get("/check-saved-drug-name", protectRoute, checkSavedDrugName);
 export default router;
