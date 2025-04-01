@@ -197,13 +197,13 @@ const ProteinStructureEvolution = () => {
           <p className="text-xs p-1 text-blue-700 font-semibold">(Powered by Gemini)</p>
 
         </h1>
-
+{/* 
         {error && (
           <div className="mb-6 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg flex justify-between items-center">
             <span>{error}</span>
             <button onClick={() => setError(null)} className="text-red-900 hover:text-red-700">Dismiss</button>
           </div>
-        )}
+        )} */}
 
         <div className="space-y-6">
           {/* Generate New Molecule */}
