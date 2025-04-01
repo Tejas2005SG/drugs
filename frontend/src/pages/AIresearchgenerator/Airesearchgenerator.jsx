@@ -4,7 +4,7 @@ import { toast } from "react-hot-toast";
 import { useAuthStore } from "../../Store/auth.store.js";
 import jsPDF from "jspdf";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
 const CROSSREF_API_URL = "https://api.crossref.org/works";
 
 // Axios instance for backend requests (with credentials)
@@ -81,7 +81,7 @@ function Airesearchgenerator() {
 
     setLoading(true);
     try {
-      const response = await axiosInstance.get("/api/protein/generatednewmolecule");
+      const response = await axiosInstance.get("/protein/generatednewmolecule");
       const fetchedMolecules = response.data.molecules || [];
       setMolecules(fetchedMolecules);
       if (fetchedMolecules.length > 0 && !selectedTitle && !selectedSmiles) {
@@ -100,7 +100,7 @@ function Airesearchgenerator() {
     if (!user?._id) return;
 
     try {
-      const response = await axiosInstance.get("/api/protein/saved-research-papers");
+      const response = await axiosInstance.get("/protein/saved-research-papers");
       setSavedPapers(response.data.papers || []);
     } catch (err) {
       console.error("Error fetching saved papers:", err.response?.data || err.message);
@@ -112,7 +112,7 @@ function Airesearchgenerator() {
     if (!user?._id) return;
 
     try {
-      const response = await axiosInstance.get("/api/protein/saved-generated-research-papers");
+      const response = await axiosInstance.get("/protein/saved-generated-research-papers");
       setSavedGeneratedPapers(response.data.papers || []);
     } catch (err) {
       console.error("Error fetching saved generated papers:", err.response?.data || err.message);
@@ -124,7 +124,7 @@ function Airesearchgenerator() {
     if (!user?._id || !title || !smiles) return false;
 
     try {
-      const response = await axiosInstance.get("/api/protein/check-saved-papers", {
+      const response = await axiosInstance.get("/protein/check-saved-papers", {
         params: { title, smiles },
       });
       return response.data.exists;
@@ -138,7 +138,7 @@ function Airesearchgenerator() {
     if (!user?._id || !title || !smiles) return false;
 
     try {
-      const response = await axiosInstance.get("/api/protein/check-saved-generated-papers", {
+      const response = await axiosInstance.get("/protein/check-saved-generated-papers", {
         params: { title, smiles },
       });
       return response.data.exists;
@@ -159,7 +159,7 @@ function Airesearchgenerator() {
     console.log("Saving papers with payload:", payload);
 
     try {
-      await axiosInstance.post("/api/protein/save-research-papers", payload);
+      await axiosInstance.post("/protein/save-research-papers", payload);
     } catch (err) {
       console.error("Error saving papers:", err.response?.data || err.message);
       toast.error("Failed to save research papers");
@@ -177,7 +177,7 @@ function Airesearchgenerator() {
     console.log("Saving generated paper with payload:", payload);
 
     try {
-      await axiosInstance.post("/api/protein/save-generated-research-paper", payload);
+      await axiosInstance.post("/protein/save-generated-research-paper", payload);
       await fetchSavedGeneratedPapers(); // Refresh the saved generated papers list
     } catch (err) {
       console.error("Error saving generated paper:", err.response?.data || err.message);
@@ -239,7 +239,7 @@ function Airesearchgenerator() {
 
 
     try {
-      const geminiResponse = await axiosInstance.post("/api/protein/proxy/gemini", {
+      const geminiResponse = await axiosInstance.post("/protein/proxy/gemini", {
         prompt: geminiPrompt,
       });
       const geminiContent = geminiResponse.data.content;
@@ -361,7 +361,7 @@ function Airesearchgenerator() {
   `;
 
     try {
-      const geminiResponse = await axiosInstance.post("/api/protein/proxy/gemini", {
+      const geminiResponse = await axiosInstance.post("/protein/proxy/gemini", {
         prompt: geminiPrompt,
       });
       const geminiContent = geminiResponse.data.content;

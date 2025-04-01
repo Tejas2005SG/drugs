@@ -19,6 +19,7 @@ import DrugDiscoveryRecommendation from "./pages/Drugdiscoveryrecommendation/Dru
 import LiveNews from "./pages/Livenews/Livenews.jsx";
 // import Message from "./pages/Message/Message.jsx";
 import GetAlphaFoldStructure from "./pages/Alphafold/Alphafold.jsx"
+import AINamingSuggestion from './pages/AINamingSuggestion/AINamingSuggestion.jsx';
 
 const ProtectedRoute = ({ children }) => {
   const { user } = useAuthStore();
@@ -79,6 +80,14 @@ function App() {
             element={
                <ProtectedRoute>
                 <AIDrivenTargetPrediction/>
+               </ProtectedRoute>
+            }
+          />
+           <Route
+            path="ai-naming"
+            element={
+               <ProtectedRoute>
+                <AINamingSuggestion/>
                </ProtectedRoute>
             }
           />

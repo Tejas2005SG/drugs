@@ -6,7 +6,7 @@ import { toast } from "react-hot-toast"
 import { useAuthStore } from "../../Store/auth.store.js"
 import { Loader2, AlertCircle, FileText, Upload, Search } from "lucide-react"
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000"
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api"
 const CHEMBL_API_URL = "https://www.ebi.ac.uk/chembl/api/data"
 const PUBCHEM_API_URL = "https://pubchem.ncbi.nlm.nih.gov/rest/pug"
 const OPENALEX_API_URL = "https://api.openalex.org"
@@ -128,7 +128,7 @@ function AIdriventargetprediction() {
 
     try {
       setLoading(true)
-      const response = await axiosInstance.get("/api/protein/saved-searches")
+      const response = await axiosInstance.get("/protein/saved-searches")
       console.log("Fetched saved searches:", response.data.searches)
       setSavedSearches(response.data.searches || [])
     } catch (err) {
@@ -147,7 +147,7 @@ function AIdriventargetprediction() {
     }
 
     try {
-      const response = await axiosInstance.get("/api/protein/check-saved-searches", {
+      const response = await axiosInstance.get("/protein/check-saved-searches", {
         params: { smiles },
       })
       console.log("Check if search exists:", response.data.exists)
@@ -175,7 +175,7 @@ function AIdriventargetprediction() {
 
     try {
       console.log("Saving search with payload:", JSON.stringify(payload, null, 2))
-      const response = await axiosInstance.post("/api/protein/save-search", payload)
+      const response = await axiosInstance.post("/protein/save-search", payload)
       console.log("Save search response:", response.data)
       toast.success("Analysis results saved successfully!")
       return response.data.search
@@ -204,7 +204,7 @@ function AIdriventargetprediction() {
       const formData = new FormData()
       formData.append("file", moleculeFile)
       try {
-        const response = await axiosInstance.post("/api/protein/convert-file-to-smiles", formData)
+        const response = await axiosInstance.post("/protein/convert-file-to-smiles", formData)
         smiles = response.data.smiles
       } catch (err) {
         setError("Failed to process molecular file: " + (err.response?.data?.message || err.message))
@@ -238,7 +238,7 @@ function AIdriventargetprediction() {
     try {
       // Step 1: Extract Molecular Fingerprints
       console.log("Extracting molecular fingerprints for SMILES:", smiles)
-      const fingerprintsResponse = await axiosInstance.post("/api/protein/rdkit-fingerprints", { smiles })
+      const fingerprintsResponse = await axiosInstance.post("/protein/rdkit-fingerprints", { smiles })
       const fingerprints = fingerprintsResponse.data.fingerprints
 
       // Step 2: Use Gemini API for Bioactivity Prediction
@@ -268,7 +268,7 @@ function AIdriventargetprediction() {
         - Ensure the predictions are realistic and could plausibly match known drug-target interactions.
       `
 
-      const geminiResponse = await axiosInstance.post("/api/protein/proxy/gemini", {
+      const geminiResponse = await axiosInstance.post("/protein/proxy/gemini", {
         prompt: geminiPrompt,
       })
 
@@ -362,7 +362,7 @@ function AIdriventargetprediction() {
       // Step 5: Perform Molecular Docking
       console.log("Performing molecular docking simulation")
       try {
-        const dockingResponse = await axiosInstance.post("/api/protein/docking", { smiles })
+        const dockingResponse = await axiosInstance.post("/protein/docking", { smiles })
         setDockingResults(dockingResponse.data.results)
       } catch (dockingErr) {
         console.error("Error performing molecular docking:", dockingErr)
