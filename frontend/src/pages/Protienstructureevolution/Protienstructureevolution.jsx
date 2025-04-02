@@ -1,374 +1,414 @@
-import React, { useState, useEffect } from "react";
-import axios from "axios";
-import { toast } from "react-hot-toast";
-import { useAuthStore } from "../../Store/auth.store.js";
-import { jsPDF } from "jspdf";
-import { FiCopy } from "react-icons/fi";
+"use client"
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+import { useState, useEffect } from "react"
+import axios from "axios"
+import { toast } from "react-hot-toast"
+import { useAuthStore } from "../../Store/auth.store.js"
+import { jsPDF } from "jspdf"
+import { Copy, FileDown, Info, ChevronDown, ChevronUp, Loader2, AlertCircle, X, Beaker, Dna } from "lucide-react"
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api"
 const axiosInstance = axios.create({
-  baseURL: import.meta.mode==="development" ? API_BASE_URL : '/api',
+  baseURL: import.meta.mode === "development" ? API_BASE_URL : "/api",
   withCredentials: true,
-});
+})
 
 const ProteinStructureEvolution = () => {
-  const [formData, setFormData] = useState({ smilesoffirst: "", smilesofsecond: "", newmoleculetitle: "" });
-  const [molecules, setMolecules] = useState([]);
-  const [selectedMolecule, setSelectedMolecule] = useState(null);
-  const [realTimeOutput, setRealTimeOutput] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [expandedInfoId, setExpandedInfoId] = useState(null);
+  const [formData, setFormData] = useState({ smilesoffirst: "", smilesofsecond: "", newmoleculetitle: "" })
+  const [molecules, setMolecules] = useState([])
+  const [realTimeOutput, setRealTimeOutput] = useState("")
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(null)
+  const [expandedInfoId, setExpandedInfoId] = useState(null)
+  const [fetchingMolecules, setFetchingMolecules] = useState(false)
 
-  const { user, checkAuth, checkingAuth } = useAuthStore();
+  const { user, checkAuth, checkingAuth } = useAuthStore()
 
   useEffect(() => {
     const initializeApp = async () => {
-      await checkAuth();
+      await checkAuth()
       if (!useAuthStore.getState().user) {
-        setError("Authentication failed. Please log in.");
-        return;
+        setError("Authentication failed. Please log in.")
+        return
       }
-      await fetchAllMolecules();
-    };
-    initializeApp();
-  }, [checkAuth]);
+      await fetchAllMolecules()
+    }
+    initializeApp()
+  }, [checkAuth])
 
   const fetchAllMolecules = async () => {
-    if (!user?._id) return;
-    setLoading(true);
+    if (!user?._id) return
+    setFetchingMolecules(true)
     try {
-      const { data } = await axiosInstance.get("/protein/generatednewmolecule");
-      const fetchedMolecules = data.molecules || [];
-      setMolecules(fetchedMolecules);
+      const { data } = await axiosInstance.get("/protein/generatednewmolecule")
+      setMolecules(data.molecules || [])
     } catch (err) {
-      console.error("Fetch error:", err);
-      setMolecules([]);
-      setError(err.response?.data?.message || "Failed to fetch molecules.");
+      console.error("Fetch error:", err)
+      setMolecules([])
+      setError(err.response?.data?.message || "Failed to fetch molecules.")
     } finally {
-      setLoading(false);
+      setFetchingMolecules(false)
     }
-  };
+  }
 
   const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-  };
+    setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }))
+  }
 
   const handleGenerate = async (e) => {
-    e.preventDefault();
-    const { smilesoffirst, smilesofsecond, newmoleculetitle } = formData;
+    e.preventDefault()
+    const { smilesoffirst, smilesofsecond, newmoleculetitle } = formData
     if (!smilesoffirst || !smilesofsecond || !newmoleculetitle) {
-      setError("All fields are required.");
-      return;
+      setError("All fields are required.")
+      return
     }
     if (!user?._id) {
-      setError("Please log in to generate a molecule.");
-      return;
+      setError("Please log in to generate a molecule.")
+      return
     }
 
-    setLoading(true);
-    setError(null);
-    setRealTimeOutput("");
+    setLoading(true)
+    setError(null)
+    setRealTimeOutput("")
 
     try {
-      console.log("Generating molecule for user ID:", user._id);
       const response = await fetch(`${API_BASE_URL}/protein/generatenewmolecule/${user._id}`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", "Accept": "text/event-stream" },
+        headers: { "Content-Type": "application/json", Accept: "text/event-stream" },
         credentials: "include",
         body: JSON.stringify(formData),
-      });
+      })
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        const errorMessage = errorData.message || `Server error: ${response.status}`;
-        throw new Error(errorMessage);
-      }
+      if (!response.ok) throw new Error((await response.json().catch(() => ({}))).message || "Server error")
 
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let fullResponse = "";
+      const reader = response.body.getReader()
+      const decoder = new TextDecoder()
+      let fullResponse = ""
 
       while (true) {
-        const { done, value } = await reader.read();
+        const { done, value } = await reader.read()
         if (done) {
-          setLoading(false);
-          toast.success("Molecule generated successfully!");
-          const { data } = await axiosInstance.get("/protein/generatednewmolecule");
-          const fetchedMolecules = data.molecules || [];
-          setMolecules(fetchedMolecules);
-          if (fetchedMolecules.length > 0) {
-            setSelectedMolecule(fetchedMolecules[fetchedMolecules.length - 1]);
-          }
-          setFormData({ smilesoffirst: "", smilesofsecond: "", newmoleculetitle: "" });
-          break;
+          setLoading(false)
+          toast.success("Molecule generated successfully!")
+          await fetchAllMolecules()
+          setFormData({ smilesoffirst: "", smilesofsecond: "", newmoleculetitle: "" })
+          break
         }
-        const chunk = decoder.decode(value).split("\n").map(line => line.replace(/^data:\s*/, "").trim()).filter(line => line && line !== "[DONE]").join(" ");
-        fullResponse += chunk + " ";
-        setRealTimeOutput(fullResponse);
+        const chunk = decoder
+          .decode(value)
+          .split("\n")
+          .map((line) => line.replace(/^data:\s*/, "").trim())
+          .filter((line) => line && line !== "[DONE]")
+          .join(" ")
+        fullResponse += chunk + " "
+        setRealTimeOutput(fullResponse)
       }
     } catch (err) {
-      console.error("Generate error:", err);
-      setError(err.message || "Failed to generate molecule.");
-      setLoading(false);
+      console.error("Generate error:", err)
+      setError(err.message || "Failed to generate molecule.")
+      setLoading(false)
     }
-  };
+  }
 
   const handleCopySmiles = (smiles) => {
     if (!smiles || smiles === "Not available") {
-      toast.error("No SMILES available to copy.");
-      return;
+      toast.error("No SMILES available to copy.")
+      return
     }
-    navigator.clipboard.writeText(smiles)
+    navigator.clipboard
+      .writeText(smiles)
       .then(() => toast.success("SMILES copied!"))
-      .catch((err) => toast.error("Copy failed: " + err.message));
-  };
+      .catch((err) => toast.error("Copy failed: " + err.message))
+  }
 
-  const toggleInfo = (id) => {
-    if (expandedInfoId === id) {
-      setExpandedInfoId(null);
-    } else {
-      setExpandedInfoId(id);
-    }
-  };
+  const toggleInfo = (id) => setExpandedInfoId(expandedInfoId === id ? null : id)
 
   const exportToPDF = (molecule) => {
-    const doc = new jsPDF();
-    const margin = 20;
-    const maxWidth = doc.internal.pageSize.width - 2 * margin;
-    let y = margin;
+    const doc = new jsPDF()
+    const margin = 20
+    const maxWidth = doc.internal.pageSize.width - 2 * margin
+    let y = margin
 
     const addText = (text, size, bold = false) => {
-      doc.setFontSize(size);
-      doc.setFont(undefined, bold ? "bold" : "normal");
-      const lines = doc.splitTextToSize(text, maxWidth);
-      lines.forEach(line => {
+      doc.setFontSize(size)
+      doc.setFont(undefined, bold ? "bold" : "normal")
+      const lines = doc.splitTextToSize(text, maxWidth)
+      lines.forEach((line) => {
         if (y + size / 2 > doc.internal.pageSize.height - margin) {
-          doc.addPage();
-          y = margin;
+          doc.addPage()
+          y = margin
         }
-        doc.text(line, margin, y);
-        y += size / 2 + 2;
-      });
-    };
+        doc.text(line, margin, y)
+        y += size / 2 + 2
+      })
+    }
 
-    addText("Molecule Details", 16, true);
-    addText(`Title: ${molecule.newmoleculetitle}`, 12);
-    addText(`SMILES: ${molecule.newSmiles || "Not available"}`, 12);
-    addText(`IUPAC Name: ${molecule.newIupacName || "Not available"}`, 12);
-    addText(`Created: ${new Date(molecule.created).toLocaleString()}`, 12);
-    addText("Information:", 12, true);
-    addText(molecule.information || "No information available", 10);
+    addText("Molecule Details", 16, true)
+    addText(`Title: ${molecule.newmoleculetitle}`, 12)
+    addText(`SMILES: ${molecule.newSmiles || "Not available"}`, 12)
+    addText(`IUPAC Name: ${molecule.newIupacName || "Not available"}`, 12)
+    addText(`Created: ${new Date(molecule.created).toLocaleString()}`, 12)
+    addText("Information:", 12, true)
+    addText(molecule.information || "No information available", 10)
 
-    doc.save(`${molecule.newmoleculetitle}_details.pdf`);
-  };
+    doc.save(`${molecule.newmoleculetitle}_details.pdf`)
+  }
 
   if (checkingAuth) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-100">
-        <div className="text-lg font-semibold text-gray-700">Verifying Authentication...</div>
+      <div className="flex items-center justify-center min-h-screen bg-gradient-to-b from-slate-50 to-slate-100">
+        <div className="flex items-center gap-2 text-lg font-semibold text-slate-700">
+          <Loader2 className="h-5 w-5 animate-spin" />
+          Verifying Authentication...
+        </div>
       </div>
-    );
+    )
   }
 
   if (!user) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100">
-        <div className="bg-white p-6 rounded-lg border border-gray-300 text-center">
-          <h2 className="text-xl font-bold text-gray-800 mb-4">Access Denied</h2>
-          <p className="text-gray-600 mb-4">Please log in to explore Protein Structure Evolution.</p>
+      <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-b from-slate-50 to-slate-100">
+        <div className="bg-white p-8 rounded-xl shadow-lg text-center transform transition hover:scale-105 max-w-md w-full">
+          <h2 className="text-2xl font-bold text-slate-800 mb-4">Access Denied</h2>
+          <p className="text-slate-600 mb-6">Please log in to explore Protein Structure Evolution.</p>
           <a
             href="/login"
-            className="inline-block px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+            className="inline-block px-6 py-3 bg-gradient-to-r from-emerald-600 to-teal-500 text-white rounded-lg hover:from-emerald-700 hover:to-teal-600 transition w-full"
           >
             Login Now
           </a>
         </div>
       </div>
-    );
+    )
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 py-8 px-4">
-      <div className="max-w-5xl mx-auto"> {/* Changed from max-w-3xl to max-w-5xl */}
-        <h1 className="text-3xl font-bold text-gray-800 mb-8 text-center">
-          New Drug Molecule Generation
-          <p className="text-xs p-1 text-blue-700 font-semibold">(Powered by Gemini)</p>
+    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 py-12 px-4 sm:px-6">
+      <div className="max-w-5xl mx-auto space-y-8">
+        <div className="text-center space-y-2">
+          <div className="inline-flex items-center justify-center p-2 bg-slate-100 rounded-full mb-2">
+            <Dna className="h-8 w-8 text-emerald-600" />
+          </div>
+          <h1 className="text-4xl font-extrabold tracking-tight bg-gradient-to-r from-emerald-600 to-teal-500 text-transparent bg-clip-text">
+            New Drug Molecule Generation
+          </h1>
+          <p className="text-sm text-slate-600 font-medium">Powered by Gemini AI</p>
+        </div>
 
-        </h1>
-{/* 
         {error && (
-          <div className="mb-6 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg flex justify-between items-center">
-            <span>{error}</span>
-            <button onClick={() => setError(null)} className="text-red-900 hover:text-red-700">Dismiss</button>
+          <div className="mb-8 p-4 bg-red-50 border-l-4 border-red-500 text-red-700 rounded-lg flex justify-between items-center shadow-md animate-in fade-in slide-in-from-top-5 duration-300">
+            <div className="flex items-start">
+              <AlertCircle className="h-5 w-5 mt-0.5 mr-2 flex-shrink-0" />
+              <span>{error}</span>
+            </div>
+            <button
+              onClick={() => setError(null)}
+              className="text-red-900 hover:text-red-600 font-medium p-1 rounded-full hover:bg-red-100"
+            >
+              <X className="h-5 w-5" />
+            </button>
           </div>
-        )} */}
+        )}
 
-        <div className="space-y-6">
-          {/* Generate New Molecule */}
-          <div className="bg-white p-6 rounded-lg border border-gray-300">
-            <h2 className="text-xl font-semibold text-gray-800 mb-4">Generate New Molecule</h2>
-            <form onSubmit={handleGenerate} className="space-y-4">
-              {["newmoleculetitle", "smilesoffirst", "smilesofsecond"].map((field) => (
-                <div key={field}>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    {field === "newmoleculetitle" ? "New Molecule Title" : field.replace(/([A-Z])/g, " $1").trim()}
-                  </label>
-                  <input
-                    type="text"
-                    name={field}
-                    value={formData[field]}
-                    onChange={handleInputChange}
-                    placeholder={`Enter ${field === "newmoleculetitle" ? "new molecule title" : field.replace(/([A-Z])/g, " $1").trim().toLowerCase()}`}
-                    disabled={loading}
-                    required
-                    className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"
-                  />
-                </div>
-              ))}
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed"
-              >
-                {loading ? (
-                  <span className="flex items-center justify-center">
-                    <svg className="animate-spin h-5 w-5 mr-2 text-white" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8h8a8 8 0 01-16 0z" />
-                    </svg>
-                    Generating...
-                  </span>
-                ) : (
-                  "Generate Molecule"
-                )}
-              </button>
-            </form>
+        {/* Generate New Molecule */}
+        <div className="bg-white p-6 rounded-xl shadow-md hover:shadow-lg transition-shadow duration-300">
+          <div className="mb-4">
+            <h2 className="text-2xl font-semibold text-slate-800 flex items-center gap-2">
+              <Beaker className="h-6 w-6 text-emerald-500" />
+              Generate New Molecule
+            </h2>
+            <p className="text-slate-500 text-sm mt-1">
+              Enter SMILES notation for two molecules to generate a new hybrid molecule
+            </p>
           </div>
 
-          {/* Real-Time Output */}
+          <form onSubmit={handleGenerate} className="space-y-5">
+            <div className="space-y-4">
+              <div className="grid gap-2">
+                <label htmlFor="newmoleculetitle" className="text-sm font-medium text-slate-700">
+                  New Molecule Title
+                </label>
+                <input
+                  id="newmoleculetitle"
+                  name="newmoleculetitle"
+                  type="text"
+                  value={formData.newmoleculetitle}
+                  onChange={handleInputChange}
+                  placeholder="Enter a descriptive title for the new molecule"
+                  disabled={loading}
+                  required
+                  className="w-full p-3 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 transition bg-white"
+                />
+              </div>
+
+              <div className="grid gap-2">
+                <label htmlFor="smilesoffirst" className="text-sm font-medium text-slate-700">
+                  SMILES of First Molecule
+                </label>
+                <input
+                  id="smilesoffirst"
+                  name="smilesoffirst"
+                  type="text"
+                  value={formData.smilesoffirst}
+                  onChange={handleInputChange}
+                  placeholder="Enter SMILES notation for the first molecule"
+                  disabled={loading}
+                  required
+                  className="w-full p-3 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 transition bg-white font-mono text-sm"
+                />
+              </div>
+
+              <div className="grid gap-2">
+                <label htmlFor="smilesofsecond" className="text-sm font-medium text-slate-700">
+                  SMILES of Second Molecule
+                </label>
+                <input
+                  id="smilesofsecond"
+                  name="smilesofsecond"
+                  type="text"
+                  value={formData.smilesofsecond}
+                  onChange={handleInputChange}
+                  placeholder="Enter SMILES notation for the second molecule"
+                  disabled={loading}
+                  required
+                  className="w-full p-3 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 transition bg-white font-mono text-sm"
+                />
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-3 bg-gradient-to-r from-emerald-600 to-teal-500 text-white rounded-lg hover:from-emerald-700 hover:to-teal-600 disabled:opacity-50 disabled:cursor-not-allowed transition flex items-center justify-center font-medium"
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                  Generating...
+                </>
+              ) : (
+                "Generate Molecule"
+              )}
+            </button>
+          </form>
+
           {realTimeOutput && (
-            <div className="bg-white p-6 rounded-lg border border-gray-300">
-              <h3 className="text-lg font-semibold text-gray-800 mb-3">Live Output</h3>
-              <div className="max-h-48 overflow-y-auto text-gray-700 text-sm p-3 border border-gray-200 rounded-lg">
-                {realTimeOutput}
+            <div className="mt-6">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                <h3 className="text-sm font-medium text-slate-700">Live Output</h3>
+              </div>
+              <div className="h-64 w-full overflow-auto rounded-md border border-slate-200 bg-slate-50 p-4">
+                <div className="text-sm text-slate-700 whitespace-pre-wrap font-mono">{realTimeOutput}</div>
               </div>
             </div>
           )}
+        </div>
 
-          {/* Molecule Details */}
-          {selectedMolecule && (
-            <div className="bg-white p-6 rounded-lg border border-gray-300">
-              <h2 className="text-lg font-semibold text-gray-800 mb-3">Molecule Details</h2>
-              <div className="space-y-3 text-sm">
-                {[
-                  { label: "Title", value: selectedMolecule.newmoleculetitle },
-                  { label: "SMILES", value: selectedMolecule.newSmiles || "N/A", copy: true },
-                  { label: "IUPAC Name", value: selectedMolecule.newIupacName || "N/A" },
-                  { label: "Conversion", value: selectedMolecule.conversionDetails || "N/A" },
-                  { label: "Diseases", value: selectedMolecule.potentialDiseases || "N/A" },
-                  { label: "Created", value: new Date(selectedMolecule.created).toLocaleString() },
-                ].map(({ label, value, copy }) => (
-                  <div key={label} className="flex flex-col sm:flex-row sm:items-center">
-                    <p className="font-medium text-gray-700 sm:w-28">{label}:</p>
-                    <div className="flex items-center mt-1 sm:mt-0">
-                      <p className="flex-1 text-gray-600 break-all">{value}</p>
-                      {copy && (
-                        <FiCopy
-                          onClick={() => handleCopySmiles(value)}
-                          className="ml-2 text-gray-500 hover:text-blue-600 cursor-pointer"
-                        />
-                      )}
-                    </div>
-                  </div>
-                ))}
-                <div className="flex space-x-2 mt-4">
-                  <button
-                    onClick={() => toggleInfo(selectedMolecule.id)}
-                    className="px-3 py-1 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
-                  >
-                    {expandedInfoId === selectedMolecule.id ? "Hide Info" : "Show Info"}
-                  </button>
-                  <button
-                    onClick={() => exportToPDF(selectedMolecule)}
-                    className="px-3 py-1 bg-teal-500 text-white rounded-lg hover:bg-teal-600"
-                  >
-                    Export PDF
-                  </button>
-                </div>
-                {expandedInfoId === selectedMolecule.id && (
-                  <div className="mt-3 p-3 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700 break-all">
-                    {selectedMolecule.information}
-                  </div>
-                )}
-              </div>
+        {/* Your Molecules */}
+        <div className="bg-white p-6 rounded-xl shadow-md hover:shadow-lg transition-shadow duration-300">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-2xl font-semibold text-slate-800 flex items-center gap-2">
+              <Dna className="h-6 w-6 text-emerald-500" />
+              Your Molecules
+            </h2>
+            <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold bg-slate-100 text-slate-800 border border-slate-200">
+              {molecules.length} total
+            </span>
+          </div>
+          <p className="text-slate-500 text-sm mb-4">View and manage your previously generated molecules</p>
+
+          {fetchingMolecules && (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-8 w-8 animate-spin text-emerald-500" />
             </div>
           )}
 
-          {/* Your Molecules */}
-          <div className="bg-white p-6 rounded-lg border border-gray-300">
-            <h2 className="text-lg font-semibold text-gray-800 mb-3">Your Molecules</h2>
-            {loading && (
-              <p className="text-gray-500 flex items-center">
-                <svg className="animate-spin h-5 w-5 mr-2 text-gray-500" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8h8a8 8 0 01-16 0z" />
-                </svg>
-                Loading...
-              </p>
-            )}
-            {!loading && molecules.length === 0 && (
-              <p className="text-gray-500 italic">No molecules generated yet.</p>
-            )}
-            {!loading && molecules.length > 0 && (
-              <ul className="space-y-4 max-h-80 overflow-y-auto">
+          {!fetchingMolecules && molecules.length === 0 && (
+            <div className="text-center py-12 text-slate-500 border border-dashed border-slate-200 rounded-lg">
+              <Beaker className="h-12 w-12 mx-auto mb-3 text-slate-300" />
+              <p className="text-lg font-medium">No molecules generated yet</p>
+              <p className="text-sm mt-1">Use the form above to create your first molecule</p>
+            </div>
+          )}
+
+          {!fetchingMolecules && molecules.length > 0 && (
+            <div className="h-[32rem] overflow-auto pr-1">
+              <ul className="space-y-4">
                 {molecules.map((molecule) => (
-                  <li key={molecule.id} className="border-b border-gray-200 pb-3 last:border-b-0">
-                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start">
-                      <div
-                        onClick={() => setSelectedMolecule(molecule)}
-                        className="flex-1 cursor-pointer p-2 rounded-lg hover:bg-gray-100"
-                      >
-                        <p className="font-medium text-gray-800">{molecule.newmoleculetitle}</p>
-                        <div className="flex items-center space-x-2 mt-1">
-                          <p className="text-gray-600 text-sm break-all">SMILES: {molecule.newSmiles || "N/A"}</p>
-                          <FiCopy
-                            onClick={(e) => { e.stopPropagation(); handleCopySmiles(molecule.newSmiles); }}
-                            className="text-gray-500 hover:text-blue-600"
-                          />
+                  <li key={molecule.id} className="group">
+                    <div className="border border-slate-200 rounded-lg overflow-hidden transition-all duration-200 group-hover:border-emerald-200 group-hover:shadow-sm">
+                      <div className="p-4">
+                        <div className="flex flex-col space-y-3">
+                          <div className="space-y-1">
+                            <div className="flex items-center justify-between">
+                              <h3 className="font-medium text-slate-900">{molecule.newmoleculetitle}</h3>
+                              <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-slate-100 text-slate-800">
+                                {new Date(molecule.created).toLocaleDateString()}
+                              </span>
+                            </div>
+
+                            <div className="flex items-center space-x-2 bg-slate-50 p-2 rounded-md">
+                              <div className="flex-1 overflow-hidden">
+                                <p className="text-xs text-slate-500">SMILES:</p>
+                                <p className="text-sm font-mono text-slate-700 truncate">
+                                  {molecule.newSmiles || "Not available"}
+                                </p>
+                              </div>
+                              <button
+                                onClick={() => handleCopySmiles(molecule.newSmiles)}
+                                className="p-1.5 text-slate-500 hover:text-emerald-600 hover:bg-slate-100 rounded-md"
+                              >
+                                <Copy className="h-4 w-4" />
+                              </button>
+                            </div>
+                          </div>
+
+                          <div className="flex space-x-2">
+                            <button
+                              onClick={() => toggleInfo(molecule.id)}
+                              className="flex-1 flex items-center justify-center gap-1 px-3 py-2 border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 rounded-md text-sm font-medium"
+                            >
+                              <Info className="h-4 w-4" />
+                              {expandedInfoId === molecule.id ? "Hide Info" : "Show Info"}
+                              {expandedInfoId === molecule.id ? (
+                                <ChevronUp className="h-3 w-3 ml-auto" />
+                              ) : (
+                                <ChevronDown className="h-3 w-3 ml-auto" />
+                              )}
+                            </button>
+                            <button
+                              onClick={() => exportToPDF(molecule)}
+                              className="flex-1 flex items-center justify-center gap-1 px-3 py-2 border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 rounded-md text-sm font-medium"
+                            >
+                              <FileDown className="h-4 w-4" />
+                              Export PDF
+                            </button>
+                          </div>
                         </div>
-                        <p className="text-gray-500 text-xs mt-1">{new Date(molecule.created).toLocaleString()}</p>
-                      </div>
-                      <div className="flex space-x-2 mt-2 sm:mt-0">
-                        <button
-                          onClick={() => toggleInfo(molecule.id)}
-                          className="px-3 py-1 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
-                        >
-                          {expandedInfoId === molecule.id ? "Hide" : "Info"}
-                        </button>
-                        <button
-                          onClick={() => exportToPDF(molecule)}
-                          className="px-3 py-1 bg-teal-500 text-white rounded-lg hover:bg-teal-600"
-                        >
-                          PDF
-                        </button>
+
+                        {expandedInfoId === molecule.id && (
+                          <>
+                            <div className="h-[1px] w-full bg-slate-200 my-3" />
+                            <div className="h-48 w-full overflow-auto rounded-md bg-slate-50 p-3">
+                              <div className="text-sm text-slate-700 whitespace-pre-wrap">
+                                {molecule.information || "No information available for this molecule."}
+                              </div>
+                            </div>
+                          </>
+                        )}
                       </div>
                     </div>
-                    {expandedInfoId === molecule.id && (
-                      <div className="mt-2 p-3 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700 break-all">
-                        {molecule.information}
-                      </div>
-                    )}
                   </li>
                 ))}
               </ul>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default ProteinStructureEvolution;
+export default ProteinStructureEvolution
+
