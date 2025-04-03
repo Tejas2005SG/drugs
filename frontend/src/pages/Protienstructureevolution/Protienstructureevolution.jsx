@@ -115,17 +115,25 @@ const ProteinStructureEvolution = () => {
           },
           {
             title: "Conversion Details",
-            points: result.conversionDetails
-              .split(".")
-              .filter(sentence => sentence.trim())
-              .map(sentence => sentence.trim() + ".")
+            points: typeof result.conversionDetails === "string"
+              ? result.conversionDetails
+                  .split(".")
+                  .filter(sentence => sentence.trim())
+                  .map(sentence => sentence.trim() + ".")
+              : Array.isArray(result.conversionDetails)
+              ? result.conversionDetails
+              : ["Not available"]
           },
           {
             title: "Potential Diseases",
-            points: result.potentialDiseases
-              .split(".")
-              .filter(sentence => sentence.trim())
-              .map(sentence => sentence.trim() + ".")
+            points: typeof result.potentialDiseases === "string"
+              ? result.potentialDiseases
+                  .split(".")
+                  .filter(sentence => sentence.trim())
+                  .map(sentence => sentence.trim() + ".")
+              : Array.isArray(result.potentialDiseases)
+              ? result.potentialDiseases
+              : ["Not available"]
           }
         ]
       };
@@ -143,7 +151,6 @@ const ProteinStructureEvolution = () => {
     }
   };
 
-  // New function to format the information field for saved molecules
   const formatMoleculeInfo = (info) => {
     if (!info) return null;
 
@@ -165,11 +172,19 @@ const ProteinStructureEvolution = () => {
           },
           {
             title: "Conversion Details",
-            points: parsedInfo.conversionDetails || ["Not available"]
+            points: Array.isArray(parsedInfo.conversionDetails)
+              ? parsedInfo.conversionDetails
+              : typeof parsedInfo.conversionDetails === "string"
+              ? parsedInfo.conversionDetails.split(".").filter(s => s.trim()).map(s => s.trim() + ".")
+              : ["Not available"]
           },
           {
             title: "Potential Diseases",
-            points: parsedInfo.potentialDiseases || ["Not available"]
+            points: Array.isArray(parsedInfo.potentialDiseases)
+              ? parsedInfo.potentialDiseases
+              : typeof parsedInfo.potentialDiseases === "string"
+              ? parsedInfo.potentialDiseases.split(".").filter(s => s.trim()).map(s => s.trim() + ".")
+              : ["Not available"]
           }
         ]
       };
