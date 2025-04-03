@@ -5,7 +5,7 @@ import axios from "axios"
 import { toast } from "react-hot-toast"
 import { useAuthStore } from "../../Store/auth.store.js"
 import { jsPDF } from "jspdf"
-import { Copy, FileDown, Info, ChevronDown, ChevronUp, Loader2, AlertCircle, X, Beaker, Dna } from "lucide-react"
+import { Copy, FileDown, Info, ChevronDown, ChevronUp, Loader2, AlertCircle, X, Beaker, Dna, Search } from "lucide-react"
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api"
 const axiosInstance = axios.create({
@@ -17,10 +17,16 @@ const ProteinStructureEvolution = () => {
   const [formData, setFormData] = useState({ smilesoffirst: "", smilesofsecond: "", newmoleculetitle: "" })
   const [molecules, setMolecules] = useState([])
   const [realTimeOutput, setRealTimeOutput] = useState("")
+  const [formattedOutput, setFormattedOutput] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [expandedInfoId, setExpandedInfoId] = useState(null)
   const [fetchingMolecules, setFetchingMolecules] = useState(false)
+  const [searchFirst, setSearchFirst] = useState("")
+  const [searchSecond, setSearchSecond] = useState("")
+  const [suggestionsFirst, setSuggestionsFirst] = useState([])
+  const [suggestionsSecond, setSuggestionsSecond] = useState([])
+  const [loadingSuggestions, setLoadingSuggestions] = useState({ first: false, second: false })
 
   const { user, checkAuth, checkingAuth } = useAuthStore()
 
@@ -51,25 +57,167 @@ const ProteinStructureEvolution = () => {
     }
   }
 
-  const handleInputChange = (e) => {
-    setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }))
+  const fetchPubChemSuggestions = async (query, type) => {
+    if (!query) {
+      type === "first" ? setSuggestionsFirst([]) : setSuggestionsSecond([])
+      return
+    }
+    setLoadingSuggestions(prev => ({ ...prev, [type]: true }))
+    try {
+      const response = await axios.get(
+        `https://pubchem.ncbi.nlm.nih.gov/rest/autocomplete/compound/${encodeURIComponent(query)}?limit=5`
+      )
+      const suggestions = response.data.dictionary_terms?.compound || []
+      type === "first" ? setSuggestionsFirst(suggestions) : setSuggestionsSecond(suggestions)
+    } catch (err) {
+      console.error("PubChem autocomplete error:", err)
+      toast.error("Failed to fetch suggestions from PubChem")
+    } finally {
+      setLoadingSuggestions(prev => ({ ...prev, [type]: false }))
+    }
   }
 
+  const fetchSmilesFromPubChem = async (name, type) => {
+    try {
+      const response = await axios.get(
+        `https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name/${encodeURIComponent(name)}/property/CanonicalSMILES/JSON`
+      )
+      const smiles = response.data.PropertyTable.Properties[0]?.CanonicalSMILES
+      if (smiles) {
+        setFormData(prev => ({
+          ...prev,
+          [type === "first" ? "smilesoffirst" : "smilesofsecond"]: smiles
+        }))
+        toast.success(`SMILES fetched for ${name}`)
+      } else {
+        toast.error("No SMILES found for this compound")
+      }
+    } catch (err) {
+      console.error("PubChem SMILES fetch error:", err)
+      toast.error("Failed to fetch SMILES from PubChem")
+    }
+  }
+
+  const formatOutput = (output) => {
+    if (!output) return null;
+
+    try {
+      const result = JSON.parse(output);
+      const formatted = {
+        sections: [
+          {
+            title: "New SMILES",
+            points: [result.newSmiles || "Not available"]
+          },
+          {
+            title: "IUPAC Name",
+            points: [result.newIupacName || "Not available"]
+          },
+          {
+            title: "Conversion Details",
+            points: result.conversionDetails
+              .split(".")
+              .filter(sentence => sentence.trim())
+              .map(sentence => sentence.trim() + ".")
+          },
+          {
+            title: "Potential Diseases",
+            points: result.potentialDiseases
+              .split(".")
+              .filter(sentence => sentence.trim())
+              .map(sentence => sentence.trim() + ".")
+          }
+        ]
+      };
+      return formatted;
+    } catch (error) {
+      console.error("Error parsing output:", error);
+      return {
+        sections: [
+          {
+            title: "Error",
+            points: ["Failed to parse the output. Please check the input or try again."]
+          }
+        ]
+      };
+    }
+  };
+
+  // New function to format the information field for saved molecules
+  const formatMoleculeInfo = (info) => {
+    if (!info) return null;
+
+    try {
+      const parsedInfo = JSON.parse(info);
+      return {
+        sections: [
+          {
+            title: "Input SMILES",
+            points: [parsedInfo.inputSmiles || "Not available"]
+          },
+          {
+            title: "New SMILES",
+            points: [parsedInfo.newSmiles || "Not available"]
+          },
+          {
+            title: "IUPAC Name",
+            points: [parsedInfo.newIupacName || "Not available"]
+          },
+          {
+            title: "Conversion Details",
+            points: parsedInfo.conversionDetails || ["Not available"]
+          },
+          {
+            title: "Potential Diseases",
+            points: parsedInfo.potentialDiseases || ["Not available"]
+          }
+        ]
+      };
+    } catch (error) {
+      console.error("Error parsing molecule info:", error);
+      return {
+        sections: [
+          {
+            title: "Error",
+            points: ["Failed to parse molecule information. Data may be corrupted."]
+          }
+        ]
+      };
+    }
+  };
+
+  const handleInputChange = (e) => {
+    setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+  };
+
+  const handleSearchChange = (e, type) => {
+    const value = e.target.value;
+    type === "first" ? setSearchFirst(value) : setSearchSecond(value);
+    fetchPubChemSuggestions(value, type);
+  };
+
+  const handleSuggestionSelect = (suggestion, type) => {
+    type === "first" ? setSearchFirst(suggestion) : setSearchSecond(suggestion);
+    fetchSmilesFromPubChem(suggestion, type);
+    type === "first" ? setSuggestionsFirst([]) : setSuggestionsSecond([]);
+  };
+
   const handleGenerate = async (e) => {
-    e.preventDefault()
-    const { smilesoffirst, smilesofsecond, newmoleculetitle } = formData
+    e.preventDefault();
+    const { smilesoffirst, smilesofsecond, newmoleculetitle } = formData;
     if (!smilesoffirst || !smilesofsecond || !newmoleculetitle) {
-      setError("All fields are required.")
-      return
+      setError("All fields are required.");
+      return;
     }
     if (!user?._id) {
-      setError("Please log in to generate a molecule.")
-      return
+      setError("Please log in to generate a molecule.");
+      return;
     }
 
-    setLoading(true)
-    setError(null)
-    setRealTimeOutput("")
+    setLoading(true);
+    setError(null);
+    setRealTimeOutput("");
+    setFormattedOutput(null);
 
     try {
       const response = await fetch(`${API_BASE_URL}/protein/generatenewmolecule/${user._id}`, {
@@ -77,82 +225,92 @@ const ProteinStructureEvolution = () => {
         headers: { "Content-Type": "application/json", Accept: "text/event-stream" },
         credentials: "include",
         body: JSON.stringify(formData),
-      })
+      });
 
-      if (!response.ok) throw new Error((await response.json().catch(() => ({}))).message || "Server error")
+      if (!response.ok) throw new Error((await response.json().catch(() => ({}))).message || "Server error");
 
-      const reader = response.body.getReader()
-      const decoder = new TextDecoder()
-      let fullResponse = ""
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let fullResponse = "";
 
       while (true) {
-        const { done, value } = await reader.read()
+        const { done, value } = await reader.read();
         if (done) {
-          setLoading(false)
-          toast.success("Molecule generated successfully!")
-          await fetchAllMolecules()
-          setFormData({ smilesoffirst: "", smilesofsecond: "", newmoleculetitle: "" })
-          break
+          setLoading(false);
+          toast.success("Molecule generated successfully!");
+          await fetchAllMolecules();
+          setFormData({ smilesoffirst: "", smilesofsecond: "", newmoleculetitle: "" });
+          setSearchFirst("");
+          setSearchSecond("");
+          setFormattedOutput(formatOutput(fullResponse));
+          break;
         }
         const chunk = decoder
           .decode(value)
           .split("\n")
           .map((line) => line.replace(/^data:\s*/, "").trim())
           .filter((line) => line && line !== "[DONE]")
-          .join(" ")
-        fullResponse += chunk + " "
-        setRealTimeOutput(fullResponse)
+          .join(" ");
+        fullResponse += chunk + " ";
+        setRealTimeOutput(fullResponse);
       }
     } catch (err) {
-      console.error("Generate error:", err)
-      setError(err.message || "Failed to generate molecule.")
-      setLoading(false)
+      console.error("Generate error:", err);
+      setError(err.message || "Failed to generate molecule.");
+      setLoading(false);
     }
-  }
+  };
 
   const handleCopySmiles = (smiles) => {
     if (!smiles || smiles === "Not available") {
-      toast.error("No SMILES available to copy.")
-      return
+      toast.error("No SMILES available to copy.");
+      return;
     }
     navigator.clipboard
       .writeText(smiles)
       .then(() => toast.success("SMILES copied!"))
-      .catch((err) => toast.error("Copy failed: " + err.message))
-  }
+      .catch((err) => toast.error("Copy failed: " + err.message));
+  };
 
-  const toggleInfo = (id) => setExpandedInfoId(expandedInfoId === id ? null : id)
+  const toggleInfo = (id) => setExpandedInfoId(expandedInfoId === id ? null : id);
 
   const exportToPDF = (molecule) => {
-    const doc = new jsPDF()
-    const margin = 20
-    const maxWidth = doc.internal.pageSize.width - 2 * margin
-    let y = margin
+    const doc = new jsPDF();
+    const margin = 20;
+    const maxWidth = doc.internal.pageSize.width - 2 * margin;
+    let y = margin;
 
     const addText = (text, size, bold = false) => {
-      doc.setFontSize(size)
-      doc.setFont(undefined, bold ? "bold" : "normal")
-      const lines = doc.splitTextToSize(text, maxWidth)
+      doc.setFontSize(size);
+      doc.setFont(undefined, bold ? "bold" : "normal");
+      const lines = doc.splitTextToSize(text, maxWidth);
       lines.forEach((line) => {
         if (y + size / 2 > doc.internal.pageSize.height - margin) {
-          doc.addPage()
-          y = margin
+          doc.addPage();
+          y = margin;
         }
-        doc.text(line, margin, y)
-        y += size / 2 + 2
-      })
-    }
+        doc.text(line, margin, y);
+        y += size / 2 + 2;
+      });
+    };
 
-    addText("Molecule Details", 16, true)
-    addText(`Title: ${molecule.newmoleculetitle}`, 12)
-    addText(`SMILES: ${molecule.newSmiles || "Not available"}`, 12)
-    addText(`IUPAC Name: ${molecule.newIupacName || "Not available"}`, 12)
-    addText(`Created: ${new Date(molecule.created).toLocaleString()}`, 12)
-    addText("Information:", 12, true)
-    addText(molecule.information || "No information available", 10)
+    addText("Molecule Details", 16, true);
+    addText(`Title: ${molecule.newmoleculetitle}`, 12);
+    addText(`SMILES: ${molecule.newSmiles || "Not available"}`, 12);
+    addText(`IUPAC Name: ${molecule.newIupacName || "Not available"}`, 12);
+    addText(`Created: ${new Date(molecule.created).toLocaleString()}`, 12);
+    addText("Information:", 12, true);
 
-    doc.save(`${molecule.newmoleculetitle}_details.pdf`)
-  }
+    const formattedInfo = formatMoleculeInfo(molecule.information);
+    formattedInfo.sections.forEach(section => {
+      addText(section.title + ":", 10, true);
+      section.points.forEach(point => {
+        addText(`- ${point}`, 10);
+      });
+    });
+
+    doc.save(`${molecule.newmoleculetitle}_details.pdf`);
+  };
 
   if (checkingAuth) {
     return (
@@ -162,7 +320,7 @@ const ProteinStructureEvolution = () => {
           Verifying Authentication...
         </div>
       </div>
-    )
+    );
   }
 
   if (!user) {
@@ -179,7 +337,7 @@ const ProteinStructureEvolution = () => {
           </a>
         </div>
       </div>
-    )
+    );
   }
 
   return (
@@ -218,7 +376,7 @@ const ProteinStructureEvolution = () => {
               Generate New Molecule
             </h2>
             <p className="text-slate-500 text-sm mt-1">
-              Enter SMILES notation for two molecules to generate a new hybrid molecule
+              Search for molecules by name to fetch SMILES from PubChem or enter SMILES manually
             </p>
           </div>
 
@@ -241,34 +399,96 @@ const ProteinStructureEvolution = () => {
                 />
               </div>
 
-              <div className="grid gap-2">
-                <label htmlFor="smilesoffirst" className="text-sm font-medium text-slate-700">
-                  SMILES of First Molecule
+              {/* First Molecule Search */}
+              <div className="grid gap-2 relative">
+                <label htmlFor="searchFirst" className="text-sm font-medium text-slate-700">
+                  Search First Molecule
                 </label>
+                <div className="relative">
+                  <input
+                    id="searchFirst"
+                    type="text"
+                    value={searchFirst}
+                    onChange={(e) => handleSearchChange(e, "first")}
+                    placeholder="Search molecule by name (e.g., Aspirin)"
+                    disabled={loading}
+                    className="w-full p-3 pl-10 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 transition bg-white"
+                  />
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
+                </div>
+                {loadingSuggestions.first && (
+                  <div className="absolute top-full left-0 w-full bg-white border border-slate-200 rounded-b-lg shadow-md p-2 z-10">
+                    <Loader2 className="h-4 w-4 animate-spin mx-auto" />
+                  </div>
+                )}
+                {suggestionsFirst.length > 0 && !loadingSuggestions.first && (
+                  <ul className="absolute top-full left-0 w-full bg-white border border-slate-200 rounded-b-lg shadow-md max-h-40 overflow-auto z-10">
+                    {suggestionsFirst.map((suggestion, index) => (
+                      <li
+                        key={index}
+                        onClick={() => handleSuggestionSelect(suggestion, "first")}
+                        className="px-3 py-2 text-sm text-slate-700 hover:bg-emerald-50 cursor-pointer"
+                      >
+                        {suggestion}
+                      </li>
+                    ))}
+                  </ul>
+                )}
                 <input
                   id="smilesoffirst"
                   name="smilesoffirst"
                   type="text"
                   value={formData.smilesoffirst}
                   onChange={handleInputChange}
-                  placeholder="Enter SMILES notation for the first molecule"
+                  placeholder="SMILES will be auto-filled or enter manually"
                   disabled={loading}
                   required
                   className="w-full p-3 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 transition bg-white font-mono text-sm"
                 />
               </div>
 
-              <div className="grid gap-2">
-                <label htmlFor="smilesofsecond" className="text-sm font-medium text-slate-700">
-                  SMILES of Second Molecule
+              {/* Second Molecule Search */}
+              <div className="grid gap-2 relative">
+                <label htmlFor="searchSecond" className="text-sm font-medium text-slate-700">
+                  Search Second Molecule
                 </label>
+                <div className="relative">
+                  <input
+                    id="searchSecond"
+                    type="text"
+                    value={searchSecond}
+                    onChange={(e) => handleSearchChange(e, "second")}
+                    placeholder="Search molecule by name (e.g., Ibuprofen)"
+                    disabled={loading}
+                    className="w-full p-3 pl-10 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 transition bg-white"
+                  />
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
+                </div>
+                {loadingSuggestions.second && (
+                  <div className="absolute top-full left-0 w-full bg-white border border-slate-200 rounded-b-lg shadow-md p-2 z-10">
+                    <Loader2 className="h-4 w-4 animate-spin mx-auto" />
+                  </div>
+                )}
+                {suggestionsSecond.length > 0 && !loadingSuggestions.second && (
+                  <ul className="absolute top-full left-0 w-full bg-white border border-slate-200 rounded-b-lg shadow-md max-h-40 overflow-auto z-10">
+                    {suggestionsSecond.map((suggestion, index) => (
+                      <li
+                        key={index}
+                        onClick={() => handleSuggestionSelect(suggestion, "second")}
+                        className="px-3 py-2 text-sm text-slate-700 hover:bg-emerald-50 cursor-pointer"
+                      >
+                        {suggestion}
+                      </li>
+                    ))}
+                  </ul>
+                )}
                 <input
                   id="smilesofsecond"
                   name="smilesofsecond"
                   type="text"
                   value={formData.smilesofsecond}
                   onChange={handleInputChange}
-                  placeholder="Enter SMILES notation for the second molecule"
+                  placeholder="SMILES will be auto-filled or enter manually"
                   disabled={loading}
                   required
                   className="w-full p-3 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 transition bg-white font-mono text-sm"
@@ -298,8 +518,27 @@ const ProteinStructureEvolution = () => {
                 <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
                 <h3 className="text-sm font-medium text-slate-700">Live Output</h3>
               </div>
-              <div className="h-64 w-full overflow-auto rounded-md border border-slate-200 bg-slate-50 p-4">
-                <div className="text-sm text-slate-700 whitespace-pre-wrap font-mono">{realTimeOutput}</div>
+              <div className="h-96 w-full overflow-auto rounded-md border border-slate-200 bg-slate-50 p-4">
+                {formattedOutput ? (
+                  <div className="text-sm text-slate-700">
+                    {formattedOutput.sections.map((section, index) => (
+                      <div key={index} className="mb-4">
+                        <h4 className="text-base font-semibold text-slate-800 mb-2">{section.title}</h4>
+                        <ul className="list-disc pl-5 space-y-1">
+                          {section.points.map((point, idx) => (
+                            <li key={idx} className="text-sm text-slate-600">
+                              {point}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-sm text-slate-700 whitespace-pre-wrap font-mono">
+                    {realTimeOutput}
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -390,9 +629,24 @@ const ProteinStructureEvolution = () => {
                         {expandedInfoId === molecule.id && (
                           <>
                             <div className="h-[1px] w-full bg-slate-200 my-3" />
-                            <div className="h-48 w-full overflow-auto rounded-md bg-slate-50 p-3">
-                              <div className="text-sm text-slate-700 whitespace-pre-wrap">
-                                {molecule.information || "No information available for this molecule."}
+                            <div className="h-96 w-full overflow-auto rounded-md bg-slate-50 p-3">
+                              <div className="text-sm text-slate-700">
+                                {formatMoleculeInfo(molecule.information) ? (
+                                  formatMoleculeInfo(molecule.information).sections.map((section, index) => (
+                                    <div key={index} className="mb-4">
+                                      <h4 className="text-base font-semibold text-slate-800 mb-2">{section.title}</h4>
+                                      <ul className="list-disc pl-5 space-y-1">
+                                        {section.points.map((point, idx) => (
+                                          <li key={idx} className="text-sm text-slate-600">
+                                            {point}
+                                          </li>
+                                        ))}
+                                      </ul>
+                                    </div>
+                                  ))
+                                ) : (
+                                  <p>No information available for this molecule.</p>
+                                )}
                               </div>
                             </div>
                           </>
@@ -407,8 +661,7 @@ const ProteinStructureEvolution = () => {
         </div>
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default ProteinStructureEvolution
-
+export default ProteinStructureEvolution;
