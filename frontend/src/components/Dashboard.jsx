@@ -1,8 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useAuthStore } from '../Store/auth.store.js';
 import { Outlet, Link, useNavigate } from 'react-router-dom';
-import { UserPlus, LogIn, LogOut, Menu, ChevronRight, Activity, Settings, Home, Layers, Dna, DollarSign, FileText, Target, Pill, Newspaper, MessageSquare, X } from 'lucide-react';
+import { UserPlus, LogIn, LogOut, Menu, ChevronRight, Activity, Settings, Home, Layers, Dna, DollarSign, FileText, Target, Pill, Newspaper, MessageSquare, X, Torus } from 'lucide-react';
 import { toast, Toaster } from 'react-hot-toast';
+import ToxicityPrediction from '../pages/ToxicityPrediction/ToxicityPrediction.jsx';
 
 function DashboardPage() {
   const { user, logout } = useAuthStore();
@@ -92,6 +93,13 @@ function DashboardPage() {
       name: 'Live News', 
       icon: <Newspaper size={20} className="mr-3" />,
       navigation: () => navigate('/dashboard/live-news'), 
+      roles: ['admin', 'citizen', 'guest']
+    },
+
+    { 
+      name: 'Toxicity Prediction', 
+      icon: <Torus size={20} className="mr-3" />,
+      navigation: () => navigate('/dashboard/ToxicityPrediction'), 
       roles: ['admin', 'citizen', 'guest']
     },
    
