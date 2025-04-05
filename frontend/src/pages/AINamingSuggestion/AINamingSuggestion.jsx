@@ -1,4 +1,3 @@
-// src/components/AINamingSuggestion.jsx
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { toast } from "react-hot-toast";
@@ -88,11 +87,12 @@ const AINamingSuggestion = () => {
 
     const nameExists = await checkIfNameExists(selectedTitle, selectedSmiles);
     if (nameExists) {
-      toast("A drug name for this molecule already exists. Redirecting to Saved Names.", {
-        type: "info",
-      });
-      setActiveTab("saved");
-      return;
+      const savedName = savedNames.find(n => n.moleculeTitle === selectedTitle && n.smiles === selectedSmiles);
+      if (savedName?.status === "accepted") {
+        toast("An accepted drug name already exists for this molecule.", { type: "info" });
+        setActiveTab("saved");
+        return;
+      }
     }
 
     setLoading(true);
@@ -107,15 +107,13 @@ const AINamingSuggestion = () => {
       });
 
       if (response.status === 409) {
-        toast("Drug name already generated. Redirecting to Saved Names.", { type: "info" });
+        toast("An accepted drug name already exists. Redirecting to Saved Names.", { type: "info" });
         setActiveTab("saved");
         return;
       }
 
-      console.log("Gemini API response:", response.data); // Debug log
       setSuggestedNames(response.data.allCandidates);
       setFallbackMessage(response.data.fallback);
-      await fetchSavedNames(); // Refresh saved names (only top candidate is saved)
       toast.success("Drug names generated successfully!");
     } catch (err) {
       console.error("Error generating drug name:", err);
@@ -126,20 +124,68 @@ const AINamingSuggestion = () => {
     }
   };
 
-  const handleTabChange = (tab) => {
+  const handleAcceptName = async (candidate) => {
+    const confirm = window.confirm(
+      `By accepting "${candidate.name}", this name will become the final title for this molecule across the database and cannot be changed later. Proceed?`
+    );
+    if (!confirm) return;
+
+    setLoading(true);
+    try {
+      const response = await axiosInstance.post(`/protein/accept-drug-name/${user._id}`, {
+        moleculeTitle: selectedTitle,
+        smiles: selectedSmiles,
+        selectedName: candidate.name,
+        rationale: candidate.rationale,
+        compliance: candidate.compliance,
+      });
+
+      toast.success("Drug name accepted and molecule title updated!");
+      setSuggestedNames([]);
+      setSelectedTitle(candidate.name); // Update local state
+      await fetchAllMolecules(); // Refresh molecule list
+      await fetchSavedNames(); // Refresh saved names
+    } catch (err) {
+      console.error("Error accepting drug name:", err);
+      setError(err.response?.data?.message || "Failed to accept drug name");
+      toast.error("Failed to accept drug name");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRejectName = () => {
+    setSuggestedNames([]);
+    toast.success("Generated names rejected. You can generate new ones.");
+  };
+
+  const handleTabChange = async (tab) => {
+    if (activeTab === "generate" && suggestedNames.length > 0) {
+      // Save as pending if switching tabs without accepting/rejecting
+      try {
+        await axiosInstance.post(`/protein/save-pending-drug-name/${user._id}`, {
+          moleculeTitle: selectedTitle,
+          smiles: selectedSmiles,
+          candidates: suggestedNames,
+        });
+        toast("Generated names saved as pending.", { type: "info" });
+      } catch (err) {
+        console.error("Error saving pending drug name:", err);
+        toast.error("Failed to save pending drug name");
+      }
+    }
     setActiveTab(tab);
     setSuggestedNames([]);
     setError(null);
     setFallbackMessage(null);
   };
 
-  // Helper function to safely convert compliance to a string and check for "fail"
   const getComplianceText = (compliance) => {
     if (typeof compliance === "string") return compliance;
     if (compliance && typeof compliance === "object") {
-      return compliance.status || JSON.stringify(compliance); // Fallback to stringified object
+      return compliance.status || JSON.stringify(compliance);
     }
-    return "Unknown"; // Default if undefined or invalid
+    return "Unknown";
   };
 
   const isComplianceFail = (compliance) => {
@@ -286,6 +332,22 @@ const AINamingSuggestion = () => {
                             {getComplianceText(candidate.compliance)}
                           </p>
                         </div>
+                        <div className="mt-4 flex space-x-4">
+                          <button
+                            onClick={() => handleAcceptName(candidate)}
+                            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                            disabled={loading}
+                          >
+                            Accept
+                          </button>
+                          <button
+                            onClick={handleRejectName}
+                            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                            disabled={loading}
+                          >
+                            Reject
+                          </button>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -295,9 +357,6 @@ const AINamingSuggestion = () => {
                       <p className="text-yellow-600">{fallbackMessage}</p>
                     </div>
                   )}
-                  <p className="mt-4 text-sm text-gray-600">
-                    Note: The top-ranked name (Rank 1) has been saved automatically.
-                  </p>
                 </div>
               )}
             </>
@@ -326,9 +385,41 @@ const AINamingSuggestion = () => {
                           <p className="text-gray-700">{drugName.namingDetails}</p>
                         </div>
                         <div>
+                          <p className="text-sm text-gray-600">Status</p>
+                          <p className={`text-gray-700 ${drugName.status === "accepted" ? "text-green-600" : "text-yellow-600"}`}>
+                            {drugName.status.charAt(0).toUpperCase() + drugName.status.slice(1)}
+                          </p>
+                        </div>
+                        <div>
                           <p className="text-sm text-gray-600">Created</p>
                           <p className="text-gray-700">{new Date(drugName.createdAt).toLocaleString()}</p>
                         </div>
+                        {drugName.status === "pending" && (
+                          <div className="mt-4 flex space-x-4">
+                            <button
+                              onClick={() => handleAcceptName({
+                                name: drugName.suggestedName,
+                                rationale: drugName.namingDetails.split(" | Compliance: ")[0],
+                                compliance: drugName.namingDetails.split(" | Compliance: ")[1],
+                              })}
+                              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                              disabled={loading}
+                            >
+                              Accept
+                            </button>
+                            <button
+                              onClick={async () => {
+                                await axiosInstance.delete(`/protein/delete-drug-name/${drugName._id}`);
+                                toast.success("Pending name rejected and removed.");
+                                await fetchSavedNames();
+                              }}
+                              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                              disabled={loading}
+                            >
+                              Reject
+                            </button>
+                          </div>
+                        )}
                       </div>
                     </div>
                   ))}

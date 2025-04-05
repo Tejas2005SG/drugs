@@ -19,9 +19,12 @@ import {
   checkSavedSearches,
   generateDrugName,
   getSavedDrugNames,
-  checkSavedDrugName, // New controller for checking if a search exists
+  checkSavedDrugName,
+  acceptDrugName,
+  savePendingDrugName, // New controller for checking if a search exists
 } from "../controllers/proteinstructure.controller.js";
 import { protectRoute } from "../middleware/auth.middleware.js";
+import drugName from "../models/drugName.js";
 
 const router = express.Router();
 
@@ -52,6 +55,17 @@ router.get("/check-saved-searches", protectRoute, checkSavedSearches); // Check 
 
 // ai-naming
 router.post("/generate-drug-name/:id", protectRoute, generateDrugName);
+router.post("/accept-drug-name/:id", protectRoute, acceptDrugName);
+router.post("/save-pending-drug-name/:id", protectRoute, savePendingDrugName);
 router.get("/saved-drug-names", protectRoute, getSavedDrugNames);
 router.get("/check-saved-drug-name", protectRoute, checkSavedDrugName);
+router.delete("/delete-drug-name/:id", protectRoute, async (req, res) => {
+  try {
+    const drugNameId = req.params.id;
+    await drugName.findByIdAndDelete(drugNameId);
+    res.status(200).json({ message: "Drug name deleted successfully" });
+  } catch (error) {
+    res.status(500).json({ message: "Error deleting drug name", error: error.message });
+  }
+});
 export default router;
