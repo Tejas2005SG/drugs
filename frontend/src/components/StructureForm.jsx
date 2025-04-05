@@ -1,29 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import debounce from 'lodash/debounce'; // Optional: Install lodash for debouncing
 
 const StructureForm = ({ onSubmit, loading }) => {
-  // Define a mapping of drug names to SMILES strings
-  const drugSmilesMap = {
-    Lisuride: '[H][C@@]12Cc3c[nH]c4cccc(C1=C[C@H](NC(=O)N(CC)CC)CN2C)c34',
-    Lenalidomide: 'Nc1cc2c(c(c1)C(=O)N[C@@H]3CCc4c(c(c(c(c4)C3)O)O)O)CC(=O)NC2=O',
-    Ensitrelvir: 'CC1=NC(=NN1C)CN2C(=O)N(C(=O)C2(C)C)CC3=NC(=C(C=C3)Cl)NC4=NC=C(C=C4)F',
-    Ibuprofen: 'CC(C)CC1=CC=C(C=C1)C(C)C(=O)O',
-    Floxuridine: 'OC[C@H]1O[C@H](C[C@@H]1O)n2cc(F)c(=O)[nH]c2=O',
-    Leflunomide: 'CC1=C(C(=O)NC2=CC=C(C=C2)OC(F)(F)F)C=NO1',
-    Tolnaftate: 'CC1=CC=C(C=C1)N(C)C(=S)OC2=C3C=CC=CC3=CC=C2',
-    Ifenprodil: 'CC(C)(C1=CC=C(C=C1)O)CCN2CC(C2)C(C3=CC=CC=C3)O',
-    Amoxicillin: 'CC1(C(N2C(S1)[C@@H](C2=O)NC(=O)[C@@H](C3=CC=C(C=C3)O)N)C(=O)O)C',
-    Donepezil: 'CC1=CC2=C(C=C1)CC(C2=O)CN3CC4=CC=CC=C4C(C3)CC5=CC=CC=C5',
-    Lovastatin: 'CC(C)C1=C[C@H](C[C@@H](O1)CC[C@H]2[C@@H]3CC[C@H]([C@]3(CCC2=O)C)OC(=O)[C@H](C)CC)C',
-    Iloperidone: 'CC1=CC2=C(C=C1OC)SC3=C(C(=O)C(CN4CCN(CC4)CCC5=CC=C(C=C5)F)=C(N3)C)O2',
-    Dicloxacillin: 'CC1=C(C(=NO1)C2=CC=CC=C2Cl)C(=O)N[C@H]3[C@@H]4N(C3=O)[C@H](C(S4)(C)C)C(=O)O',
-    Caffeine: 'CN1C(=O)N(C)C2=C1N=C(N(C2=O)C)N',
-    Aspirin: 'CC(=O)OC1=CC=CC=C1C(=O)O',
-  };
-
   const [formData, setFormData] = useState({
     name: '',
     smiles: '',
-    algorithm: 'CMA-ES', // Default to CMA-ES
+    algorithm: 'CMA-ES',
     numMolecules: 30,
     propertyName: 'QED',
     minimize: false,
@@ -32,22 +14,71 @@ const StructureForm = ({ onSubmit, loading }) => {
     iterations: 10,
   });
 
+  const [suggestions, setSuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+
+  // Fetch suggestions from PubChem based on input
+  const fetchSuggestions = async (query) => {
+    if (!query) {
+      setSuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        `https://pubchem.ncbi.nlm.nih.gov/rest/autocomplete/compound/${encodeURIComponent(query)}/json`
+      );
+      const data = await response.json();
+      if (data.dictionary_terms && data.dictionary_terms.compound) {
+        setSuggestions(data.dictionary_terms.compound.slice(0, 5)); // Limit to 5 suggestions
+        setShowSuggestions(true);
+      } else {
+        setSuggestions([]);
+        setShowSuggestions(false);
+      }
+    } catch (error) {
+      console.error('Error fetching suggestions:', error);
+      setSuggestions([]);
+      setShowSuggestions(false);
+    }
+  };
+
+  // Debounce the fetchSuggestions function to avoid too many API calls
+  const debouncedFetchSuggestions = debounce(fetchSuggestions, 300);
+
+  // Handle input change for the name field
+  const handleNameChange = (e) => {
+    const value = e.target.value;
+    setFormData({ ...formData, name: value, smiles: '' }); // Reset SMILES when typing
+    debouncedFetchSuggestions(value);
+  };
+
+  // Fetch SMILES from PubChem when a suggestion is selected
+  const handleSuggestionSelect = async (selectedName) => {
+    try {
+      const response = await fetch(
+        `https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name/${encodeURIComponent(selectedName)}/property/CanonicalSMILES/JSON`
+      );
+      const data = await response.json();
+      if (data.PropertyTable && data.PropertyTable.Properties[0]) {
+        const smiles = data.PropertyTable.Properties[0].CanonicalSMILES;
+        setFormData({ ...formData, name: selectedName, smiles });
+      } else {
+        setFormData({ ...formData, name: selectedName, smiles: '' });
+      }
+    } catch (error) {
+      console.error('Error fetching SMILES:', error);
+      setFormData({ ...formData, name: selectedName, smiles: '' });
+    }
+    setShowSuggestions(false);
+  };
+
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     setFormData({
       ...formData,
       [name]: type === 'checkbox' ? checked : value,
-    });
-  };
-
-  // Handle drug selection from dropdown
-  const handleDrugSelect = (e) => {
-    const selectedDrug = e.target.value;
-    const smiles = drugSmilesMap[selectedDrug] || ''; // Default to empty if not found
-    setFormData({
-      ...formData,
-      name: selectedDrug, // Optionally set the name to the drug name
-      smiles: smiles, // Update the SMILES string
     });
   };
 
@@ -58,22 +89,33 @@ const StructureForm = ({ onSubmit, loading }) => {
 
   return (
     <form onSubmit={handleSubmit}>
-      <div className="mb-4">
+      <div className="mb-4 relative">
         <label className="block text-gray-700 text-sm font-bold mb-2">
           Structure Name
         </label>
-        <select
+        <input
           className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-          onChange={handleDrugSelect}
-          value={formData.name || ''} // Bind to formData.name
-        >
-          <option value="">Select a drug...</option>
-          {Object.keys(drugSmilesMap).map((drug) => (
-            <option key={drug} value={drug}>
-              {drug}
-            </option>
-          ))}
-        </select>
+          name="name"
+          type="text"
+          placeholder="e.g., Ibuprofen"
+          value={formData.name}
+          onChange={handleNameChange}
+          onFocus={() => setShowSuggestions(true)}
+          autoComplete="off"
+        />
+        {showSuggestions && suggestions.length > 0 && (
+          <ul className="absolute z-10 bg-white border rounded w-full mt-1 max-h-40 overflow-auto">
+            {suggestions.map((suggestion) => (
+              <li
+                key={suggestion}
+                className="px-3 py-2 hover:bg-gray-200 cursor-pointer"
+                onClick={() => handleSuggestionSelect(suggestion)}
+              >
+                {suggestion}
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
 
       <div className="mb-4">
@@ -83,13 +125,15 @@ const StructureForm = ({ onSubmit, loading }) => {
         <textarea
           className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
           name="smiles"
-          placeholder="e.g., [H][C@@]12Cc3c[nH]c4cccc(C1=C[C@H](NC(=O)N(CC)CC)CN2C)c34"
+          placeholder="SMILES will be auto-filled after selecting a compound"
           value={formData.smiles}
           onChange={handleChange}
           rows="3"
           required
         />
-        <p className="text-xs text-gray-500 mt-1">Enter the SMILES representation of your molecule</p>
+        <p className="text-xs text-gray-500 mt-1">
+          SMILES will be fetched from PubChem or enter manually
+        </p>
       </div>
 
       <div className="grid grid-cols-2 gap-4 mb-4">

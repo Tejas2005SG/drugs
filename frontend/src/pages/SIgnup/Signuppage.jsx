@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../Store/auth.store.js';
+import toast from 'react-hot-toast';
 
 function Signuppage() {
   const [formData, setFormData] = useState({
@@ -8,10 +9,9 @@ function Signuppage() {
     lastName: '',
     username: '',
     email: '',
+    phoneNumber: '',
     password: '',
     confirmPassword: '',
-    // institution: '', // Added institution field
-    // researchField: '', // Added research field
   });
 
   const { signup, loading } = useAuthStore();
@@ -19,12 +19,58 @@ function Signuppage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    await signup({
-      ...formData,
-      confirmPassword: formData.confirmPassword,
-    });
-    if (useAuthStore.getState().user) {
-      navigate('/dashboard');
+
+    // Validate all required fields
+    if (!formData.firstName || !formData.lastName || !formData.username || 
+        !formData.email || !formData.phoneNumber || !formData.password || 
+        !formData.confirmPassword) {
+      toast.error("All fields are required");
+      return;
+    }
+
+    // Validate password match
+    if (formData.password !== formData.confirmPassword) {
+      toast.error("Passwords do not match");
+      return;
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email)) {
+      toast.error("Please enter a valid email address");
+      return;
+    }
+
+    // Validate phone number format (international, E.164 standard)
+    const phoneRegex = /^\+?[1-9]\d{1,14}$/;
+    if (!phoneRegex.test(formData.phoneNumber)) {
+      toast.error("Please enter a valid phone number in international format (e.g., +911234567890)");
+      return;
+    }
+
+    try {
+      await signup({
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        username: formData.username,
+        email: formData.email,
+        phoneNumber: formData.phoneNumber,
+        password: formData.password,
+        confirmPassword: formData.confirmPassword,
+      });
+
+      toast.success("Signup successful! Please verify your OTP");
+      navigate('/verifyotp');
+
+    } catch (error) {
+      const errorMessage = error.response?.data?.message || "Signup failed. Please try again.";
+      
+      if (error.response?.status === 400 && errorMessage.includes("User already exists")) {
+        toast.error("User already exists. Redirecting to login...");
+        setTimeout(() => navigate("/login"), 2000);
+      } else {
+        toast.error(errorMessage);
+      }
     }
   };
 
@@ -38,8 +84,19 @@ function Signuppage() {
         <div className="text-center">
           <div className="flex justify-center mb-4">
             <div className="bg-blue-100 p-3 rounded-full">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-10 w-10 text-blue-600"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"
+                />
               </svg>
             </div>
           </div>
@@ -98,7 +155,7 @@ function Signuppage() {
               onChange={handleChange}
               placeholder="Researcher123"
             />
-          </div> 
+          </div>
 
           <div>
             <label htmlFor="email" className="block text-sm font-medium text-gray-700">
@@ -116,43 +173,22 @@ function Signuppage() {
             />
           </div>
 
-          {/* <div>
-            <label htmlFor="institution" className="block text-sm font-medium text-gray-700">
-              Institution
+          <div>
+            <label htmlFor="phoneNumber" className="block text-sm font-medium text-gray-700">
+              Phone Number
             </label>
             <input
-              id="institution"
-              name="institution"
-              type="text"
+              id="phoneNumber"
+              name="phoneNumber"
+              type="tel"
               required
               className="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              value={formData.institution}
+              value={formData.phoneNumber}
               onChange={handleChange}
-              placeholder="University of Science"
+              placeholder="+911234567890"
             />
-          </div> */}
-
-          {/* <div>
-            <label htmlFor="researchField" className="block text-sm font-medium text-gray-700">
-              Research Field
-            </label>
-            <select
-              id="researchField"
-              name="researchField"
-              required
-              className="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              value={formData.researchField}
-              onChange={handleChange}
-            >
-              <option value="">Select your field</option>
-              <option value="Bioinformatics">Bioinformatics</option>
-              <option value="Medicinal Chemistry">Medicinal Chemistry</option>
-              <option value="Molecular Biology">Molecular Biology</option>
-              <option value="Pharmacology">Pharmacology</option>
-              <option value="Structural Biology">Structural Biology</option>
-              <option value="Other">Other</option>
-            </select>
-          </div> */}
+            <p className="mt-1 text-xs text-gray-500">Include country code (e.g., +91 for India)</p>
+          </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
@@ -197,7 +233,14 @@ function Signuppage() {
               className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
             />
             <label htmlFor="terms" className="ml-2 block text-sm text-gray-700">
-              I agree to the <a href="#" className="text-blue-600 hover:text-blue-500">Terms of Research</a> and <a href="#" className="text-blue-600 hover:text-blue-500">Privacy Policy</a>
+              I agree to the{' '}
+              <a href="#" className="text-blue-600 hover:text-blue-500">
+                Terms of Research
+              </a>{' '}
+              and{' '}
+              <a href="#" className="text-blue-600 hover:text-blue-500">
+                Privacy Policy
+              </a>
             </label>
           </div>
 
@@ -208,14 +251,30 @@ function Signuppage() {
           >
             {loading ? (
               <>
-                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                <svg
+                  className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  ></circle>
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  ></path>
                 </svg>
-                Registering...
+                Sending OTP...
               </>
             ) : (
-              'Create Research Account'
+              'Send OTP'
             )}
           </button>
 

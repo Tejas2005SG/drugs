@@ -8,6 +8,7 @@ import Navbar from './components/Navbar.jsx';
 import Homepage from './pages/Homepage/Homepage.jsx';
 import Signup from './pages/SIgnup/Signuppage.jsx';
 import Login from './pages/Login/Loginpage.jsx';
+import VerifyPhone from './pages/VerifyPhone/VerifyPhone.jsx'
 import Dashboard from './components/Dashboard.jsx';
 import DashboardHome from './components/Dashboardhome.jsx';
 import ProteinStructureEvolution from './pages/Protienstructureevolution/Protienstructureevolution.jsx';
@@ -37,6 +38,7 @@ function App() {
         <Route path="/" element={<Homepage />} />
         <Route path="/signup" element={<Signup />} />
         <Route path="/login" element={<Login />} />
+        <Route path="/verifyotp" element={<VerifyPhone />} />
         <Route path='/dashboard' element={
           <ProtectedRoute>
             <Dashboard />
