@@ -16,11 +16,12 @@ import ProteinStructureApp from './pages/Proteinstructureapp/ProteinStructureApp
 import AIResearchPaperGenerator from "./pages/AIresearchgenerator/Airesearchgenerator.jsx";
 import AIDrivenTargetPrediction from "./pages/AIdriventargetprediction/AIdriventargetprediction.jsx";
 import Costestimation from "./pages/Costestimination/Costestimination.jsx";
-import DrugDiscoveryRecommendation from "./pages/Drugdiscoveryrecommendation/Drugdiscoveryrecommendation.jsx";
+import DrugDiscoveryRecommendation from "./pages/ToxicityPrediction/ToxicityPrediction.jsx";
 import LiveNews from "./pages/Livenews/Livenews.jsx";
 // import Message from "./pages/Message/Message.jsx";
 import GetAlphaFoldStructure from "./pages/Alphafold/Alphafold.jsx"
 import AINamingSuggestion from './pages/AINamingSuggestion/AINamingSuggestion.jsx';
+import ToxicityPrediction from './pages/ToxicityPrediction/ToxicityPrediction.jsx';
 // import Toxicityprediction from './pages/Toxicityprediction/Toxicityprediction.jsx';
 
 const ProtectedRoute = ({ children }) => {
@@ -120,7 +121,14 @@ function App() {
             }
           />
 
-
+<Route
+            path="toxicityPrediction"
+            element={
+              <ProtectedRoute>
+                <ToxicityPrediction />
+              </ProtectedRoute>
+            }
+          />
 
         </Route>
 
