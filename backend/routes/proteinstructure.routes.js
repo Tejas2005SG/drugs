@@ -30,6 +30,8 @@ router.get("/getproteinstructure/:id", protectRoute, getProteinStructure);
 router.post("/postproteinstructure/:id", protectRoute, postProteinStructure);
 router.post("/generatenewmolecule/:id", protectRoute, generatenewmolecule);
 router.get("/generatednewmolecule", protectRoute, getgeneratednewmolecule);
+
+// research paper
 router.post("/proxy/gemini", proxyGeminiRequest);
 router.post("/save-research-papers", protectRoute, saveResearchPapers);
 router.get("/saved-research-papers", protectRoute, getSavedResearchPapers);

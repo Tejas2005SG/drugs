@@ -875,200 +875,270 @@ You are a pharmaceutical chemistry expert tasked with analyzing a drug molecule 
 
 
 
+// Basic SMILES validation
+const validateSmiles = (smiles) => {
+  const smilesRegex = /^[A-Za-z0-9@+\-\[\]()=:#$%]+$/;
+  return smiles && smiles.length > 0 && smiles.length < 500 && smilesRegex.test(smiles);
+};
+
+// Enhanced chemical analysis function
+const analyzeReactivity = (smiles) => {
+  const analysis = {
+    nucleophiles: [],
+    electrophiles: [],
+    aromaticRings: 0,
+    reactiveSites: 0,
+    stericHindrance: 'low',
+  };
+  analysis.aromaticRings = (smiles.match(/c/g) || []).length / 2;
+  const groups = {
+    'COOH': { type: 'electrophile', reactivity: 'high', description: 'Carboxylic acid' },
+    'C(=O)O': { type: 'electrophile', reactivity: 'high', description: 'Ester or acid derivative' },
+    'NH2': { type: 'nucleophile', reactivity: 'high', description: 'Primary amine' },
+    'OH': { type: 'nucleophile', reactivity: 'medium', description: 'Hydroxyl group' },
+    'C=O': { type: 'electrophile', reactivity: 'medium', description: 'Carbonyl (ketone/aldehyde)' },
+    'Cl': { type: 'electrophile', reactivity: 'high', description: 'Halide (potential leaving group)' },
+    'Br': { type: 'electrophile', reactivity: 'high', description: 'Bromide (potential leaving group)' },
+    'C=C': { type: 'electrophile', reactivity: 'medium', description: 'Alkene (for addition reactions)' },
+  };
+  Object.entries(groups).forEach(([pattern, props]) => {
+    if (new RegExp(pattern).test(smiles)) {
+      if (props.type === 'nucleophile') {
+        analysis.nucleophiles.push({ pattern, ...props });
+        analysis.reactiveSites++;
+      } else if (props.type === 'electrophile') {
+        analysis.electrophiles.push({ pattern, ...props });
+        analysis.reactiveSites++;
+      }
+    }
+  });
+  analysis.stericHindrance = analysis.aromaticRings > 2 ? 'high' : analysis.reactiveSites > 3 ? 'medium' : 'low';
+  return analysis;
+};
+
+// Reaction prediction logic with more rules
+const predictReaction = async (smiles1, smiles2) => {
+  const analysis1 = analyzeReactivity(smiles1);
+  const analysis2 = analyzeReactivity(smiles2);
+
+  const reactionRules = [
+    {
+      name: 'Esterification',
+      condition: (a1, a2) => a1.electrophiles.some(e => e.pattern === 'COOH') && a2.nucleophiles.some(n => n.pattern === 'OH'),
+      product: (s1, s2) => `${s1.replace('COOH', 'C(=O)O')}${s2.replace('OH', '')}`,
+      details: 'Esterification: -COOH reacts with -OH to form an ester linkage. Conditions: Acid catalyst (e.g., H₂SO₄), heat (60-80°C). Byproduct: H₂O.',
+    },
+    {
+      name: 'Amide Formation',
+      condition: (a1, a2) => a1.electrophiles.some(e => e.pattern === 'COOH') && a2.nucleophiles.some(n => n.pattern === 'NH2'),
+      product: (s1, s2) => `${s1.replace('COOH', 'C(=O)N')}${s2.replace('NH2', '')}`,
+      details: 'Amide Formation: -COOH reacts with -NH2 to form an amide bond. Conditions: Coupling agent (e.g., DCC), room temperature. Byproduct: H₂O.',
+    },
+    {
+      name: 'Nucleophilic Substitution (SN2)',
+      condition: (a1, a2) => a1.electrophiles.some(e => e.pattern === 'Cl' || e.pattern === 'Br') && a2.nucleophiles.some(n => n.pattern === 'OH'),
+      product: (s1, s2) => `${s1.replace(/Cl|Br/, 'O')}${s2.replace('OH', '')}`,
+      details: 'SN2 Reaction: -Cl or -Br is displaced by -OH. Conditions: Strong base (e.g., NaOH), polar aprotic solvent (e.g., DMF), room temperature. Byproduct: HCl or HBr.',
+    },
+    {
+      name: 'Addition to Alkene',
+      condition: (a1, a2) => a1.electrophiles.some(e => e.pattern === 'C=C') && a2.nucleophiles.some(n => n.pattern === 'OH'),
+      product: (s1, s2) => `${s1.replace('C=C', 'C(O)C')}${s2.replace('OH', '')}`,
+      details: 'Addition to Alkene: -OH adds across the C=C double bond. Conditions: Acid catalyst (e.g., H₂SO₄), moderate heat (50°C). Byproduct: None.',
+    },
+  ];
+
+  for (const rule of reactionRules) {
+    if (rule.condition(analysis1, analysis2)) {
+      return {
+        isPossible: true,
+        newSmiles: rule.product(smiles1, smiles2),
+        conversionDetails: rule.details,
+        analysis: { smiles1: analysis1, smiles2: analysis2 },
+      };
+    }
+    if (rule.condition(analysis2, analysis1)) {
+      return {
+        isPossible: true,
+        newSmiles: rule.product(smiles2, smiles1),
+        conversionDetails: rule.details.replace('reacts with', 'reacts with (reversed)'),
+        analysis: { smiles1: analysis2, smiles2: analysis1 },
+      };
+    }
+  }
+
+  // If no predefined rule matches, return null to let Gemini AI propose a reaction
+  return {
+    isPossible: false,
+    newSmiles: null,
+    conversionDetails: 'No predefined reaction rule matched.',
+    reason: 'No compatible functional groups found for a predefined reaction.',
+    analysis: { smiles1: analysis1, smiles2: analysis2 },
+  };
+};
+
 export const generatenewmolecule = async (req, res) => {
   try {
     const { id } = req.params;
     const { smilesoffirst, smilesofsecond, newmoleculetitle } = req.body;
 
-    // Validation and logging remains same
+    console.log(`Processing request for user ID: ${id}`);
+    console.log("Request body:", { smilesoffirst, smilesofsecond, newmoleculetitle });
 
-    // Enhanced chemical analysis function
-    const analyzeReactivity = (smiles) => {
-      const analysis = {
-        nucleophiles: [],
-        electrophiles: [],
-        protectingGroups: [],
-        aromaticRings: 0,
-        stericHindrance: 'low',
-        reactiveSites: 0,
-        pubchemVerified: false
-      };
+    // Input validation
+    if (!smilesoffirst || !smilesofsecond || !newmoleculetitle) {
+      res.write(`data: {"error": "SMILES strings and molecule title are required"}\n\n`);
+      res.write('data: [DONE]\n\n');
+      res.end();
+      return;
+    }
+    if (!id) {
+      res.write(`data: {"error": "User ID is required"}\n\n`);
+      res.write('data: [DONE]\n\n');
+      res.end();
+      return;
+    }
+    if (!validateSmiles(smilesoffirst) || !validateSmiles(smilesofsecond)) {
+      res.write(`data: {"error": "Invalid SMILES string format"}\n\n`);
+      res.write('data: [DONE]\n\n');
+      res.end();
+      return;
+    }
 
-      // Detect aromatic systems
-      analysis.aromaticRings = (smiles.match(/c/g) || []).length;
-
-      // Detect reactive groups
-      const groups = {
-        'COOH': { type: 'electrophile', activated: true },
-        'COOR': { type: 'electrophile', activated: true },
-        'NH2': { type: 'nucleophile', protected: false },
-        'OH': { type: 'nucleophile', protected: false },
-        'NHCOR': { type: 'nucleophile', protected: true },
-        'OC(=O)': { type: 'electrophile', activated: true }
-      };
-
-      Object.entries(groups).forEach(([pattern, props]) => {
-        if (new RegExp(pattern).test(smiles)) {
-          if (props.type === 'nucleophile' && !props.protected) {
-            analysis.nucleophiles.push(pattern);
-            analysis.reactiveSites++;
-          }
-          if (props.type === 'electrophile' && props.activated) {
-            analysis.electrophiles.push(pattern);
-            analysis.reactiveSites++;
-          }
-        }
-      });
-
-      // Steric estimation
-      analysis.stericHindrance = analysis.aromaticRings > 1 ? 'high' : 
-                                analysis.reactiveSites > 2 ? 'medium' : 'low';
-
-      return analysis;
-    };
-
-    // PubChem validation
-    const validateWithPubChem = async (smiles) => {
-      try {
-        const response = await axios.get(
-          `https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/smiles/${encodeURIComponent(smiles)}/JSON`
-        );
-        return response.data?.PropertyTable?.Properties[0] || null;
-      } catch (error) {
-        return null;
-      }
-    };
-
-    // Reaction prediction logic
-    const predictReaction = async (smiles1, smiles2) => {
-      const [chem1, chem2] = await Promise.all([
-        validateWithPubChem(smiles1),
-        validateWithPubChem(smiles2)
-      ]);
-      
-      const analysis1 = analyzeReactivity(smiles1);
-      const analysis2 = analyzeReactivity(smiles2);
-      
-      const baseDisclaimer = `
-        WARNING: Theoretical prediction - No documented reaction found in PubChem between:
-        ${chem1?.Title || 'Compound 1'} and ${chem2?.Title || 'Compound 2'}.
-        Exercise extreme caution with any experimental synthesis.
-      `;
-
-      // Check for amide formation potential
-      const amideConditions = {
-        possible: (analysis1.electrophiles.includes('COOH') || analysis1.electrophiles.includes('COOR')) &&
-                 analysis2.nucleophiles.includes('NH2'),
-        reversePossible: (analysis2.electrophiles.includes('COOH') || analysis2.electrophiles.includes('COOR')) &&
-                        analysis1.nucleophiles.includes('NH2')
-      };
-
-      if (amideConditions.possible || amideConditions.reversePossible) {
-        const [acid, amine] = amideConditions.possible ? 
-          [smiles1, smiles2] : [smiles2, smiles1];
-        
-        return {
-          newSmiles: `${acid.replace(/O[H]?$/, '')}N${amine.split('N')[1]}`,
-          conversionDetails: `
-            Theoretical amide formation suggested between:
-            - Electrophile: ${acid} (${analysis1.electrophiles.join(', ')})
-            - Nucleophile: ${amine} (${analysis2.nucleophiles.join(', ')})
-            
-            ${baseDisclaimer}
-            
-            REQUIRED CONDITIONS:
-            • Acid catalyst (e.g., H₂SO₄)
-            • Heat (80-120°C)
-            • Dehydration setup
-            
-            PREDICTED YIELD: <30% (Steric hindrance: ${analysis1.stericHindrance}/${analysis2.stericHindrance})
-          `,
-          warnings: [
-            'Unverified reaction pathway',
-            'Possible side reactions not accounted for',
-            'Predicted yield based on electronic factors only'
-          ]
-        };
-      }
-
-      // Fallback to physical mixture
-      return {
-        newSmiles: `${smiles1}${smiles2}`,
-        conversionDetails: `
-          ${baseDisclaimer}
-          
-          REACTION BLOCKERS:
-          • No compatible electrophile-nucleophile pairs
-          • Protected reactive sites detected
-          • Aromatic stabilization: ${analysis1.aromaticRings + analysis2.aromaticRings} rings
-          
-          SAFETY NOTE: Even physical mixtures can have dangerous interactions!
-        `,
-        warnings: [
-          'No covalent interaction predicted',
-          'Components remain chemically distinct',
-          'Pharmacological interactions possible'
-        ]
-      };
-    };
-
-    // Main processing
-    const reactionResult = await predictReaction(smilesoffirst, smilesofsecond);
-    
-    const result = {
-      ...reactionResult,
-      potentialDiseases: `
-        PHARMACOLOGICAL WARNING:
-        • Combined effects unpredictable
-        • Possible CYP450 enzyme interactions
-        • CNS and cardiovascular risks
-        • ALWAYS consult preclinical data
-      `,
-      experimentalValidation: 'REQUIRED BEFORE HUMAN USE',
-      computationalConfidence: 'Low (ΔG‡ not calculated)',
-      pubchemValidation: 'No documented reaction found'
-    };
-
-    // Database operations remain similar but should include warnings
-    const moleculeInfo = JSON.stringify({
-      ...result,
-      inputSmiles: [smilesoffirst, smilesofsecond],
-      analysis: [
-        analyzeReactivity(smilesoffirst),
-        analyzeReactivity(smilesofsecond)
-      ]
-    });
-
-    // Stream response
+    // Set up SSE for real-time streaming
     res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+
+    // Predict reaction
+    const reaction = await predictReaction(smilesoffirst, smilesofsecond);
+    console.log("Predicted reaction:", reaction);
+
+    // Prepare Gemini AI prompt to enforce a reaction
+    const prompt = `
+      You are an expert cheminformatician tasked with generating a chemically feasible reaction product from two SMILES strings. Given:
+
+      - SMILES 1: "${smilesoffirst}"
+      - SMILES 2: "${smilesofsecond}"
+      - Initial Prediction Possible: ${reaction.isPossible}
+      - Predicted Product SMILES: "${reaction.newSmiles || 'N/A'}"
+      - Initial Conversion Details: "${reaction.conversionDetails}"
+      - Reason (if not possible): "${reaction.reason || 'N/A'}"
+
+      Perform the following:
+
+      1. Reaction Feasibility:
+      - Analyze the functional groups in both SMILES strings and propose a chemically realistic reaction (e.g., esterification, amide formation, nucleophilic substitution, addition reaction).
+      - If the initial prediction failed, override it with a plausible reaction based on the structures.
+      - Explain the reaction mechanism step-by-step (e.g., nucleophilic attack, intermediate formation, byproduct release).
+
+      2. Product Generation:
+      - Generate a valid SMILES string for the reaction product (do not simply concatenate the inputs with a dot).
+      - Provide the IUPAC name for the product (predict if exact naming is unavailable).
+
+      3. Conversion Details:
+      - Detail the reaction conditions (e.g., catalysts, temperature) and byproducts.
+      - Ensure the explanation is consistent with the generated SMILES.
+
+      4. Potential Diseases:
+      - Hypothesize therapeutic applications or target diseases based on the product's structure, comparing to known drugs.
+
+      Return the response in JSON format:
+      {
+        "isPossible": true,
+        "newSmiles": "string",
+        "newIupacName": "string",
+        "conversionDetails": "string",
+        "potentialDiseases": "string",
+        "reason": "string" (optional, if initial prediction was adjusted)
+      }
+    `;
+
+    // Call Gemini AI
+    const geminiResponse = await axios.post(
+      `${GEMINI_API_URL}?key=${GEMINI_API_KEY}`,
+      { contents: [{ parts: [{ text: prompt }] }] },
+      { headers: { 'Content-Type': 'application/json' } }
+    );
+
+    const geminiContent = geminiResponse.data.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!geminiContent) {
+      throw new Error("No content returned from Gemini API");
+    }
+
+    const jsonMatch = geminiContent.match(/{[\s\S]*}/);
+    if (!jsonMatch) {
+      throw new Error("No valid JSON found in Gemini response");
+    }
+
+    const result = JSON.parse(jsonMatch[0]);
+    console.log("Gemini AI result:", result);
+
+    // Ensure all required fields are present and valid
+    if (!result.newSmiles || result.newSmiles.includes('.')) {
+      throw new Error("Gemini AI failed to generate a valid reaction product SMILES");
+    }
+    result.isPossible = true; // Force true since we’re enforcing a reaction
+    result.newSmiles = result.newSmiles;
+    result.newIupacName = result.newIupacName || 'Unknown IUPAC Name';
+    result.conversionDetails = result.conversionDetails || 'Reaction details not fully specified by Gemini AI.';
+    result.potentialDiseases = result.potentialDiseases || 'No therapeutic applications predicted.';
+    if (reaction.isPossible === false && result.reason) {
+      result.reason = `Initial prediction failed: ${reaction.reason}. Overridden by Gemini AI with: ${result.reason || 'proposed reaction'}`;
+    }
+
+    // Stream the result to the client
     res.write(`data: ${JSON.stringify(result)}\n\n`);
     res.write('data: [DONE]\n\n');
+
+    // Prepare molecule info for database
+    const moleculeInfo = JSON.stringify({
+      inputSmiles: [smilesoffirst, smilesofsecond],
+      newSmiles: result.newSmiles,
+      newIupacName: result.newIupacName,
+      conversionDetails: result.conversionDetails,
+      potentialDiseases: result.potentialDiseases,
+      analysis: reaction.analysis,
+      reactionAdjusted: reaction.isPossible === false,
+      originalReason: reaction.reason || null,
+    });
+
+    // Save the molecule to the database
+    const newMolecule = new GeneratenewMolecule({
+      smilesoffirst,
+      smilesofsecond,
+      newmoleculetitle,
+      newSmiles: result.newSmiles,
+      newIupacName: result.newIupacName,
+      conversionDetails: result.conversionDetails,
+      potentialDiseases: result.potentialDiseases,
+      information: moleculeInfo,
+      userId: id,
+    });
+
+    const savedMolecule = await newMolecule.save();
+    console.log("Molecule saved to database with ID:", savedMolecule._id);
+
+    // Update the user's NewproteinStructures array
+    const updatedUser = await User.findByIdAndUpdate(
+      id,
+      { $push: { NewproteinStructures: savedMolecule._id } },
+      { new: true, runValidators: true }
+    );
+
+    if (!updatedUser) {
+      console.error(`User with ID ${id} not found for update`);
+      throw new Error("User not found during update");
+    }
+    console.log("User updated with new molecule ID:", savedMolecule._id);
+
+    // Close the response stream
     res.end();
 
-    // Save to database
-    const newMolecule = new GeneratenewMolecule({
-      ...req.body,
-      ...result,
-      chemicalProperties: {
-        reactivity: reactionResult.warnings.includes('No covalent interaction') ? 
-          'Low' : 'Moderate',
-        stability: 'Unknown'
-      },
-      safetyToxicity: {
-        predictedLD50: 'Not calculated',
-        hazards: reactionResult.warnings
-      },
-      information: moleculeInfo,
-      userId: id
-    });
-    await newMolecule.save();
-
-    // Update user
-    await User.findByIdAndUpdate(id, { $push: { proteinStructures: newMolecule._id } });
-
   } catch (error) {
-    console.error("Error:", error);
+    console.error("Error generating new molecule:", error.message, error.stack);
     res.write(`data: {"error": "${error.message}", "safetyNote": "Chemical synthesis aborted - potential hazard detected"}\n\n`);
+    res.write('data: [DONE]\n\n');
     res.end();
   }
 };
@@ -1140,398 +1210,396 @@ export const proxyGeminiRequest = async (req, res) => {
   }
 };
 
-export const saveResearchPapers = async (req, res) => {
-  const { userId, molecule, papers } = req.body;
-  try {
-    await ResearchPaper.findOneAndUpdate(
-      { userId, "molecule.title": molecule.title, "molecule.smiles": molecule.smiles },
-      { userId, molecule, papers, createdAt: new Date() },
-      { upsert: true, new: true }
-    );
-    res.status(200).json({ message: "Papers saved successfully" });
-  } catch (err) {
-    res.status(500).json({ message: "Failed to save papers", error: err.message });
-  }
-};
-
-export const getSavedResearchPapers = async (req, res) => {
-  const userId = req.user._id;
-  try {
-    const savedPapers = await ResearchPaper.find({
-      userId,
-      "molecule.title": { $exists: true },
-      "molecule.smiles": { $exists: true },
-    });
-    res.status(200).json({ papers: savedPapers || [] });
-  } catch (err) {
-    res.status(500).json({ message: "Failed to fetch saved papers", error: err.message });
-  }
-};
-
-export const checkSavedPapers = async (req, res) => {
-  const userId = req.user._id;
-  const { title, smiles } = req.query;
-  try {
-    const exists = await ResearchPaper.findOne({
-      userId,
-      "molecule.title": title,
-      "molecule.smiles": smiles,
-    });
-    res.status(200).json({ exists: !!exists });
-  } catch (err) {
-    res.status(500).json({ message: "Failed to check saved papers", error: err.message });
-  }
-};
-
-
-export const saveGeneratedResearchPaper = async (req, res) => {
-  const { userId, molecule, paper } = req.body;
-  try {
-    const newGeneratedPaper = new GeneratedResearchPaper({
-      userId,
-      molecule,
-      paper,
-    });
-    await newGeneratedPaper.save();
-    res.status(200).json({ message: "Generated research paper saved successfully" });
-  } catch (err) {
-    res.status(500).json({ message: "Failed to save generated research paper", error: err.message });
-  }
-};
-
-
-// Retrieve saved generated research papers
-export const getSavedGeneratedResearchPapers = async (req, res) => {
-  const userId = req.user._id;
-  try {
-    const savedPapers = await GeneratedResearchPaper.find({
-      userId,
-      "molecule.title": { $exists: true },
-      "molecule.smiles": { $exists: true },
-    });
-    res.status(200).json({ papers: savedPapers || [] });
-  } catch (err) {
-    res.status(500).json({ message: "Failed to fetch saved generated papers", error: err.message });
-  }
-};
-
-
-export const checkSavedGeneratedPapers = async (req, res) => {
-  const userId = req.user._id; // Assuming authMiddleware sets req.user
-  const { title, smiles } = req.query;
-
-  if (!title || !smiles) {
-    return res.status(400).json({ message: "Title and SMILES are required" });
-  }
-
-  try {
-    const exists = await GeneratedResearchPaper.findOne({
-      userId,
-      "molecule.title": title,
-      "molecule.smiles": smiles,
-    });
-    res.status(200).json({ exists: !!exists });
-  } catch (err) {
-    console.error("Error checking saved generated papers:", err);
-    res.status(500).json({ message: "Failed to check saved generated papers", error: err.message });
-  }
-};
-
-
-
-// AI driven controllers
-
-export const convertFileToSmiles = async (req, res) => {
-  try {
-    if (!req.file) {
-      return res.status(400).json({ message: "No file uploaded" });
+  export const saveResearchPapers = async (req, res) => {
+    const { userId, molecule, papers } = req.body;
+    try {
+      await ResearchPaper.findOneAndUpdate(
+        { userId, "molecule.title": molecule.title, "molecule.smiles": molecule.smiles },
+        { userId, molecule, papers, createdAt: new Date() },
+        { upsert: true, new: true }
+      );
+      res.status(200).json({ message: "Papers saved successfully" });
+    } catch (err) {
+      res.status(500).json({ message: "Failed to save papers", error: err.message });
     }
+  };
 
-    // Use PubChem PUG REST API to convert MOL/SDF to SMILES
-    const pubchemUrl = "https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/molfile/SMILES/txt";
-    const formData = new FormData();
-    formData.append("molfile", req.file.buffer.toString("utf-8"));
-
-    const response = await axios.post(pubchemUrl, formData, {
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
-    });
-
-    const smiles = response.data.trim();
-    if (!smiles) {
-      return res.status(400).json({ message: "Failed to convert file to SMILES" });
-    }
-
-    res.status(200).json({ smiles });
-  } catch (error) {
-    console.error("Error converting file to SMILES:", error.message);
-    res.status(500).json({ message: "Server error while converting file to SMILES" });
-  }
-};
-
-// Controller to extract fingerprints (mocked for now)
-export const getFingerprints = async (req, res) => {
-  try {
-    const { smiles } = req.body;
-    if (!smiles) {
-      return res.status(400).json({ message: "SMILES string is required" });
-    }
-
-    // Mock fingerprint extraction (replace with a real implementation using a JS library or API)
-    const fingerprints = mockFingerprintExtraction(smiles);
-
-    res.status(200).json({ fingerprints });
-  } catch (error) {
-    console.error("Error computing fingerprints:", error.message);
-    res.status(500).json({ message: "Server error while computing fingerprints" });
-  }
-};
-
-// Controller to perform molecular docking (mocked for now)
-export const performDocking = async (req, res) => {
-  try {
-    const { smiles } = req.body;
-    if (!smiles) {
-      return res.status(400).json({ message: "SMILES string is required" });
-    }
-
-    // Mock docking (replace with a real implementation using an external docking API)
-    const dockingResults = mockDocking(smiles);
-
-    res.status(200).json({ results: dockingResults });
-  } catch (error) {
-    console.error("Error performing molecular docking:", error.message);
-    res.status(500).json({ message: "Server error while performing docking" });
-  }
-};
-
-// Controller to save search results
-export const saveSearch = async (req, res) => {
-  try {
-    const { userId, smiles, targets, research, docking } = req.body;
-    if (!userId || !smiles) {
-      return res.status(400).json({ message: "User ID and SMILES are required" });
-    }
-
-    const newSearch = new SavedSearch({
-      userId,
-      smiles,
-      targets: targets || [],
-      research: research || [],
-      docking: docking || null,
-    });
-    await newSearch.save();
-    console.log("Saved search:", newSearch);
-    res.status(201).json({ message: "Search saved successfully", search: newSearch });
-  } catch (error) {
-    console.error("Error saving search:", error);
-    res.status(500).json({ message: "Server error while saving search", error: error.message });
-  }
-};;
-
-export const getSavedSearches = async (req, res) => {
-  try {
+  export const getSavedResearchPapers = async (req, res) => {
     const userId = req.user._id;
-    const searches = await SavedSearch.find({ userId }).sort({ createdAt: -1 });
-    console.log("Fetched searches:", searches); // Debug log
-    res.status(200).json({ searches });
-  } catch (error) {
-    console.error("Error retrieving saved searches:", error);
-    res.status(500).json({ message: "Server error while retrieving saved searches" });
-  }
-};
-
-// Controller to retrieve saved searches
-
-
-// Controller to check if a search exists
-export const checkSavedSearches = async (req, res) => {
-  try {
-    const userId = req.user._id; // From protectRoute middleware
-    const { smiles } = req.query;
-
-    if (!smiles) {
-      return res.status(400).json({ message: "SMILES string is required" });
-    }
-
-    const searchExists = await SavedSearch.findOne({ userId, smiles });
-    res.status(200).json({ exists: !!searchExists });
-  } catch (error) {
-    console.error("Error checking saved searches:", error.message);
-    res.status(500).json({ message: "Server error while checking saved searches" });
-  }
-};
-
-
-
-// ai-naming
-// src/controllers/proteinstructure.controller.js
-
-
-export const generateDrugName = async (req, res) => {
-  try {
-    const { id } = req.params; // User ID
-    const { moleculeTitle, smiles } = req.body;
-
-    if (!id || !moleculeTitle || !smiles) {
-      return res.status(400).json({ message: "User ID, molecule title, and SMILES are required" });
-    }
-
-    // Check if the name already exists for this molecule
-    const existingName = await drugName.findOne({ userId: id, moleculeTitle, smiles });
-    if (existingName) {
-      return res.status(409).json({ 
-        message: "Drug name already generated for this molecule. Check Saved Names.",
-        redirectTo: "savedNames",
+    try {
+      const savedPapers = await ResearchPaper.find({
+        userId,
+        "molecule.title": { $exists: true },
+        "molecule.smiles": { $exists: true },
       });
+      res.status(200).json({ papers: savedPapers || [] });
+    } catch (err) {
+      res.status(500).json({ message: "Failed to fetch saved papers", error: err.message });
+    }
+  };
+
+  export const checkSavedPapers = async (req, res) => {
+    const userId = req.user._id;
+    const { title, smiles } = req.query;
+    try {
+      const exists = await ResearchPaper.findOne({
+        userId,
+        "molecule.title": title,
+        "molecule.smiles": smiles,
+      });
+      res.status(200).json({ exists: !!exists });
+    } catch (err) {
+      res.status(500).json({ message: "Failed to check saved papers", error: err.message });
+    }
+  };
+
+
+  export const saveGeneratedResearchPaper = async (req, res) => {
+    const { userId, molecule, paper } = req.body;
+    try {
+      const newGeneratedPaper = new GeneratedResearchPaper({
+        userId,
+        molecule,
+        paper,
+      });
+      await newGeneratedPaper.save();
+      res.status(200).json({ message: "Generated research paper saved successfully" });
+    } catch (err) {
+      res.status(500).json({ message: "Failed to save generated research paper", error: err.message });
+    }
+  };
+
+
+  // Retrieve saved generated research papers
+  export const getSavedGeneratedResearchPapers = async (req, res) => {
+    const userId = req.user._id;
+    try {
+      const savedPapers = await GeneratedResearchPaper.find({
+        userId,
+        "molecule.title": { $exists: true },
+        "molecule.smiles": { $exists: true },
+      });
+      res.status(200).json({ papers: savedPapers || [] });
+    } catch (err) {
+      res.status(500).json({ message: "Failed to fetch saved generated papers", error: err.message });
+    }
+  };
+
+
+  export const checkSavedGeneratedPapers = async (req, res) => {
+    const userId = req.user._id; // Assuming authMiddleware sets req.user
+    const { title, smiles } = req.query;
+
+    if (!title || !smiles) {
+      return res.status(400).json({ message: "Title and SMILES are required" });
     }
 
-    // Fetch the molecule details from GeneratenewMolecule
-    const molecule = await GeneratenewMolecule.findOne({ userId: id, newmoleculetitle: moleculeTitle, newSmiles: smiles });
-    if (!molecule) {
-      return res.status(404).json({ message: "Molecule not found" });
+    try {
+      const exists = await GeneratedResearchPaper.findOne({
+        userId,
+        "molecule.title": title,
+        "molecule.smiles": smiles,
+      });
+      res.status(200).json({ exists: !!exists });
+    } catch (err) {
+      console.error("Error checking saved generated papers:", err);
+      res.status(500).json({ message: "Failed to check saved generated papers", error: err.message });
     }
+  };
 
-    const prompt = `
-      Analyze the provided SMILES structure and generate 3 candidate drug names that meet these requirements:
+  // AI driven controllers
 
-      1. **Structural Accuracy**  
-         - Include IUPAC-recognized stems reflecting:  
-           * Functional groups (e.g., '-mab' for monoclonal antibodies, '-tinib' for kinase inhibitors)  
-           * Molecular topology (e.g., 'cyclo-' for cyclic structures, 'naphtha-' for naphthalene-like)  
-           * Pharmacological class indicators (e.g., '-vir' for antivirals, '-zole' for antifungals)  
-
-      2. **Ethical & Regulatory Compliance**  
-         - Avoid:  
-           * Cultural insensitivities/linguistic offensiveness in 10 major languages (English, Spanish, Mandarin, Hindi, Arabic, French, Russian, German, Japanese, Portuguese)  
-           * Phonetic similarities to existing drugs (cross-reference FDA Orange Book)  
-           * Therapeutic misrepresentation (e.g., no 'cure-' prefixes)  
-
-      3. **Validation Requirements**  
-         - Check name availability via OpenFDA API (simulated access, assume a basic uniqueness check)  
-         - Confirm ≤50% phonetic similarity to existing names using Levenshtein distance  
-         - Verify no trademark conflicts in USPTO database (simulated check)  
-
-      4. **Output Format**  
-         | Rank | Name Candidate | Structural Rationale | Compliance Status |  
-         |------|----------------|----------------------|-------------------|  
-         | 1    | [Name]         | [Matching features]  | [Pass/Fail flags] |  
-
-      Molecule Details:  
-      - SMILES: "${molecule.newSmiles}"  
-      - Title: "${molecule.newmoleculetitle}"  
-      - IUPAC Name: "${molecule.newIupacName}"  
-      - Conversion Details: "${molecule.conversionDetails}"  
-      - Potential Diseases: "${molecule.potentialDiseases}"  
-      - Additional Information: "${molecule.information}"  
-
-      **Fallback Protocol**  
-      If no compliant names meet criteria:  
-      a) Propose modified stems with structural justification  
-      b) Suggest pharmacological class alternatives  
-      c) Flag need for human pharmaceutical linguist review  
-
-      Return the response in JSON format:  
-      {
-        "candidates": [
-          {
-            "rank": 1,
-            "name": "CandidateName1",
-            "rationale": "Explanation of structural features and naming",
-            "compliance": "Pass/Fail with details"
-          },
-          {
-            "rank": 2,
-            "name": "CandidateName2",
-            "rationale": "Explanation",
-            "compliance": "Pass/Fail with details"
-          },
-          {
-            "rank": 3,
-            "name": "CandidateName3",
-            "rationale": "Explanation",
-            "compliance": "Pass/Fail with details"
-          }
-        ],
-        "fallback": "Optional message if fallback protocol triggered"
+  export const convertFileToSmiles = async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ message: "No file uploaded" });
       }
-    `;
 
-    const geminiResponse = await axios.post(
-      `${GEMINI_API_URL}?key=${GEMINI_API_KEY}`,
-      { contents: [{ parts: [{ text: prompt }] }] },
-      { headers: { "Content-Type": "application/json" } }
-    );
+      // Use PubChem PUG REST API to convert MOL/SDF to SMILES
+      const pubchemUrl = "https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/molfile/SMILES/txt";
+      const formData = new FormData();
+      formData.append("molfile", req.file.buffer.toString("utf-8"));
 
-    const geminiContent = geminiResponse.data.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!geminiContent) {
-      throw new Error("No content returned from Gemini API");
-    }
-
-    const jsonMatch = geminiContent.match(/{[\s\S]*}/);
-    if (!jsonMatch) {
-      throw new Error("No valid JSON found in Gemini response");
-    }
-
-    const { candidates, fallback } = JSON.parse(jsonMatch[0]);
-
-    if (!candidates || candidates.length === 0) {
-      return res.status(500).json({ 
-        message: "No valid drug name candidates generated",
-        fallback: fallback || "No fallback provided",
+      const response = await axios.post(pubchemUrl, formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
       });
+
+      const smiles = response.data.trim();
+      if (!smiles) {
+        return res.status(400).json({ message: "Failed to convert file to SMILES" });
+      }
+
+      res.status(200).json({ smiles });
+    } catch (error) {
+      console.error("Error converting file to SMILES:", error.message);
+      res.status(500).json({ message: "Server error while converting file to SMILES" });
     }
+  };
 
-    // Select the top-ranked candidate (Rank 1) to save
-    const topCandidate = candidates.find(c => c.rank === 1);
+  // Controller to extract fingerprints (mocked for now)
+  export const getFingerprints = async (req, res) => {
+    try {
+      const { smiles } = req.body;
+      if (!smiles) {
+        return res.status(400).json({ message: "SMILES string is required" });
+      }
 
-    const newDrugName = new drugName({
-      moleculeTitle,
-      smiles,
-      suggestedName: topCandidate.name,
-      namingDetails: `${topCandidate.rationale} | Compliance: ${topCandidate.compliance}`,
-      userId: id,
-    });
-    await newDrugName.save();
+      // Mock fingerprint extraction (replace with a real implementation using a JS library or API)
+      const fingerprints = mockFingerprintExtraction(smiles);
 
-    res.status(201).json({
-      message: "Drug name generated and saved successfully",
-      drugName: newDrugName,
-      allCandidates: candidates, // Return all candidates for frontend display
-      fallback: fallback || null,
-    });
-  } catch (error) {
-    console.error("Error generating drug name:", error);
-    res.status(500).json({ message: "Server error while generating drug name", error: error.message });
-  }
-};
-
-// Other existing functions (getSavedDrugNames, checkSavedDrugName, etc.) remain unchanged
-export const getSavedDrugNames = async (req, res) => {
-  try {
-    const userId = req.user._id;
-    const savedNames = await drugName.find({ userId }).sort({ createdAt: -1 });
-    res.status(200).json({ drugNames: savedNames });
-  } catch (error) {
-    console.error("Error fetching saved drug names:", error);
-    res.status(500).json({ message: "Server error while fetching saved drug names", error: error.message });
-  }
-};
-
-export const checkSavedDrugName = async (req, res) => {
-  try {
-    const userId = req.user._id;
-    const { moleculeTitle, smiles } = req.query;
-
-    if (!moleculeTitle || !smiles) {
-      return res.status(400).json({ message: "Molecule title and SMILES are required" });
+      res.status(200).json({ fingerprints });
+    } catch (error) {
+      console.error("Error computing fingerprints:", error.message);
+      res.status(500).json({ message: "Server error while computing fingerprints" });
     }
+  };
 
-    const exists = await drugName.findOne({ userId, moleculeTitle, smiles });
-    res.status(200).json({ exists: !!exists });
-  } catch (error) {
-    console.error("Error checking saved drug name:", error);
-    res.status(500).json({ message: "Server error while checking saved drug name", error: error.message });
-  }
-};
+  // Controller to perform molecular docking (mocked for now)
+  export const performDocking = async (req, res) => {
+    try {
+      const { smiles } = req.body;
+      if (!smiles) {
+        return res.status(400).json({ message: "SMILES string is required" });
+      }
+
+      // Mock docking (replace with a real implementation using an external docking API)
+      const dockingResults = mockDocking(smiles);
+
+      res.status(200).json({ results: dockingResults });
+    } catch (error) {
+      console.error("Error performing molecular docking:", error.message);
+      res.status(500).json({ message: "Server error while performing docking" });
+    }
+  };
+
+  // Controller to save search results
+  export const saveSearch = async (req, res) => {
+    try {
+      const { userId, smiles, targets, research, docking } = req.body;
+      if (!userId || !smiles) {
+        return res.status(400).json({ message: "User ID and SMILES are required" });
+      }
+
+      const newSearch = new SavedSearch({
+        userId,
+        smiles,
+        targets: targets || [],
+        research: research || [],
+        docking: docking || null,
+      });
+      await newSearch.save();
+      console.log("Saved search:", newSearch);
+      res.status(201).json({ message: "Search saved successfully", search: newSearch });
+    } catch (error) {
+      console.error("Error saving search:", error);
+      res.status(500).json({ message: "Server error while saving search", error: error.message });
+    }
+  };;
+
+  export const getSavedSearches = async (req, res) => {
+    try {
+      const userId = req.user._id;
+      const searches = await SavedSearch.find({ userId }).sort({ createdAt: -1 });
+      console.log("Fetched searches:", searches); // Debug log
+      res.status(200).json({ searches });
+    } catch (error) {
+      console.error("Error retrieving saved searches:", error);
+      res.status(500).json({ message: "Server error while retrieving saved searches" });
+    }
+  };
+
+  // Controller to retrieve saved searches
+
+
+  // Controller to check if a search exists
+  export const checkSavedSearches = async (req, res) => {
+    try {
+      const userId = req.user._id; // From protectRoute middleware
+      const { smiles } = req.query;
+
+      if (!smiles) {
+        return res.status(400).json({ message: "SMILES string is required" });
+      }
+
+      const searchExists = await SavedSearch.findOne({ userId, smiles });
+      res.status(200).json({ exists: !!searchExists });
+    } catch (error) {
+      console.error("Error checking saved searches:", error.message);
+      res.status(500).json({ message: "Server error while checking saved searches" });
+    }
+  };
+
+
+
+  // ai-naming
+  // src/controllers/proteinstructure.controller.js
+
+
+  export const generateDrugName = async (req, res) => {
+    try {
+      const { id } = req.params; // User ID
+      const { moleculeTitle, smiles } = req.body;
+
+      if (!id || !moleculeTitle || !smiles) {
+        return res.status(400).json({ message: "User ID, molecule title, and SMILES are required" });
+      }
+
+      // Check if the name already exists for this molecule
+      const existingName = await drugName.findOne({ userId: id, moleculeTitle, smiles });
+      if (existingName) {
+        return res.status(409).json({ 
+          message: "Drug name already generated for this molecule. Check Saved Names.",
+          redirectTo: "savedNames",
+        });
+      }
+
+      // Fetch the molecule details from GeneratenewMolecule
+      const molecule = await GeneratenewMolecule.findOne({ userId: id, newmoleculetitle: moleculeTitle, newSmiles: smiles });
+      if (!molecule) {
+        return res.status(404).json({ message: "Molecule not found" });
+      }
+
+      const prompt = `
+        Analyze the provided SMILES structure and generate 3 candidate drug names that meet these requirements:
+
+        1. **Structural Accuracy**  
+          - Include IUPAC-recognized stems reflecting:  
+            * Functional groups (e.g., '-mab' for monoclonal antibodies, '-tinib' for kinase inhibitors)  
+            * Molecular topology (e.g., 'cyclo-' for cyclic structures, 'naphtha-' for naphthalene-like)  
+            * Pharmacological class indicators (e.g., '-vir' for antivirals, '-zole' for antifungals)  
+
+        2. **Ethical & Regulatory Compliance**  
+          - Avoid:  
+            * Cultural insensitivities/linguistic offensiveness in 10 major languages (English, Spanish, Mandarin, Hindi, Arabic, French, Russian, German, Japanese, Portuguese)  
+            * Phonetic similarities to existing drugs (cross-reference FDA Orange Book)  
+            * Therapeutic misrepresentation (e.g., no 'cure-' prefixes)  
+
+        3. **Validation Requirements**  
+          - Check name availability via OpenFDA API (simulated access, assume a basic uniqueness check)  
+          - Confirm ≤50% phonetic similarity to existing names using Levenshtein distance  
+          - Verify no trademark conflicts in USPTO database (simulated check)  
+
+        4. **Output Format**  
+          | Rank | Name Candidate | Structural Rationale | Compliance Status |  
+          |------|----------------|----------------------|-------------------|  
+          | 1    | [Name]         | [Matching features]  | [Pass/Fail flags] |  
+
+        Molecule Details:  
+        - SMILES: "${molecule.newSmiles}"  
+        - Title: "${molecule.newmoleculetitle}"  
+        - IUPAC Name: "${molecule.newIupacName}"  
+        - Conversion Details: "${molecule.conversionDetails}"  
+        - Potential Diseases: "${molecule.potentialDiseases}"  
+        - Additional Information: "${molecule.information}"  
+
+        **Fallback Protocol**  
+        If no compliant names meet criteria:  
+        a) Propose modified stems with structural justification  
+        b) Suggest pharmacological class alternatives  
+        c) Flag need for human pharmaceutical linguist review  
+
+        Return the response in JSON format:  
+        {
+          "candidates": [
+            {
+              "rank": 1,
+              "name": "CandidateName1",
+              "rationale": "Explanation of structural features and naming",
+              "compliance": "Pass/Fail with details"
+            },
+            {
+              "rank": 2,
+              "name": "CandidateName2",
+              "rationale": "Explanation",
+              "compliance": "Pass/Fail with details"
+            },
+            {
+              "rank": 3,
+              "name": "CandidateName3",
+              "rationale": "Explanation",
+              "compliance": "Pass/Fail with details"
+            }
+          ],
+          "fallback": "Optional message if fallback protocol triggered"
+        }
+      `;
+
+      const geminiResponse = await axios.post(
+        `${GEMINI_API_URL}?key=${GEMINI_API_KEY}`,
+        { contents: [{ parts: [{ text: prompt }] }] },
+        { headers: { "Content-Type": "application/json" } }
+      );
+
+      const geminiContent = geminiResponse.data.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (!geminiContent) {
+        throw new Error("No content returned from Gemini API");
+      }
+
+      const jsonMatch = geminiContent.match(/{[\s\S]*}/);
+      if (!jsonMatch) {
+        throw new Error("No valid JSON found in Gemini response");
+      }
+
+      const { candidates, fallback } = JSON.parse(jsonMatch[0]);
+
+      if (!candidates || candidates.length === 0) {
+        return res.status(500).json({ 
+          message: "No valid drug name candidates generated",
+          fallback: fallback || "No fallback provided",
+        });
+      }
+
+      // Select the top-ranked candidate (Rank 1) to save
+      const topCandidate = candidates.find(c => c.rank === 1);
+
+      const newDrugName = new drugName({
+        moleculeTitle,
+        smiles,
+        suggestedName: topCandidate.name,
+        namingDetails: `${topCandidate.rationale} | Compliance: ${topCandidate.compliance}`,
+        userId: id,
+      });
+      await newDrugName.save();
+
+      res.status(201).json({
+        message: "Drug name generated and saved successfully",
+        drugName: newDrugName,
+        allCandidates: candidates, // Return all candidates for frontend display
+        fallback: fallback || null,
+      });
+    } catch (error) {
+      console.error("Error generating drug name:", error);
+      res.status(500).json({ message: "Server error while generating drug name", error: error.message });
+    }
+  };
+
+  // Other existing functions (getSavedDrugNames, checkSavedDrugName, etc.) remain unchanged
+  export const getSavedDrugNames = async (req, res) => {
+    try {
+      const userId = req.user._id;
+      const savedNames = await drugName.find({ userId }).sort({ createdAt: -1 });
+      res.status(200).json({ drugNames: savedNames });
+    } catch (error) {
+      console.error("Error fetching saved drug names:", error);
+      res.status(500).json({ message: "Server error while fetching saved drug names", error: error.message });
+    }
+  };
+
+  export const checkSavedDrugName = async (req, res) => {
+    try {
+      const userId = req.user._id;
+      const { moleculeTitle, smiles } = req.query;
+
+      if (!moleculeTitle || !smiles) {
+        return res.status(400).json({ message: "Molecule title and SMILES are required" });
+      }
+
+      const exists = await drugName.findOne({ userId, moleculeTitle, smiles });
+      res.status(200).json({ exists: !!exists });
+    } catch (error) {
+      console.error("Error checking saved drug name:", error);
+      res.status(500).json({ message: "Server error while checking saved drug name", error: error.message });
+    }
+  };

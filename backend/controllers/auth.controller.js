@@ -6,8 +6,8 @@ import twilio from 'twilio';
 import { redis } from '../lib/redis.js';
 
 // Twilio setup
-const accountSid = 'ACc18a11ea1c63368a677adf4df8827b6b';
-const authToken = '84fcb4a172a2abffb7d35dd986ee207a';
+const accountSid = 'AC8dba743d63dfe475b23b19ebc564c82c';
+const authToken = '00e9405a49a0fcdc7b2ae50f9846fc5e';
 const client = twilio(accountSid, authToken);
 
 // Generate OTP
@@ -15,7 +15,7 @@ const generateOTP = () => Math.floor(100000 + Math.random() * 900000);
 
 // Send OTP via Twilio
 const sendOTP = async (phoneNumber, otp) => {
-  const fromNumber =  +12184838587;
+  const fromNumber =  +17743092689;
   if (!fromNumber) {
     console.error('TWILIO_PHONE_NUMBER is not defined in environment variables');
     throw new Error('Server configuration error: Missing Twilio phone number');

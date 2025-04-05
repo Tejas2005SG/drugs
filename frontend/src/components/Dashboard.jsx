@@ -10,24 +10,24 @@ function DashboardPage() {
   const toastShown = useRef(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-  useEffect(() => {
-    if (!toastShown.current) {
-      toast(
-        "Our system is under development, integrating Gemini, MolMIM, and Grok models to train the AI model with the right mentorship. Stay tuned!",
-        {
-          position: "top-right",
-          duration: 8000,
-          style: {
-            background: "#fefcbf",
-            color: "#92400e",
-            border: "1px solid #f59e0b",
-          },
-          icon: "⚠️",
-        }
-      );
-      toastShown.current = true;
-    }
-  }, []);
+  // useEffect(() => {
+  //   if (!toastShown.current) {
+  //     toast(
+  //       "Our system is under development, integrating Gemini, MolMIM, and Grok models to train the AI model with the right mentorship. Stay tuned!",
+  //       {
+  //         position: "top-right",
+  //         duration: 8000,
+  //         style: {
+  //           background: "#fefcbf",
+  //           color: "#92400e",
+  //           border: "1px solid #f59e0b",
+  //         },
+  //         icon: "⚠️",
+  //       }
+  //     );
+  //     toastShown.current = true;
+  //   }
+  // }, []);
 
   useEffect(() => {
     console.log('DashboardPage - User:', user);
@@ -88,17 +88,18 @@ function DashboardPage() {
       roles: ['admin', 'citizen', 'guest']
     },
     { 
+      name: 'Toxicity Prediction', 
+      icon: <Target size={20} className="mr-3" />,
+      navigation: () => navigate('/dashboard/toxicity-prediction'), 
+      roles: ['admin', 'citizen', 'guest']
+    },
+    { 
       name: 'Live News', 
       icon: <Newspaper size={20} className="mr-3" />,
       navigation: () => navigate('/dashboard/live-news'), 
       roles: ['admin', 'citizen', 'guest']
     },
-    // { 
-    //   name: 'Message Board', 
-    //   icon: <MessageSquare size={20} className="mr-3" />,
-    //   navigation: () => navigate('/dashboard/message'), 
-    //   roles: ['admin', 'citizen', 'guest']
-    // },
+   
   ];
 
   const listNav = navElements

@@ -21,6 +21,7 @@ import LiveNews from "./pages/Livenews/Livenews.jsx";
 // import Message from "./pages/Message/Message.jsx";
 import GetAlphaFoldStructure from "./pages/Alphafold/Alphafold.jsx"
 import AINamingSuggestion from './pages/AINamingSuggestion/AINamingSuggestion.jsx';
+import Toxicityprediction from './pages/Toxicityprediction/Toxicityprediction.jsx';
 
 const ProtectedRoute = ({ children }) => {
   const { user } = useAuthStore();
@@ -33,7 +34,7 @@ function App() {
 
   return (
     <div className="min-h-screen bg-gray-100">
-    {/* <Navbar /> */}
+      {/* <Navbar /> */}
       <Routes>
         <Route path="/" element={<Homepage />} />
         <Route path="/signup" element={<Signup />} />
@@ -44,89 +45,89 @@ function App() {
             <Dashboard />
           </ProtectedRoute>
         } >
-<Route index element={<DashboardHome />} /> {/* Default route for /dashboard */}
+          <Route index element={<DashboardHome />} /> {/* Default route for /dashboard */}
           <Route
             path="protein-structure"
             element={
               <ProtectedRoute>
                 <ProteinStructureApp />
-               </ProtectedRoute>
+              </ProtectedRoute>
             }
           />
           <Route
             path="protein-structure-mutation"
             element={
-               <ProtectedRoute>
+              <ProtectedRoute>
                 <ProteinStructureEvolution />
-               </ProtectedRoute>
-            }
-          />
-           <Route
-            path="cost-estimation"
-            element={
-               <ProtectedRoute>
-                <Costestimation />
-               </ProtectedRoute>
-            }
-          />
-           <Route
-            path="ai-research-paper-generator"
-            element={
-               <ProtectedRoute>
-                <AIResearchPaperGenerator/>
               </ProtectedRoute>
             }
           />
-           <Route
+          <Route
+            path="cost-estimation"
+            element={
+              <ProtectedRoute>
+                <Costestimation />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="ai-research-paper-generator"
+            element={
+              <ProtectedRoute>
+                <AIResearchPaperGenerator />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="ai-driven-target-prediction"
             element={
-               <ProtectedRoute>
-                <AIDrivenTargetPrediction/>
-               </ProtectedRoute>
+              <ProtectedRoute>
+                <AIDrivenTargetPrediction />
+              </ProtectedRoute>
             }
           />
-           <Route
+          <Route
             path="ai-naming"
             element={
-               <ProtectedRoute>
-                <AINamingSuggestion/>
-               </ProtectedRoute>
+              <ProtectedRoute>
+                <AINamingSuggestion />
+              </ProtectedRoute>
             }
           />
-           {/* <Route
+          {/* <Route
             path="drug-discovery-recommendation"
             element={
               <ProtectedRoute>
-                <DrugDiscoveryRecommendation/>
+                <DrugDiscoveryRecommendation />
               </ProtectedRoute>
             }
           /> */}
-           <Route
+          <Route
             path="live-news"
             element={
-               <ProtectedRoute>
-                <LiveNews/>
-               </ProtectedRoute>
+              <ProtectedRoute>
+                <LiveNews />
+              </ProtectedRoute>
             }
           />
-           {/* <Route
-            path="message"
+          <Route
+            path="toxicity-prediction"
             element={
-              // <ProtectedRoute>
-                <Message/>
-              // </ProtectedRoute>
+              <ProtectedRoute>
+                <Toxicityprediction />
+              </ProtectedRoute>
             }
-          /> */}
+          />
           <Route
             path="getalphafoldstrcture"
             element={
-               <ProtectedRoute>
-                <GetAlphaFoldStructure/>
-             </ProtectedRoute>
+              <ProtectedRoute>
+                <GetAlphaFoldStructure />
+              </ProtectedRoute>
             }
           />
-           
-          
+
+
 
         </Route>
 
