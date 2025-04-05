@@ -1,4 +1,3 @@
-// src/models/DrugName.js
 import mongoose from "mongoose";
 
 const DrugNameSchema = new mongoose.Schema({
@@ -15,8 +14,13 @@ const DrugNameSchema = new mongoose.Schema({
     required: true,
   },
   namingDetails: {
-    type: String, // Details about how the name was derived
+    type: String,
     default: "",
+  },
+  status: {
+    type: String,
+    enum: ["pending", "accepted"],
+    default: "pending",
   },
   createdAt: {
     type: Date,

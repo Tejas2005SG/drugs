@@ -1575,7 +1575,80 @@ export const proxyGeminiRequest = async (req, res) => {
     }
   };
 
-  // Other existing functions (getSavedDrugNames, checkSavedDrugName, etc.) remain unchanged
+  export const acceptDrugName = async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { moleculeTitle, smiles, selectedName, rationale, compliance } = req.body;
+  
+      if (!id || !moleculeTitle || !smiles || !selectedName) {
+        return res.status(400).json({ message: "User ID, molecule title, SMILES, and selected name are required" });
+      }
+  
+      const existingAcceptedName = await drugName.findOne({ userId: id, moleculeTitle, smiles, status: "accepted" });
+      if (existingAcceptedName) {
+        return res.status(409).json({ message: "An accepted name already exists for this molecule" });
+      }
+  
+      await GeneratenewMolecule.updateMany(
+        { userId: id, newmoleculetitle: moleculeTitle, newSmiles: smiles },
+        { $set: { newmoleculetitle: selectedName } }
+      );
+  
+      const drugNameEntry = await drugName.findOneAndUpdate(
+        { userId: id, moleculeTitle, smiles },
+        {
+          moleculeTitle,
+          smiles,
+          suggestedName: selectedName,
+          namingDetails: `${rationale} | Compliance: ${compliance}`,
+          userId: id,
+          status: "accepted",
+        },
+        { upsert: true, new: true }
+      );
+  
+      res.status(200).json({
+        message: "Drug name accepted and molecule title updated successfully",
+        drugName: drugNameEntry,
+      });
+    } catch (error) {
+      console.error("Error accepting drug name:", error);
+      res.status(500).json({ message: "Server error while accepting drug name", error: error.message });
+    }
+  };
+  
+  export const savePendingDrugName = async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { moleculeTitle, smiles, candidates } = req.body;
+  
+      if (!id || !moleculeTitle || !smiles || !candidates) {
+        return res.status(400).json({ message: "User ID, molecule title, SMILES, and candidates are required" });
+      }
+  
+      const topCandidate = candidates.find(c => c.rank === 1);
+      const existingPendingName = await drugName.findOne({ userId: id, moleculeTitle, smiles, status: "pending" });
+  
+      if (!existingPendingName) {
+        const newDrugName = new drugName({
+          moleculeTitle,
+          smiles,
+          suggestedName: topCandidate.name,
+          namingDetails: `${topCandidate.rationale} | Compliance: ${topCandidate.compliance}`,
+          userId: id,
+          status: "pending",
+        });
+        await newDrugName.save();
+        res.status(201).json({ message: "Pending drug name saved successfully", drugName: newDrugName });
+      } else {
+        res.status(200).json({ message: "Pending drug name already exists", drugName: existingPendingName });
+      }
+    } catch (error) {
+      console.error("Error saving pending drug name:", error);
+      res.status(500).json({ message: "Server error while saving pending drug name", error: error.message });
+    }
+  };
+  
   export const getSavedDrugNames = async (req, res) => {
     try {
       const userId = req.user._id;
@@ -1586,16 +1659,16 @@ export const proxyGeminiRequest = async (req, res) => {
       res.status(500).json({ message: "Server error while fetching saved drug names", error: error.message });
     }
   };
-
+  
   export const checkSavedDrugName = async (req, res) => {
     try {
       const userId = req.user._id;
       const { moleculeTitle, smiles } = req.query;
-
+  
       if (!moleculeTitle || !smiles) {
         return res.status(400).json({ message: "Molecule title and SMILES are required" });
       }
-
+  
       const exists = await drugName.findOne({ userId, moleculeTitle, smiles });
       res.status(200).json({ exists: !!exists });
     } catch (error) {
