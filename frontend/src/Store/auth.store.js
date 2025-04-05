@@ -1,15 +1,12 @@
 // auth.store.js
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware'; // Add persist middleware
+import { persist } from 'zustand/middleware';
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
 
-// const API_BASE_URL = 'http://localhost:5000/api/auth';
-
-
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
 const axiosInstance = axios.create({
-  baseURL: import.meta.mode==="development" ? API_BASE_URL : '/api',
+  baseURL: import.meta.mode === "development" ? API_BASE_URL : '/api',
   withCredentials: true,
 });
 
@@ -19,20 +16,57 @@ export const useAuthStore = create(
       user: null,
       loading: false,
       checkingAuth: true,
+      phoneNumber: null, // Added to store phoneNumber during signup
 
-      signup: async ({ firstName, lastName,username, email, password, confirmPassword }) => {
+      signup: async ({ firstName, lastName, username, email, phoneNumber, password, confirmPassword }) => {
         set({ loading: true });
         if (password !== confirmPassword) {
           set({ loading: false });
           return toast.error('Passwords do not match');
         }
         try {
-          const res = await axiosInstance.post(`${API_BASE_URL}/auth/signup`, { firstName, lastName,username, email, password, confirmPassword });
-          set({ user: res.data.user, loading: false });
-          console.log('Signup - Updated State:', get().user);
+          const res = await axiosInstance.post(`${API_BASE_URL}/auth/signup`, { 
+            firstName, 
+            lastName, 
+            username, 
+            email, 
+            phoneNumber, 
+            password, 
+            confirmPassword 
+          });
+          set({ 
+            phoneNumber: res.data.phoneNumber, // Store phoneNumber from response
+            loading: false 
+          });
+          console.log('Signup - Updated State:', get());
+          toast.success('OTP sent to your phone number');
+          return res.data; // Return response for navigation in component
         } catch (error) {
           set({ loading: false });
-          toast.error(error.response?.data?.message || 'An error occurred');
+          toast.error(error.response?.data?.message || 'An error occurred during signup');
+          throw error; // Throw error to handle navigation in component
+        }
+      },
+
+      verifyPhone: async ({ phoneNumber, otp }) => {
+        set({ loading: true });
+        try {
+          const res = await axiosInstance.post(`${API_BASE_URL}/auth/verify-phone`, { 
+            phoneNumber, 
+            otp 
+          });
+          set({ 
+            user: res.data.user, // Set user after successful verification
+            phoneNumber: null, // Clear phoneNumber after verification
+            loading: false 
+          });
+          console.log('VerifyPhone - Updated State:', get());
+          toast.success('Phone number verified successfully');
+          return res.data; // Return response for navigation in component
+        } catch (error) {
+          set({ loading: false });
+          toast.error(error.response?.data?.message || 'OTP verification failed');
+          throw error; // Throw error to handle navigation in component
         }
       },
 
@@ -43,6 +77,7 @@ export const useAuthStore = create(
           console.log('Login Response:', res.data);
           set({ user: res.data.user, loading: false });
           console.log('Login - Updated State:', get().user);
+          toast.success('Logged in successfully');
         } catch (error) {
           console.error('Login Error:', error.response?.data);
           set({ loading: false });
@@ -53,8 +88,9 @@ export const useAuthStore = create(
       logout: async () => {
         try {
           await axiosInstance.post(`${API_BASE_URL}/auth/logout`);
-          set({ user: null });
+          set({ user: null, phoneNumber: null }); // Clear phoneNumber on logout
           console.log('Logout - Updated State:', get().user);
+          toast.success('Logged out successfully');
         } catch (error) {
           toast.error(error.response?.data?.message || 'An error occurred during logout');
         }
@@ -78,7 +114,7 @@ export const useAuthStore = create(
     }),
     {
       name: 'auth-storage', // Name for localStorage key
-      partialize: (state) => ({ user: state.user }), // Only persist user
+      partialize: (state) => ({ user: state.user }), // Only persist user, not phoneNumber
     }
   )
 );

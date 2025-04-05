@@ -25,14 +25,36 @@ const userSchema = new mongoose.Schema(
       lowercase: true,
       match: [/^\S+@\S+\.\S+$/, "Please use a valid email address"],
     },
+    phoneNumber: {
+      type: String,
+      required: true,
+      validate: {
+        validator: function (v) {
+          return /^\+\d{10,}$/.test(v);
+        },
+        message: "Please enter a valid phone number with country code (e.g., +911234567890)",
+      },
+    },
     password: {
       type: String,
       required: [true, "Password is required"],
       minlength: [6, "Password must be at least 6 characters long"],
     },
-    profilePicture: {
+    confirmPassword: {
       type: String,
-      default: "",
+      required: [true, "Password is required"],
+      minlength: [6, "Password must be at least 6 characters long"],
+    },
+  
+    otp: {
+      type: Number,
+      required: true,
+      validate: {
+        validator: function (v) {
+          return /^\d{6}$/.test(v.toString());
+        },
+        message: "OTP must be 6 digits",
+      },
     },
     lastLogin: {
       type: Date,
