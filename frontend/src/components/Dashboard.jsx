@@ -87,12 +87,7 @@ function DashboardPage() {
       navigation: () => navigate('/dashboard/ai-naming'), 
       roles: ['admin', 'citizen', 'guest']
     },
-    { 
-      name: 'Toxicity Prediction', 
-      icon: <Target size={20} className="mr-3" />,
-      navigation: () => navigate('/dashboard/toxicity-prediction'), 
-      roles: ['admin', 'citizen', 'guest']
-    },
+   
     { 
       name: 'Live News', 
       icon: <Newspaper size={20} className="mr-3" />,
