@@ -32,6 +32,7 @@
     "framer-motion": "^12.6.2",
     "html2canvas": "^1.4.1",
     "html2pdf.js": "^0.10.3",
+    "js-cookie": "^3.0.5",
     "jspdf": "^3.0.1",
     "ketcher-core": "^3.0.3",
     "ketcher-react": "^3.0.3",

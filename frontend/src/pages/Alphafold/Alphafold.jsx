@@ -16,12 +16,12 @@ const AlphaFoldExplorer = () => {
   const [nglComponents, setNglComponents] = useState(null);
   const stageRef = useRef(null);
 
-  // const API_BASE_URL = 'http://localhost:5000/api/alphafold';
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
   const axiosInstance = axios.create({
-    baseURL: import.meta.mode==="development" ? API_BASE_URL : '/api',
+    baseURL: import.meta.mode === "development" ? API_BASE_URL : '/api',
     withCredentials: true,
   });
+
   // Handle prediction submission
   const handlePredictionSubmit = async (e) => {
     e.preventDefault();
@@ -200,6 +200,22 @@ const AlphaFoldExplorer = () => {
       };
     }
   }, [jobStatus?.pdbUrl, structureRendered]);
+
+  // Reset structure and prediction data when switching tabs
+  useEffect(() => {
+    // Reset prediction-related states
+    setPredictionResult(null);
+    setJobStatus(null);
+    setStructureRendered(false);
+    setNglComponents(null);
+    setError('');
+    setLoading(false);
+
+    // Clear the NGL stage if it exists
+    if (stageRef.current) {
+      stageRef.current.removeAllComponents();
+    }
+  }, [activeTab]);
 
   // Initial fetch of previous jobs
   useEffect(() => {
@@ -385,72 +401,65 @@ const AlphaFoldExplorer = () => {
                 <div className="flex flex-col md:flex-col gap-4 text-gray-700">
                   <div>
                     <h3 className="font-medium text-blue-700 mb-2">Basic Information</h3>
-                    <p><span className="font-medium">Protien Name:</span> {summary.protein?.recommendedName?.fullName?.value || 'Not available'}</p>
+                    <p><span className="font-medium">Protein Name:</span> {summary.protein?.recommendedName?.fullName?.value || 'Not available'}</p>
                     <p><span className="font-medium">Gene:</span> {summary.gene?.[0]?.name?.value || 'Not available'}</p>
                     <p><span className="font-medium">Organism:</span> {summary.organism?.scientificName || 'Not available'}</p>
                     <p><span className="font-medium">Length:</span> {summary.sequence?.length ? `${summary.sequence.length} amino acids` : 'Not available'}</p>
-                    <p><span className="font-medium">Length:</span> {summary.protein?.recommendedName?.fullName?.value ? `${summary.sequence.length} amino acids` : 'Not available'}</p>
                   </div>
                   <div className="bg-blue-50 rounded-lg p-4 border border-blue-100">
-  <h3 className="text-lg font-semibold text-blue-800 mb-3 border-b border-blue-200 pb-2">
-    Functional Summary
-  </h3>
-
-  {/* Function Section */}
-  <div className="mb-4">
-    <h4 className="font-medium text-blue-700 flex items-center mb-2">
-      <svg className="w-4 h-4 mr-2 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-      </svg>
-      Protein Function
-    </h4>
-    <div className="bg-white p-3 rounded-md shadow-sm">
-      {summary.comments?.find(c => c.type === 'FUNCTION')?.text?.[0]?.value || (
-        <span className="text-gray-500">Not specified</span>
-      )}
-    </div>
-  </div>
-
-  {/* Key Features */}
-  {annotations?.features?.length > 0 && (
-    <div className="mb-4">
-      <h4 className="font-medium text-blue-700 flex items-center mb-2">
-        <svg className="w-4 h-4 mr-2 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-        </svg>
-        Key Features
-      </h4>
-      <div className="bg-white p-3 rounded-md shadow-sm">
-        <ul className="space-y-2">
-          {annotations.features.slice(0, 5).map((feat, i) => (
-            <li key={i} className="flex items-start">
-              <span className="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full mr-2 mt-1">
-                {feat.type}
-              </span>
-              <span className="flex-1">{feat.description || 'No description available'}</span>
-            </li>
-          ))}
-        </ul>
-      </div>
-    </div>
-  )}
-
-  {/* Additional Info (example) */}
-  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-    <div>
-      <h4 className="font-medium text-blue-700 mb-1">Subcellular Location</h4>
-      <div className="bg-white p-2 rounded text-sm">
-        {summary.comments?.find(c => c.type === 'SUBCELLULAR_LOCATION')?.text?.[0]?.value || 'Unknown'}
-      </div>
-    </div>
-    <div>
-      <h4 className="font-medium text-blue-700 mb-1">Catalytic Activity</h4>
-      <div className="bg-white p-2 rounded text-sm">
-        {summary.comments?.find(c => c.type === 'CATALYTIC_ACTIVITY')?.text?.[0]?.value || 'Not enzymatic'}
-      </div>
-    </div>
-  </div>
-</div>
+                    <h3 className="text-lg font-semibold text-blue-800 mb-3 border-b border-blue-200 pb-2">
+                      Functional Summary
+                    </h3>
+                    <div className="mb-4">
+                      <h4 className="font-medium text-blue-700 flex items-center mb-2">
+                        <svg className="w-4 h-4 mr-2 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        Protein Function
+                      </h4>
+                      <div className="bg-white p-3 rounded-md shadow-sm">
+                        {summary.comments?.find(c => c.type === 'FUNCTION')?.text?.[0]?.value || (
+                          <span className="text-gray-500">Not specified</span>
+                        )}
+                      </div>
+                    </div>
+                    {annotations?.features?.length > 0 && (
+                      <div className="mb-4">
+                        <h4 className="font-medium text-blue-700 flex items-center mb-2">
+                          <svg className="w-4 h-4 mr-2 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                          Key Features
+                        </h4>
+                        <div className="bg-white p-3 rounded-md shadow-sm">
+                          <ul className="space-y-2">
+                            {annotations.features.slice(0, 5).map((feat, i) => (
+                              <li key={i} className="flex items-start">
+                                <span className="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full mr-2 mt-1">
+                                  {feat.type}
+                                </span>
+                                <span className="flex-1">{feat.description || 'No description available'}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      </div>
+                    )}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <h4 className="font-medium text-blue-700 mb-1">Subcellular Location</h4>
+                        <div className="bg-white p-2 rounded text-sm">
+                          {summary.comments?.find(c => c.type === 'SUBCELLULAR_LOCATION')?.text?.[0]?.value || 'Unknown'}
+                        </div>
+                      </div>
+                      <div>
+                        <h4 className="font-medium text-blue-700 mb-1">Catalytic Activity</h4>
+                        <div className="bg-white p-2 rounded text-sm">
+                          {summary.comments?.find(c => c.type === 'CATALYTIC_ACTIVITY')?.text?.[0]?.value || 'Not enzymatic'}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
                 {summary?.sequence?.sequence && typeof summary.sequence.sequence === 'string' && (
                   <div className="mt-4">
