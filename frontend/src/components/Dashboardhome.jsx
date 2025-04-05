@@ -1,6 +1,6 @@
 import { useAuthStore } from "../Store/auth.store.js";
 import { Link } from "react-router-dom";
-import {Home } from "lucide-react";
+import { Home } from "lucide-react";
 function DashboardHome() {
   const { user } = useAuthStore();
 
@@ -13,12 +13,16 @@ function DashboardHome() {
             <h1 className="text-2xl md:text-3xl font-bold text-gray-800">
               Welcome back, {user?.firstName || "Researcher"}!
             </h1>
-            <p className="text-gray-600 mt-2">Your drug discovery dashboard is ready for today's research.</p>
+            <p className="text-gray-600 mt-2">
+              Your drug discovery dashboard is ready for today's research.
+            </p>
           </div>
           <div className="flex gap-2">
-
-            <Link to="/" className="inline-flex items-center justify-center px-3 py-2 text-sm font-medium rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition-colors">
-             <Home className="mr-2" size={18} />
+            <Link
+              to="/"
+              className="inline-flex items-center justify-center px-3 py-2 text-sm font-medium rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition-colors"
+            >
+              <Home className="mr-2" size={18} />
               Back to Home
             </Link>
           </div>
@@ -27,8 +31,63 @@ function DashboardHome() {
 
       {/* Quick actions section */}
       <div className="mb-6">
-        <h2 className="text-xl font-semibold text-gray-800 mb-4">Quick Actions</h2>
+        <h2 className="text-xl font-semibold text-gray-800 mb-4">
+          Quick Actions
+        </h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+
+
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all">
+            <div className="p-5">
+              <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-emerald-500 text-white mb-3">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-5 w-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"
+                  />
+                </svg>
+              </div>
+              <h3 className="text-lg font-semibold mb-1">
+                Alphafold Structure Prediction
+              </h3>
+              <p className="text-gray-500 text-sm mb-3">
+                Predict and visualize protein structures with atom and bond
+              </p>
+              <Link
+                to="/dashboard/getalphafoldstrcture"
+                className="inline-flex items-center text-blue-600 hover:text-blue-800 font-medium text-sm"
+              >
+                Get Started
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-4 w-4 ml-1"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 5l7 7-7 7"
+                  />
+                </svg>
+              </Link>
+            </div>
+          </div>
+
+
+
+
+
           {/* Protein Structure Generation Card */}
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all">
             <div className="p-5">
@@ -48,8 +107,12 @@ function DashboardHome() {
                   />
                 </svg>
               </div>
-              <h3 className="text-lg font-semibold mb-1">Protein Structure Generation</h3>
-              <p className="text-gray-500 text-sm mb-3">Generate and analyze protein structures</p>
+              <h3 className="text-lg font-semibold mb-1">
+                Protein Structure Generation
+              </h3>
+              <p className="text-gray-500 text-sm mb-3">
+                Generate and analyze protein structures
+              </p>
               <Link
                 to="/dashboard/protein-structure"
                 className="inline-flex items-center text-blue-600 hover:text-blue-800 font-medium text-sm"
@@ -62,11 +125,18 @@ function DashboardHome() {
                   viewBox="0 0 24 24"
                   stroke="currentColor"
                 >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 5l7 7-7 7"
+                  />
                 </svg>
               </Link>
             </div>
           </div>
+
+         
 
           {/* Protein Structure Evolution Card */}
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all">
@@ -87,8 +157,12 @@ function DashboardHome() {
                   />
                 </svg>
               </div>
-              <h3 className="text-lg font-semibold mb-1">Protein Structure Evolution</h3>
-              <p className="text-gray-500 text-sm mb-3">Explore protein structure evolution</p>
+              <h3 className="text-lg font-semibold mb-1">
+                New Drug Discovery
+              </h3>
+              <p className="text-gray-500 text-sm mb-3">
+                Explore New Drugs Discovery
+              </p>
               <Link
                 to="/dashboard/protein-structure-mutation"
                 className="inline-flex items-center text-blue-600 hover:text-blue-800 font-medium text-sm"
@@ -101,7 +175,12 @@ function DashboardHome() {
                   viewBox="0 0 24 24"
                   stroke="currentColor"
                 >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 5l7 7-7 7"
+                  />
                 </svg>
               </Link>
             </div>
@@ -127,7 +206,9 @@ function DashboardHome() {
                 </svg>
               </div>
               <h3 className="text-lg font-semibold mb-1">Cost Estimation</h3>
-              <p className="text-gray-500 text-sm mb-3">Estimate costs for drug development</p>
+              <p className="text-gray-500 text-sm mb-3">
+                Estimate costs for drug development
+              </p>
               <Link
                 to="/dashboard/cost-estimation"
                 className="inline-flex items-center text-blue-600 hover:text-blue-800 font-medium text-sm"
@@ -140,52 +221,18 @@ function DashboardHome() {
                   viewBox="0 0 24 24"
                   stroke="currentColor"
                 >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
-              </Link>
-            </div>
-          </div>
-
- {/* Alphafols Struicture*/}
- <div className="bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all">
-            <div className="p-5">
-              <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-emerald-500 text-white mb-3">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-5 w-5"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
                   <path
                     strokeLinecap="round"
                     strokeLinejoin="round"
                     strokeWidth={2}
-                    d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"
+                    d="M9 5l7 7-7 7"
                   />
-                </svg>
-              </div>
-              <h3 className="text-lg font-semibold mb-1">Protein Structure Evolution</h3>
-              <p className="text-gray-500 text-sm mb-3">Explore protein structure evolution</p>
-              <Link
-                to="/dashboard/getalphafoldstrcture"
-                className="inline-flex items-center text-blue-600 hover:text-blue-800 font-medium text-sm"
-              >
-                Get Started
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-4 w-4 ml-1"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                 </svg>
               </Link>
             </div>
           </div>
 
-
+        
           {/* AI Research Paper Generator Card */}
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all">
             <div className="p-5">
@@ -205,8 +252,12 @@ function DashboardHome() {
                   />
                 </svg>
               </div>
-              <h3 className="text-lg font-semibold mb-1">AI Research Paper Generator</h3>
-              <p className="text-gray-500 text-sm mb-3">Generate research papers using AI</p>
+              <h3 className="text-lg font-semibold mb-1">
+                AI Research Paper Generator
+              </h3>
+              <p className="text-gray-500 text-sm mb-3">
+                Generate research papers using AI
+              </p>
               <Link
                 to="/dashboard/ai-research-paper-generator"
                 className="inline-flex items-center text-blue-600 hover:text-blue-800 font-medium text-sm"
@@ -219,7 +270,12 @@ function DashboardHome() {
                   viewBox="0 0 24 24"
                   stroke="currentColor"
                 >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 5l7 7-7 7"
+                  />
                 </svg>
               </Link>
             </div>
@@ -244,8 +300,12 @@ function DashboardHome() {
                   />
                 </svg>
               </div>
-              <h3 className="text-lg font-semibold mb-1">AI Driven Target Prediction</h3>
-              <p className="text-gray-500 text-sm mb-3">Predict drug targets using AI</p>
+              <h3 className="text-lg font-semibold mb-1">
+                AI Driven Target Prediction
+              </h3>
+              <p className="text-gray-500 text-sm mb-3">
+                Predict drug targets using AI
+              </p>
               <Link
                 to="/dashboard/ai-driven-target-prediction"
                 className="inline-flex items-center text-blue-600 hover:text-blue-800 font-medium text-sm"
@@ -258,11 +318,107 @@ function DashboardHome() {
                   viewBox="0 0 24 24"
                   stroke="currentColor"
                 >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 5l7 7-7 7"
+                  />
                 </svg>
               </Link>
             </div>
           </div>
+
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all">
+            <div className="p-5">
+              <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-green-500 text-white mb-3">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-5 w-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z"
+                  />
+                </svg>
+              </div>
+              <h3 className="text-lg font-semibold mb-1">AI Naming Suggestions</h3>
+              <p className="text-gray-500 text-sm mb-3">
+                Let AI suggests the name for your New Drug
+              </p>
+              <Link
+                to="/dashboard/ai-naming"
+                className="inline-flex items-center text-blue-600 hover:text-blue-800 font-medium text-sm"
+              >
+                Get Started
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-4 w-4 ml-1"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 5l7 7-7 7"
+                  />
+                </svg>
+              </Link>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all">
+            <div className="p-5">
+              <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-green-500 text-white mb-3">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-5 w-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z"
+                  />
+                </svg>
+              </div>
+              <h3 className="text-lg font-semibold mb-1">Toxicity Pediction</h3>
+              <p className="text-gray-500 text-sm mb-3">
+                Get to know about New Drug 
+              </p>
+              <Link
+                to="/dashboard/toxicityPrediction"
+                className="inline-flex items-center text-blue-600 hover:text-blue-800 font-medium text-sm"
+              >
+                Get Started
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-4 w-4 ml-1"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 5l7 7-7 7"
+                  />
+                </svg>
+              </Link>
+            </div>
+          </div>
+
 
           {/* Live News Card */}
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all">
@@ -284,7 +440,9 @@ function DashboardHome() {
                 </svg>
               </div>
               <h3 className="text-lg font-semibold mb-1">Live News</h3>
-              <p className="text-gray-500 text-sm mb-3">Stay updated with the latest news</p>
+              <p className="text-gray-500 text-sm mb-3">
+                Stay updated with the latest news
+              </p>
               <Link
                 to="/dashboard/live-news"
                 className="inline-flex items-center text-blue-600 hover:text-blue-800 font-medium text-sm"
@@ -297,14 +455,19 @@ function DashboardHome() {
                   viewBox="0 0 24 24"
                   stroke="currentColor"
                 >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 5l7 7-7 7"
+                  />
                 </svg>
               </Link>
             </div>
           </div>
 
           {/* Message Board Card */}
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all">
+          {/* <div className="bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all">
             <div className="p-5">
               <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-indigo-500 text-white mb-3">
                 <svg
@@ -340,14 +503,14 @@ function DashboardHome() {
                 </svg>
               </Link>
             </div>
-          </div>
+          </div> */}
         </div>
       </div>
 
       {/* Recent activity and resources section */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Recent activity */}
-        <div className="lg:col-span-2 bg-white rounded-xl border border-gray-200 shadow-sm">
+      {/* <div className="grid grid-cols-1 lg:grid-cols-3 gap-6"> */}
+      {/* Recent activity */}
+      {/* <div className="lg:col-span-2 bg-white rounded-xl border border-gray-200 shadow-sm">
           <div className="p-6 border-b border-gray-100">
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-semibold">Recent Activity</h3>
@@ -383,10 +546,10 @@ function DashboardHome() {
               ))}
             </div>
           </div>
-        </div>
+        </div> */}
 
-        {/* Resources */}
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
+      {/* Resources */}
+      {/* <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
           <div className="p-6 border-b border-gray-100">
             <h3 className="text-lg font-semibold">Resources</h3>
             <p className="text-sm text-gray-500 mt-1">Helpful guides and documentation</p>
@@ -453,11 +616,11 @@ function DashboardHome() {
               </div>
             </div>
           </div>
-        </div>
-      </div>
+        </div> */}
+      {/* </div> */}
 
       {/* Stats section */}
-      <div className="mt-6 grid grid-cols-1 md:grid-cols-4 gap-4">
+      {/* <div className="mt-6 grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
           <div className="flex items-center">
             <div className="p-2 rounded-full bg-blue-50 mr-4">
@@ -554,7 +717,7 @@ function DashboardHome() {
             </div>
           </div>
         </div>
-      </div>
+      </div> */}
     </div>
   );
 }

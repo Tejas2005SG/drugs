@@ -204,7 +204,7 @@ function LiveNews() {
             <span className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></span>
             <span className="w-2 h-2 bg-blue-500 rounded-full animate-pulse delay-100"></span>
             <span className="w-2 h-2 bg-blue-500 rounded-full animate-pulse delay-200"></span>
-            <span className="ml-2">Live updates every 5 minutes</span>
+            <span className="ml-2">As this news API offers limited access in the free version, only one or two news articles may be available, and they may not include timestamps(Will change this api soon). </span>
           </div>
         </footer>
       </main>

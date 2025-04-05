@@ -7,7 +7,8 @@ import { redis } from '../lib/redis.js';
 
 // Twilio setup
 const accountSid = 'AC8dba743d63dfe475b23b19ebc564c82c';
-const authToken = '00e9405a49a0fcdc7b2ae50f9846fc5e';
+
+const authToken = '0b1f3f6d1dc9d8ddab9f907270132f50';
 const client = twilio(accountSid, authToken);
 
 // Generate OTP
