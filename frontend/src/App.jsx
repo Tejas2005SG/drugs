@@ -21,7 +21,7 @@ import LiveNews from "./pages/Livenews/Livenews.jsx";
 // import Message from "./pages/Message/Message.jsx";
 import GetAlphaFoldStructure from "./pages/Alphafold/Alphafold.jsx"
 import AINamingSuggestion from './pages/AINamingSuggestion/AINamingSuggestion.jsx';
-import Toxicityprediction from './pages/Toxicityprediction/Toxicityprediction.jsx';
+// import Toxicityprediction from './pages/Toxicityprediction/Toxicityprediction.jsx';
 
 const ProtectedRoute = ({ children }) => {
   const { user } = useAuthStore();
@@ -110,14 +110,7 @@ function App() {
               </ProtectedRoute>
             }
           />
-          <Route
-            path="toxicity-prediction"
-            element={
-              <ProtectedRoute>
-                <Toxicityprediction />
-              </ProtectedRoute>
-            }
-          />
+         
           <Route
             path="getalphafoldstrcture"
             element={
