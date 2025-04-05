@@ -88,6 +88,12 @@ function DashboardPage() {
       navigation: () => navigate('/dashboard/ai-naming'), 
       roles: ['admin', 'citizen', 'guest']
     },
+    { 
+      name: 'Toxicity Prediction', 
+      icon: <Torus size={20} className="mr-3" />,
+      navigation: () => navigate('/dashboard/ToxicityPrediction'), 
+      roles: ['admin', 'citizen', 'guest']
+    },
    
     { 
       name: 'Live News', 
@@ -96,12 +102,7 @@ function DashboardPage() {
       roles: ['admin', 'citizen', 'guest']
     },
 
-    { 
-      name: 'Toxicity Prediction', 
-      icon: <Torus size={20} className="mr-3" />,
-      navigation: () => navigate('/dashboard/ToxicityPrediction'), 
-      roles: ['admin', 'citizen', 'guest']
-    },
+   
    
   ];
 
