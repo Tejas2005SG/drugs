@@ -7,8 +7,8 @@ A comprehensive full-stack application for AI-powered drug discovery and pharmac
 https://drugs-assistant-345z.onrender.com (Live Link)
 
 Use below login cerdentials [Since we have use Twilio Demo so otp will come to only registered phone number so use below credentials ]
-Email - test@gmail.com
-password - 1
+- Email - test@gmail.com
+- password - 1
 
 ## Table of Contents
 - [Features](#features)
