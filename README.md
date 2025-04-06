@@ -4,6 +4,8 @@ A comprehensive full-stack application for AI-powered drug discovery and pharmac
 
 ![image](https://github.com/user-attachments/assets/b42cd80d-1e3c-4e5b-af05-930cde52adde)
 
+https://drugs-assistant-345z.onrender.com (Live Link)
+
 ## Table of Contents
 - [Features](#features)
 - [Technologies Used](#technologies-used)
