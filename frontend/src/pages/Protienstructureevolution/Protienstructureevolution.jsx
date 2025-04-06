@@ -346,7 +346,7 @@ const ProteinStructureEvolution = () => {
           <p className="text-slate-600 mb-6">Please log in to explore Protein Structure Evolution.</p>
           <a
             href="/login"
-            className="inline-block px-6 py-3 bg-gradient-to-r from-emerald-600 to-teal-500 text-white rounded-lg hover:from-emerald-700 hover:to-teal-600 transition w-full"
+            className="inline-block px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-500 text-white rounded-lg hover:from-blue-700 hover:to-blue-600 transition w-full"
           >
             Login Now
           </a>
@@ -360,9 +360,9 @@ const ProteinStructureEvolution = () => {
       <div className="max-w-5xl mx-auto space-y-8">
         <div className="text-center space-y-2">
           <div className="inline-flex items-center justify-center p-2 bg-slate-100 rounded-full mb-2">
-            <Dna className="h-8 w-8 text-emerald-600" />
+            <Dna className="h-8 w-8 text-blue-600" />
           </div>
-          <h1 className="text-4xl font-extrabold tracking-tight bg-gradient-to-r from-emerald-600 to-teal-500 text-transparent bg-clip-text">
+          <h1 className="text-4xl font-extrabold tracking-tight bg-gradient-to-r from-blue-600 to-blue-500 text-transparent bg-clip-text">
             New Drug Molecule Generation
           </h1>
           <p className="text-sm text-slate-600 font-medium">Powered by Gemini AI</p>
@@ -387,7 +387,7 @@ const ProteinStructureEvolution = () => {
         <div className="bg-white p-6 rounded-xl shadow-md hover:shadow-lg transition-shadow duration-300">
           <div className="mb-4">
             <h2 className="text-2xl font-semibold text-slate-800 flex items-center gap-2">
-              <Beaker className="h-6 w-6 text-emerald-500" />
+              <Beaker className="h-6 w-6 text-blue-500" />
               Generate New Molecule
             </h2>
             <p className="text-slate-500 text-sm mt-1">
@@ -410,7 +410,7 @@ const ProteinStructureEvolution = () => {
                   placeholder="Enter a descriptive title for the new molecule"
                   disabled={loading}
                   required
-                  className="w-full p-3 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 transition bg-white"
+                  className="w-full p-3 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition bg-white"
                 />
               </div>
 
@@ -427,7 +427,7 @@ const ProteinStructureEvolution = () => {
                     onChange={(e) => handleSearchChange(e, "first")}
                     placeholder="Search molecule by name (e.g., Aspirin)"
                     disabled={loading}
-                    className="w-full p-3 pl-10 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 transition bg-white"
+                    className="w-full p-3 pl-10 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition bg-white"
                   />
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
                 </div>
@@ -442,7 +442,7 @@ const ProteinStructureEvolution = () => {
                       <li
                         key={index}
                         onClick={() => handleSuggestionSelect(suggestion, "first")}
-                        className="px-3 py-2 text-sm text-slate-700 hover:bg-emerald-50 cursor-pointer"
+                        className="px-3 py-2 text-sm text-slate-700 hover:bg-blue-50 cursor-pointer"
                       >
                         {suggestion}
                       </li>
@@ -458,7 +458,7 @@ const ProteinStructureEvolution = () => {
                   placeholder="SMILES will be auto-filled or enter manually"
                   disabled={loading}
                   required
-                  className="w-full p-3 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 transition bg-white font-mono text-sm"
+                  className="w-full p-3 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition bg-white font-mono text-sm"
                 />
               </div>
 
@@ -475,7 +475,7 @@ const ProteinStructureEvolution = () => {
                     onChange={(e) => handleSearchChange(e, "second")}
                     placeholder="Search molecule by name (e.g., Ibuprofen)"
                     disabled={loading}
-                    className="w-full p-3 pl-10 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 transition bg-white"
+                    className="w-full p-3 pl-10 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition bg-white"
                   />
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
                 </div>
@@ -490,7 +490,7 @@ const ProteinStructureEvolution = () => {
                       <li
                         key={index}
                         onClick={() => handleSuggestionSelect(suggestion, "second")}
-                        className="px-3 py-2 text-sm text-slate-700 hover:bg-emerald-50 cursor-pointer"
+                        className="px-3 py-2 text-sm text-slate-700 hover:bg-blue-50 cursor-pointer"
                       >
                         {suggestion}
                       </li>
@@ -506,7 +506,7 @@ const ProteinStructureEvolution = () => {
                   placeholder="SMILES will be auto-filled or enter manually"
                   disabled={loading}
                   required
-                  className="w-full p-3 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 transition bg-white font-mono text-sm"
+                  className="w-full p-3 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition bg-white font-mono text-sm"
                 />
               </div>
             </div>
@@ -514,7 +514,7 @@ const ProteinStructureEvolution = () => {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3 bg-gradient-to-r from-emerald-600 to-teal-500 text-white rounded-lg hover:from-emerald-700 hover:to-teal-600 disabled:opacity-50 disabled:cursor-not-allowed transition flex items-center justify-center font-medium"
+              className="w-full py-3 bg-gradient-to-r from-blue-600 to-blue-500 text-white rounded-lg hover:from-blue-700 hover:to-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition flex items-center justify-center font-medium"
             >
               {loading ? (
                 <>
@@ -530,7 +530,7 @@ const ProteinStructureEvolution = () => {
           {realTimeOutput && (
             <div className="mt-6">
               <div className="flex items-center gap-2 mb-2">
-                <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                <div className="h-2 w-2 rounded-full bg-blue-500 animate-pulse" />
                 <h3 className="text-sm font-medium text-slate-700">Live Output</h3>
               </div>
               <div className="h-96 w-full overflow-auto rounded-md border border-slate-200 bg-slate-50 p-4">
@@ -563,7 +563,7 @@ const ProteinStructureEvolution = () => {
         <div className="bg-white p-6 rounded-xl shadow-md hover:shadow-lg transition-shadow duration-300">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-2xl font-semibold text-slate-800 flex items-center gap-2">
-              <Dna className="h-6 w-6 text-emerald-500" />
+              <Dna className="h-6 w-6 text-blue-500" />
               Your Molecules
             </h2>
             <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold bg-slate-100 text-slate-800 border border-slate-200">
@@ -574,7 +574,7 @@ const ProteinStructureEvolution = () => {
 
           {fetchingMolecules && (
             <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-8 w-8 animate-spin text-emerald-500" />
+              <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
             </div>
           )}
 
@@ -591,7 +591,7 @@ const ProteinStructureEvolution = () => {
               <ul className="space-y-4">
                 {molecules.map((molecule) => (
                   <li key={molecule.id} className="group">
-                    <div className="border border-slate-200 rounded-lg overflow-hidden transition-all duration-200 group-hover:border-emerald-200 group-hover:shadow-sm">
+                    <div className="border border-slate-200 rounded-lg overflow-hidden transition-all duration-200 group-hover:border-blue-200 group-hover:shadow-sm">
                       <div className="p-4">
                         <div className="flex flex-col space-y-3">
                           <div className="space-y-1">
@@ -611,7 +611,7 @@ const ProteinStructureEvolution = () => {
                               </div>
                               <button
                                 onClick={() => handleCopySmiles(molecule.newSmiles)}
-                                className="p-1.5 text-slate-500 hover:text-emerald-600 hover:bg-slate-100 rounded-md"
+                                className="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-slate-100 rounded-md"
                               >
                                 <Copy className="h-4 w-4" />
                               </button>
