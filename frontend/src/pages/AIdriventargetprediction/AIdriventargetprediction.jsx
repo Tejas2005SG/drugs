@@ -41,15 +41,63 @@ const cleanAbstract = (abstract) => {
     .trim()
 }
 
-// Alternative molecule editor component that doesn't rely on MarvinJS
+// Updated SimpleMoleculeEditor with PubChem autocomplete
 const SimpleMoleculeEditor = ({ onChange }) => {
-  const [exampleMolecules, setExampleMolecules] = useState([
-    { name: "Aspirin", smiles: "CC(=O)OC1=CC=CC=C1C(=O)O" },
-    { name: "Caffeine", smiles: "CN1C=NC2=C1C(=O)N(C(=O)N2C)C" },
-    { name: "Ibuprofen", smiles: "CC(C)CC1=CC=C(C=C1)C(C)C(=O)O" },
-    { name: "Paracetamol", smiles: "CC(=O)NC1=CC=C(C=C1)O" },
-    { name: "Penicillin G", smiles: "CC1(C(N2C(S1)C(C2=O)NC(=O)CC3=CC=CC=C3)C(=O)O)C" },
-  ])
+  const [searchQuery, setSearchQuery] = useState("")
+  const [suggestions, setSuggestions] = useState([])
+  const [loadingSuggestions, setLoadingSuggestions] = useState(false)
+  const [selectedSmiles, setSelectedSmiles] = useState("")
+
+  const fetchPubChemSuggestions = async (query) => {
+    if (!query) {
+      setSuggestions([])
+      return
+    }
+    setLoadingSuggestions(true)
+    try {
+      const response = await axios.get(
+        `https://pubchem.ncbi.nlm.nih.gov/rest/autocomplete/compound/${encodeURIComponent(query)}?limit=5`
+      )
+      const compounds = response.data.dictionary_terms?.compound || []
+      setSuggestions(compounds)
+    } catch (err) {
+      console.error("PubChem autocomplete error:", err)
+      toast.error("Failed to fetch suggestions from PubChem")
+    } finally {
+      setLoadingSuggestions(false)
+    }
+  }
+
+  const fetchSmilesFromPubChem = async (name) => {
+    try {
+      const response = await axios.get(
+        `https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name/${encodeURIComponent(name)}/property/CanonicalSMILES/JSON`
+      )
+      const smiles = response.data.PropertyTable.Properties[0]?.CanonicalSMILES
+      if (smiles) {
+        setSelectedSmiles(smiles)
+        onChange(smiles)
+        toast.success(`SMILES fetched for ${name}`)
+      } else {
+        toast.error("No SMILES found for this compound")
+      }
+    } catch (err) {
+      console.error("PubChem SMILES fetch error:", err)
+      toast.error("Failed to fetch SMILES from PubChem")
+    }
+  }
+
+  const handleSearchChange = (e) => {
+    const value = e.target.value
+    setSearchQuery(value)
+    fetchPubChemSuggestions(value)
+  }
+
+  const handleSuggestionSelect = (suggestion) => {
+    setSearchQuery(suggestion)
+    fetchSmilesFromPubChem(suggestion)
+    setSuggestions([])
+  }
 
   const handlePreviewError = (e) => {
     e.target.src = "/placeholder.svg?height=160&width=160"
@@ -59,25 +107,44 @@ const SimpleMoleculeEditor = ({ onChange }) => {
 
   return (
     <div className="p-4 border border-gray-300 rounded-lg bg-gray-50">
-      <p className="text-sm text-gray-600 mb-4">Select from example molecules or enter a SMILES string below:</p>
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mb-4">
-        {exampleMolecules.map((mol, index) => (
-          <button
-            key={index}
-            onClick={() => onChange(mol.smiles)}
-            className="text-sm bg-white p-2 border border-gray-300 rounded hover:bg-blue-50 hover:border-blue-300 transition-colors"
-          >
-            {mol.name}
-          </button>
-        ))}
+      <p className="text-sm text-gray-600 mb-4">Search for a molecule by name or enter a SMILES string manually:</p>
+      <div className="relative mb-4">
+        <input
+          type="text"
+          value={searchQuery}
+          onChange={handleSearchChange}
+          placeholder="Search molecule (e.g., Aspirin)"
+          className="w-full p-3 pl-10 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition bg-white"
+        />
+        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+        {loadingSuggestions && (
+          <div className="absolute top-full left-0 w-full bg-white border border-gray-200 rounded-b-lg shadow-md p-2 z-10">
+            <Loader2 className="h-4 w-4 animate-spin mx-auto" />
+          </div>
+        )}
+        {suggestions.length > 0 && !loadingSuggestions && (
+          <ul className="absolute top-full left-0 w-full bg-white border border-gray-200 rounded-b-lg shadow-md max-h-40 overflow-auto z-10">
+            {suggestions.map((suggestion, index) => (
+              <li
+                key={index}
+                onClick={() => handleSuggestionSelect(suggestion)}
+                className="px-3 py-2 text-sm text-gray-700 hover:bg-blue-50 cursor-pointer"
+              >
+                {suggestion}
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
       <div className="mt-4">
-        <p className="text-xs text-gray-500 mb-2">
-          Preview using PubChem (click a molecule above or enter SMILES below)
-        </p>
-        <div className="bg-white p-2 border border-gray-300 rounded-lg">
+        <p className="text-xs text-gray-500 mb-2">Preview (updates with selection or manual SMILES input):</p>
+        <div className="bg-white p-2 border border-gray-200 rounded-lg">
           <img
-            src="https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/smiles/PNG?record_type=2d&smiles=CC(=O)OC1=CC=CC=C1C(=O)O"
+            src={
+              selectedSmiles
+                ? `https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/smiles/PNG?record_type=2d&smiles=${encodeURIComponent(selectedSmiles)}`
+                : "/placeholder.svg?height=160&width=160"
+            }
             alt="Molecule structure preview"
             className="mx-auto h-40 object-contain"
             onError={handlePreviewError}
@@ -106,7 +173,6 @@ function AIdriventargetprediction() {
   const { user, checkAuth, checkingAuth } = useAuthStore()
   const marvinContainerRef = useRef(null)
 
-  // Initialize app and fetch saved searches
   useEffect(() => {
     const initializeApp = async () => {
       await checkAuth()
@@ -116,7 +182,6 @@ function AIdriventargetprediction() {
       }
       await fetchSavedSearches()
     }
-
     initializeApp()
   }, [checkAuth])
 
@@ -125,11 +190,9 @@ function AIdriventargetprediction() {
       console.warn("User ID not available, cannot fetch saved searches")
       return
     }
-
     try {
       setLoading(true)
       const response = await axiosInstance.get("/protein/saved-searches")
-      console.log("Fetched saved searches:", response.data.searches)
       setSavedSearches(response.data.searches || [])
     } catch (err) {
       console.error("Error fetching saved searches:", err.response?.data || err.message)
@@ -141,16 +204,9 @@ function AIdriventargetprediction() {
   }
 
   const checkIfSearchExists = async (smiles) => {
-    if (!user?._id || !smiles) {
-      console.warn("User ID or SMILES not available, cannot check saved searches")
-      return false
-    }
-
+    if (!user?._id || !smiles) return false
     try {
-      const response = await axiosInstance.get("/protein/check-saved-searches", {
-        params: { smiles },
-      })
-      console.log("Check if search exists:", response.data.exists)
+      const response = await axiosInstance.get("/protein/check-saved-searches", { params: { smiles } })
       return response.data.exists
     } catch (err) {
       console.error("Error checking saved searches:", err.response?.data || err.message)
@@ -160,23 +216,12 @@ function AIdriventargetprediction() {
 
   const saveSearch = async (smiles, targets, research, docking) => {
     if (!user?._id || !smiles) {
-      console.warn("User ID or SMILES not available, cannot save search")
       toast.error("Cannot save search: User ID or molecule data missing")
       return null
     }
-
-    const payload = {
-      userId: user._id,
-      smiles,
-      targets: targets || [],
-      research: research || [],
-      docking: docking || null,
-    }
-
+    const payload = { userId: user._id, smiles, targets: targets || [], research: research || [], docking: docking || null }
     try {
-      console.log("Saving search with payload:", JSON.stringify(payload, null, 2))
       const response = await axiosInstance.post("/protein/save-search", payload)
-      console.log("Save search response:", response.data)
       toast.success("Analysis results saved successfully!")
       return response.data.search
     } catch (err) {
@@ -188,10 +233,8 @@ function AIdriventargetprediction() {
 
   const handleMoleculeInputChange = (value) => {
     setMoleculeInput(value)
-    // Update the PubChem preview image
     const previewImg = document.querySelector(".molecule-preview-img")
     if (previewImg && value) {
-      // Clean the SMILES string and ensure proper encoding
       const cleanedSmiles = value.trim().replace(/'/g, "")
       previewImg.src = `https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/smiles/PNG?record_type=2d&smiles=${encodeURIComponent(cleanedSmiles)}`
     }
@@ -199,7 +242,6 @@ function AIdriventargetprediction() {
 
   const handleMoleculeSubmit = async () => {
     let smiles = marvinSmiles || moleculeInput
-
     if (!smiles && moleculeFile) {
       const formData = new FormData()
       formData.append("file", moleculeFile)
@@ -212,14 +254,12 @@ function AIdriventargetprediction() {
         return
       }
     }
-
     if (!smiles) {
       toast.error("Please provide a molecule via sketcher, SMILES, IUPAC, or file upload")
       return
     }
 
     setCurrentSmiles(smiles)
-
     const searchExists = await checkIfSearchExists(smiles)
     if (searchExists) {
       toast.info("This molecule has already been searched. Redirecting to Saved Searches.")
@@ -236,13 +276,9 @@ function AIdriventargetprediction() {
     setAnalysisCompleted(false)
 
     try {
-      // Step 1: Extract Molecular Fingerprints
-      console.log("Extracting molecular fingerprints for SMILES:", smiles)
       const fingerprintsResponse = await axiosInstance.post("/protein/rdkit-fingerprints", { smiles })
       const fingerprints = fingerprintsResponse.data.fingerprints
 
-      // Step 2: Use Gemini API for Bioactivity Prediction
-      console.log("Sending request to Gemini API for target prediction")
       const geminiPrompt = `
         You are an expert in cheminformatics and bioinformatics. Given a molecule's SMILES string and its fingerprint embeddings, predict realistic potential protein targets, their mechanism of action (MOA), pathways, and associated diseases. Use the following data:
 
@@ -268,56 +304,37 @@ function AIdriventargetprediction() {
         - Ensure the predictions are realistic and could plausibly match known drug-target interactions.
       `
 
-      const geminiResponse = await axiosInstance.post("/protein/proxy/gemini", {
-        prompt: geminiPrompt,
-      })
-
+      const geminiResponse = await axiosInstance.post("/protein/proxy/gemini", { prompt: geminiPrompt })
       const geminiContent = geminiResponse.data.content
-      console.log("Received Gemini API response:", geminiContent)
-
       const jsonMatch = geminiContent.match(/{[\s\S]*}/)
-      if (!jsonMatch) {
-        throw new Error("No valid JSON found in Gemini response")
-      }
-
+      if (!jsonMatch) throw new Error("No valid JSON found in Gemini response")
       const parsedGeminiData = JSON.parse(jsonMatch[0])
       const targets = parsedGeminiData.targets || []
-      console.log("Parsed targets from Gemini response:", targets)
       setPredictedTargets(targets)
 
-      // Step 3: Query External Databases (ChEMBL, PubChem)
-      console.log("Querying external databases for additional information")
       try {
         const chemblResponse = await chemblAxios.get(`/molecule?smiles=${encodeURIComponent(smiles)}`)
         const pubchemResponse = await pubchemAxios.get(`/compound/smiles/${encodeURIComponent(smiles)}/JSON`)
-
         const externalData = {
           chembl: chemblResponse.data?.molecules || [],
           pubchem: pubchemResponse.data?.PC_Compounds || [],
         }
-
         setPredictedTargets((prev) =>
           prev.map((target) => ({
             ...target,
             knownInteractions: externalData.chembl.find((t) => t.target === target.protein) || null,
-          })),
+          }))
         )
       } catch (dbErr) {
         console.error("Error querying external databases:", dbErr)
       }
 
-      // Step 4: Fetch Related Research Papers (OpenAlex)
-      console.log("Fetching related research papers")
       let papers = []
       try {
         const searchQuery = targets.length > 0 ? targets[0].protein : "protein targets"
-        console.log("OpenAlex search query:", searchQuery)
-
-        // Use the correct OpenAlex API URL format
         const openalexResponse = await openalexAxios.get(
-          `/works?filter=title.search:${encodeURIComponent(searchQuery)}&per_page=3`,
+          `/works?filter=title.search:${encodeURIComponent(searchQuery)}&per_page=3`
         )
-
         papers = openalexResponse.data.results.map((item) => ({
           title: item.title || "Untitled",
           authors: item.authorships?.map((a) => a.author.display_name).join(", ") || "Unknown Authors",
@@ -327,21 +344,16 @@ function AIdriventargetprediction() {
           doi: item.doi || "No DOI available",
           url: item.doi ? `https://doi.org/${item.doi}` : "No URL available",
         }))
-
         setRelatedResearch(papers)
       } catch (researchErr) {
         console.error("Error fetching research papers:", researchErr)
-        console.log("Falling back to generic research papers")
-
-        // Fallback to generic research data if API fails
         papers = [
           {
             title: "Recent advances in molecular target identification and drug discovery",
             authors: "Smith J, Johnson A, Williams B",
             journal: "Journal of Medicinal Chemistry",
             year: "2023",
-            abstract:
-              "This review covers recent methodologies in computational drug discovery and molecular target identification.",
+            abstract: "This review covers recent methodologies in computational drug discovery and molecular target identification.",
             doi: "10.1021/example.doi",
             url: "https://doi.org/10.1021/example.doi",
           },
@@ -350,8 +362,7 @@ function AIdriventargetprediction() {
             authors: "Chen L, Garcia R",
             journal: "Nature Reviews Drug Discovery",
             year: "2022",
-            abstract:
-              "An overview of structure-based drug design approaches and their application in modern pharmaceutical research.",
+            abstract: "An overview of structure-based drug design approaches and their application in modern pharmaceutical research.",
             doi: "10.1038/example.doi",
             url: "https://doi.org/10.1038/example.doi",
           },
@@ -359,8 +370,6 @@ function AIdriventargetprediction() {
         setRelatedResearch(papers)
       }
 
-      // Step 5: Perform Molecular Docking
-      console.log("Performing molecular docking simulation")
       try {
         const dockingResponse = await axiosInstance.post("/protein/docking", { smiles })
         setDockingResults(dockingResponse.data.results)
@@ -368,21 +377,12 @@ function AIdriventargetprediction() {
         console.error("Error performing molecular docking:", dockingErr)
       }
 
-      // Step 6: Save the search
-      console.log("Saving analysis results to database")
-      const currentTargets = targets.map((target) => ({
-        ...target,
-        knownInteractions: null, // Initialize this field
-      }))
-
+      const currentTargets = targets.map((target) => ({ ...target, knownInteractions: null }))
       const saveResult = await saveSearch(smiles, currentTargets, papers || [], dockingResults)
-
       if (saveResult) {
-        console.log("Search saved successfully:", saveResult)
         setAnalysisCompleted(true)
         toast.success("Molecule analysis completed successfully!")
       } else {
-        console.error("Failed to save search results")
         toast.error("Analysis completed but failed to save results")
       }
     } catch (err) {
@@ -396,26 +396,16 @@ function AIdriventargetprediction() {
 
   const handleTabChange = (tab) => {
     setActiveTab(tab)
-
-    if (tab === "moleculeInput") {
-      // Don't clear analysis results when switching to input tab
-      // This allows users to see their results even after switching tabs
-      setError(null)
-    } else if (tab === "savedSearches") {
-      // Refresh saved searches when switching to the tab
-      fetchSavedSearches()
-    }
+    if (tab === "moleculeInput") setError(null)
+    else if (tab === "savedSearches") fetchSavedSearches()
   }
 
   const handleViewSavedSearch = (search) => {
-    // Set the current analysis data to the selected saved search
     setPredictedTargets(search.targets || [])
     setRelatedResearch(search.research || [])
     setDockingResults(search.docking || null)
     setCurrentSmiles(search.smiles)
     setAnalysisCompleted(true)
-
-    // Switch to the input tab to show the results
     setActiveTab("moleculeInput")
   }
 
@@ -450,10 +440,9 @@ function AIdriventargetprediction() {
   return (
     <div className="min-h-screen bg-gray-100 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto">
-        <h1 className="text-4xl font-bold text-blue-700 mb-10 text-center">AI-Driven Target Prediction
-
-        <p className="text-xs  p-1 text-blue-700 font-semibold">(Powered by Gemini)</p>
-
+        <h1 className="text-4xl font-bold text-blue-700 mb-10 text-center">
+          AI-Driven Target Prediction
+          <p className="text-xs p-1 text-blue-700 font-semibold">(Powered by Gemini)</p>
         </h1>
 
         <div className="flex justify-center mb-8 space-x-4 flex-wrap">
@@ -496,7 +485,7 @@ function AIdriventargetprediction() {
                 </div>
               </div>
 
-              <div className="mb-6">
+              {/* <div className="mb-6">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   <FileText className="inline-block w-4 h-4 mr-1" />
                   Enter SMILES/IUPAC Name
@@ -518,9 +507,9 @@ function AIdriventargetprediction() {
                     />
                   </div>
                 )}
-              </div>
+              </div> */}
 
-              <div className="mb-6">
+              {/* <div className="mb-6">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   <Upload className="inline-block w-4 h-4 mr-1" />
                   Upload MOL/SDF File
@@ -532,7 +521,7 @@ function AIdriventargetprediction() {
                   className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
                 />
                 {moleculeFile && <p className="mt-2 text-sm text-green-600">File selected: {moleculeFile.name}</p>}
-              </div>
+              </div> */}
 
               <button
                 onClick={handleMoleculeSubmit}
@@ -685,7 +674,6 @@ function AIdriventargetprediction() {
           {activeTab === "savedSearches" && (
             <>
               <h2 className="text-2xl font-semibold text-blue-700 mb-6">Saved Searches</h2>
-
               {loading ? (
                 <div className="flex justify-center items-center py-10">
                   <Loader2 className="h-8 w-8 animate-spin text-blue-600 mr-2" />
@@ -709,7 +697,6 @@ function AIdriventargetprediction() {
                           View Details
                         </button>
                       </div>
-
                       {entry.targets && entry.targets.length > 0 ? (
                         <div className="mb-6">
                           <h4 className="text-md font-semibold text-gray-800 mb-2">Predicted Protein Targets</h4>
@@ -732,7 +719,6 @@ function AIdriventargetprediction() {
                       ) : (
                         <p className="text-gray-600 mb-4">No predicted targets available.</p>
                       )}
-
                       {entry.research && entry.research.length > 0 ? (
                         <div className="mb-6">
                           <h4 className="text-md font-semibold text-gray-800 mb-2">Related Research Papers</h4>
@@ -754,7 +740,6 @@ function AIdriventargetprediction() {
                       ) : (
                         <p className="text-gray-600 mb-4">No related research papers available.</p>
                       )}
-
                       {entry.docking ? (
                         <div>
                           <h4 className="text-md font-semibold text-gray-800 mb-2">Molecular Docking Results</h4>
@@ -791,4 +776,3 @@ function AIdriventargetprediction() {
 }
 
 export default AIdriventargetprediction
-
