@@ -704,7 +704,7 @@ You are a pharmaceutical chemistry expert tasked with analyzing a drug molecule 
 
           {renderMolecule(structure.smiles, parentMolRef)}
 
-          <div className="mt-4 flex justify-center">
+          <div className="mt-4   flex justify-center">
             <button
               onClick={() => setShowParent3D(!showParent3D)}
               className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded"
@@ -721,7 +721,7 @@ You are a pharmaceutical chemistry expert tasked with analyzing a drug molecule 
                 className="w-full h-96 mt-4 border rounded relative bg-gray-100 flex items-center justify-center"
               >
                 {!is3DmolLoaded && (
-                  <div className="flex flex-col items-center">
+                  <div className="flex flex-col  items-center">
                     <ClipLoader color="#3B82F6" size={50} />
                     <p className="mt-2 text-gray-600">Loading 3D viewer...</p>
                   </div>
@@ -729,7 +729,7 @@ You are a pharmaceutical chemistry expert tasked with analyzing a drug molecule 
               </div>
               {is3DmolLoaded && (
                 <div className="mt-2">
-                  <div className="flex justify-center space-x-4">
+                  <div className="flex justify-center flex-wrap gap-3 space-x-4">
                     <select
                       value={parentStyle}
                       onChange={(e) => setParentStyle(e.target.value)}

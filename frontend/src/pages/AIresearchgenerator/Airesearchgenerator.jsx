@@ -1,4 +1,4 @@
-import React, { useState, useEffect ,useRef} from "react";
+import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import { toast } from "react-hot-toast";
 import { useAuthStore } from "../../Store/auth.store.js";
@@ -40,27 +40,27 @@ function Airesearchgenerator() {
   const [generatedPaper, setGeneratedPaper] = useState(null); // Store the generated research paper
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
- const toastShown = useRef(false);
+  const toastShown = useRef(false);
   const { user, checkAuth, checkingAuth } = useAuthStore();
 
-      useEffect(() => {
-      if (!toastShown.current) {
-        toast(
-          "First , Generate a new molecule ",
-          {
-            position: "top-right",
-            duration: 8000, // 6 seconds
-            style: {
-              background: "#fefcbf", // Yellow background for warning
-              color: "#92400e", // Dark yellow text
-              border: "1px solid #f59e0b",
-            },
-            icon: "⚠️", // Warning icon
-          }
-        );
-        toastShown.current = true; // Mark the toast as shown
-      }
-    }, []); 
+  useEffect(() => {
+    if (!toastShown.current) {
+      toast(
+        "First , Generate a new molecule ",
+        {
+          position: "top-right",
+          duration: 8000,
+          style: {
+            background: "#fefcbf",
+            color: "#92400e",
+            border: "1px solid #f59e0b",
+          },
+          icon: "⚠️",
+        }
+      );
+      toastShown.current = true;
+    }
+  }, []);
 
   useEffect(() => {
     const initializeApp = async () => {
@@ -178,191 +178,19 @@ function Airesearchgenerator() {
 
     try {
       await axiosInstance.post("/protein/save-generated-research-paper", payload);
-      await fetchSavedGeneratedPapers(); // Refresh the saved generated papers list
+      await fetchSavedGeneratedPapers();
     } catch (err) {
       console.error("Error saving generated paper:", err.response?.data || err.message);
       toast.error("Failed to save generated research paper");
     }
   };
 
-  
-  // const handleResearchClick = async () => {
-  //   if (!selectedTitle || !selectedSmiles) {
-  //     toast.error("Please select both a title and SMILES string");
-  //     return;
-  //   }
-  
-  //   const papersExist = await checkIfPapersExist(selectedTitle, selectedSmiles);
-  //   if (papersExist) {
-  //     toast("Research papers for this molecule are already saved. Redirecting to Saved Research Papers.", {
-  //       type: "info",
-  //     });
-  //     setActiveTab("saved");
-  //     return;
-  //   }
-  
-  //   setLoading(true);
-  //   setError(null);
-  //   setResearchPapers([]);
-  //   setResearchSummary("");
-  
-  //   const selectedMol = molecules.find(
-  //     (mol) => mol.newmoleculetitle === selectedTitle && mol.newSmiles === selectedSmiles
-  //   );
-  //   if (!selectedMol) {
-  //     setError("Selected molecule not found");
-  //     setLoading(false);
-  //     return;
-  //   }
-  
-  //   const uniqueId = `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`; // Prevent caching
-  
-  //   const geminiPrompt = `
-  //     You are a world-class expert in cheminformatics, molecular modeling, and scientific literature synthesis. The molecule provided is newly generated, with no exact research papers existing. Your task is to infer and generate **unique research paper metadata** in IEEE format, strictly based on the SMILES string's chemical structure. You will assist in querying the IEEE Xplore API (using the provided API key) to fetch related research papers based on structural analogs or chemical properties derived from the SMILES.
-  
-  //     ### Molecule Details:
-  //     - **SMILES String**: "${selectedMol.newSmiles}"
-  //     - **IUPAC Name**: "${selectedMol.newIupacName}" (use only for validation, not primary input)
-  //     - **Conversion Details (Synthesis Pathway)**: "${selectedMol.conversionDetails}"
-  //     - **Potential Diseases (Therapeutic Relevance)**: "${selectedMol.potentialDiseases}"
-  //     - **Additional Information**: "${selectedMol.information}"
-  //     - **Unique Request ID**: "${uniqueId}" (ensure uniqueness)
-  
-  //     ### Deep Training Requirements:
-  //     1. **SMILES Structural Analysis**:
-  //        - Perform a detailed breakdown of the SMILES string "${selectedMol.newSmiles}" to identify:
-  //          - Functional groups (e.g., hydroxyl, carbonyl, amine)
-  //          - Ring systems (e.g., aromatic, aliphatic)
-  //          - Substituents and stereochemistry
-  //          - Potential reactivity or bioactivity based on these features.
-  //        - Use this analysis as the sole basis for generating paper titles, abstracts, and relevance.
-  
-  //     2. **Generate Unique Research Paper Metadata**:
-  //        - Provide details for 2-3 hypothetical research papers derived from the SMILES structure.
-  //        - Ensure unique authors (3 per paper), publication years (2015-2025), and IEEE-compliant DOIs.
-  //        - Abstracts (50-100 words) must reflect SMILES-derived structure and inferred applications (e.g., drug design, synthesis).
-  //        - Mark these as simulated if no API data is available.
-  
-  //     3. **IEEE Xplore API Integration**:
-  //        - Use the API key [INSERT_YOUR_API_KEY_HERE] to query the IEEE Xplore API.
-  //        - Construct a query based on SMILES-derived keywords (e.g., functional groups, chemical classes).
-  //        - Example API endpoint: https://ieeexploreapi.ieee.org/api/v1/search/articles?apikey=[INSERT_YOUR_API_KEY_HERE]&query=SMILES_KEYWORDS.
-  
-  //     4. **Output Format**:
-  //        Return the response in a structured JSON format **and nothing else**:
-  //        {
-  //          "summary": "A unique 2-3 sentence explanation connecting the SMILES structure to research areas.",
-  //          "generated_papers": [
-  //            {
-  //              "title": "Unique Paper Title 1 Based on SMILES",
-  //              "authors": "A. Kim, B. Patel, C. Nguyen",
-  //              "year": "2021",
-  //              "abstract": "Abstract summarizing SMILES-derived features and applications.",
-  //              "doi": "10.1109/ACCESS.2021.7654321",
-  //              "url": "https://ieeexplore.ieee.org/document/7654321",
-  //              "is_simulated": true
-  //            }
-  //          ],
-  //          "ieee_api_papers": [
-  //            {
-  //              "title": "Real Paper Title from API",
-  //              "authors": "Author List from API",
-  //              "year": "Year from API",
-  //              "abstract": "Abstract from API",
-  //              "doi": "DOI from API",
-  //              "url": "URL from API",
-  //              "is_simulated": false
-  //            }
-  //          ]
-  //        }
-  //   `;
-  
-  //   try {
-  //     const geminiResponse = await axiosInstance.post("/protein/proxy/gemini", {
-  //       prompt: geminiPrompt,
-  //     });
-  //     const geminiContent = geminiResponse.data.content;
-  //     console.log("Gemini raw response:", geminiContent); // Debug log
-  
-  //     const jsonMatch = geminiContent.match(/{[\s\S]*}/);
-  //     if (!jsonMatch) {
-  //       throw new Error("No valid JSON found in Gemini response");
-  //     }
-  
-  //     const parsedGemini = JSON.parse(jsonMatch[0]);
-  //     setResearchSummary(parsedGemini.summary || "");
-  
-  //     // Process generated papers
-  //     let papers = parsedGemini.generated_papers || [];
-  //     papers = papers.map((paper) => ({ ...paper, is_simulated: true }));
-  
-  //     // Fetch from IEEE Xplore API if API key is provided
-  //     const apiKey = "[INSERT_YOUR_API_KEY_HERE]"; // Replace with your actual API key
-  //     if (apiKey && apiKey !== "[INSERT_YOUR_API_KEY_HERE]") {
-  //       // Derive keywords from SMILES for API query
-  //       const smilesKeywords = selectedMol.newSmiles
-  //         .replace(/[^A-Za-z0-9]/g, " ")
-  //         .split(" ")
-  //         .filter((kw) => kw.length > 2)
-  //         .join(" OR ");
-  //       const ieeeApiUrl = `https://ieeexploreapi.ieee.org/api/v1/search/articles?apikey=${apiKey}&query=${encodeURIComponent(smilesKeywords)}&max_records=3&sort_order=relevance`;
-  
-  //       try {
-  //         const ieeeResponse = await axios.get(ieeeApiUrl);
-  //         const ieeePapers = (ieeeResponse.data.articles || []).map((article) => ({
-  //           title: article.title || "Untitled",
-  //           authors: article.authors?.map((a) => a.full_name).join(", ") || "Unknown Authors",
-  //           year: article.publication_year || "Unknown Year",
-  //           abstract: article.abstract || "Abstract not available",
-  //           doi: article.doi || "No DOI available",
-  //           url: article.url || (article.doi ? `https://ieeexplore.ieee.org/document/${article.doi.split("/").pop()}` : "No URL available"),
-  //           is_simulated: false,
-  //         }));
-  
-  //         papers = [...papers, ...ieeePapers].slice(0, 3); // Combine and limit to 3 papers
-  //         console.log("IEEE API papers fetched:", ieeePapers); // Debug log
-  //       } catch (apiErr) {
-  //         console.error("IEEE API error:", apiErr.message);
-  //         toast.error("Failed to fetch IEEE papers; using simulated data.");
-  //       }
-  //     } else {
-  //       console.warn("No valid API key provided. Using only Gemini-generated papers.");
-  //     }
-  
-  //     // Validate and adjust URLs
-  //     papers = papers.map((paper, index) => {
-  //       let validUrl = paper.url;
-  //       if (!validUrl || !validUrl.startsWith("http")) {
-  //         const ieeeDoi = paper.doi || `10.1109/ACCESS.${Date.now() + index}${Math.floor(Math.random() * 1000)}`;
-  //         validUrl = `https://ieeexplore.ieee.org/document/${ieeeDoi.split("/").pop()}`;
-  //       }
-  //       // Test URL (optional, requires additional logic or external service)
-  //       return {
-  //         ...paper,
-  //         doi: paper.doi || validUrl.split("/document/")[1],
-  //         url: validUrl,
-  //         is_valid: paper.is_simulated ? false : true, // Assume API URLs are valid unless proven otherwise
-  //       };
-  //     });
-  
-  //     setResearchPapers(papers);
-  //     await savePapers(selectedMol, papers);
-  //     toast.success("Related research papers fetched and saved successfully!");
-  //   } catch (err) {
-  //     console.error("Error fetching research:", err);
-  //     setError(err.response?.data?.message || "Failed to fetch research papers");
-  //     toast.error("Failed to fetch research papers");
-  //   } finally {
-  //     setLoading(false);
-  //   }
-  // };
-
   const handleResearchClick = async () => {
     if (!selectedTitle || !selectedSmiles) {
       toast.error("Please select both a title and SMILES string");
       return;
     }
-  
+
     const papersExist = await checkIfPapersExist(selectedTitle, selectedSmiles);
     if (papersExist) {
       toast("Research papers for this molecule are already saved. Redirecting to Saved Research Papers.", {
@@ -371,12 +199,12 @@ function Airesearchgenerator() {
       setActiveTab("saved");
       return;
     }
-  
+
     setLoading(true);
     setError(null);
     setResearchPapers([]);
     setResearchSummary("");
-  
+
     const selectedMol = molecules.find(
       (mol) => mol.newmoleculetitle === selectedTitle && mol.newSmiles === selectedSmiles
     );
@@ -385,15 +213,15 @@ function Airesearchgenerator() {
       setLoading(false);
       return;
     }
-  
-    const uniqueId = `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`; // Prevent caching
-  
+
+    const uniqueId = `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+
     const geminiPrompt = `
       You are a world-class expert in cheminformatics, molecular modeling, and scientific literature synthesis with deep knowledge of IEEE Xplore conventions. The molecule provided is newly generated, with no exact research papers existing. Your task is to:
       1. Perform a detailed SMILES analysis to infer chemical properties and generate 2-3 unique, plausible research paper metadata entries in IEEE format, based solely on the SMILES structure.
       2. Assist in constructing a query for the IEEE Xplore API to fetch up to 3 real research papers related to structural analogs or chemical properties derived from the SMILES.
       3. Ensure all generated and fetched metadata includes valid, IEEE-compliant DOIs and URLs that align with https://ieeexplore.ieee.org/document/ format.
-  
+
       ### Molecule Details:
       - **SMILES String**: "${selectedMol.newSmiles}"
       - **IUPAC Name**: "${selectedMol.newIupacName || 'Not Available'}" (for validation only)
@@ -401,7 +229,7 @@ function Airesearchgenerator() {
       - **Potential Diseases**: "${selectedMol.potentialDiseases || 'Not Available'}"
       - **Additional Information**: "${selectedMol.information || 'Not Available'}"
       - **Unique Request ID**: "${uniqueId}"
-  
+
       ### Detailed Instructions:
       1. **SMILES Structural Analysis**:
          - Break down "${selectedMol.newSmiles}" into:
@@ -410,7 +238,7 @@ function Airesearchgenerator() {
            - Substituents and stereochemistry
            - Inferred bioactivity (e.g., anti-inflammatory, antimicrobial).
          - Use this to craft unique paper titles, abstracts (50-100 words), and relevance.
-  
+
       2. **Generate Unique Research Paper Metadata**:
          - Create 2-3 hypothetical papers with:
            - Unique authors (e.g., "J. Smith, L. Chen, M. Garcia")
@@ -419,12 +247,12 @@ function Airesearchgenerator() {
            - Abstracts reflecting SMILES-derived features and applications.
          - Assign URLs as https://ieeexplore.ieee.org/document/{DOI_suffix} using the DOI’s numeric part.
          - Mark these as "is_simulated": true.
-  
+
       3. **IEEE Xplore API Query Construction**:
          - Derive keywords from SMILES (e.g., functional groups, ring types) and combine with terms like "drug design," "cheminformatics," or "molecular modeling."
          - Simulate an API query structure: https://ieeexploreapi.ieee.org/api/v1/search/articles?apikey=[INSERT_YOUR_API_KEY_HERE]&query=KEYWORDS&max_records=3.
          - If API access is unavailable, suggest fallback keywords for manual search.
-  
+
       4. **Output Format**:
          Return the response in a structured JSON format **and nothing else**:
          {
@@ -453,31 +281,29 @@ function Airesearchgenerator() {
            ]
          }
     `;
-  
+
     try {
       const geminiResponse = await axiosInstance.post("/protein/proxy/gemini", {
         prompt: geminiPrompt,
       });
       const geminiContent = geminiResponse.data.content;
-      console.log("Gemini raw response:", geminiContent); // Debug log
-  
+      console.log("Gemini raw response:", geminiContent);
+
       const jsonMatch = geminiContent.match(/{[\s\S]*}/);
       if (!jsonMatch) {
         throw new Error("No valid JSON found in Gemini response");
       }
-  
+
       const parsedGemini = JSON.parse(jsonMatch[0]);
       setResearchSummary(parsedGemini.summary || "No summary available.");
-  
-      // Process generated papers with workable URLs
+
       let papers = (parsedGemini.generated_papers || []).map((paper) => ({
         ...paper,
         is_simulated: true,
         url: constructIeeeUrl(paper.doi || generateUniqueDoi(paper.year || 2025)),
       }));
-  
-      // Attempt IEEE Xplore API fetch
-      const apiKey = "[INSERT_YOUR_API_KEY_HERE]"; // Replace with your actual API key
+
+      const apiKey = "[INSERT_YOUR_API_KEY_HERE]";
       if (apiKey && apiKey !== "[INSERT_YOUR_API_KEY_HERE]") {
         const smilesKeywords = selectedMol.newSmiles
           .replace(/[^A-Za-z0-9]/g, " ")
@@ -485,7 +311,7 @@ function Airesearchgenerator() {
           .filter((kw) => kw.length > 2)
           .join(" OR ");
         const ieeeApiUrl = `https://ieeexploreapi.ieee.org/api/v1/search/articles?apikey=${apiKey}&query=${encodeURIComponent(smilesKeywords)}&max_records=3&sort_order=relevance`;
-  
+
         try {
           const ieeeResponse = await axios.get(ieeeApiUrl);
           const ieeePapers = (ieeeResponse.data.articles || []).map((article) => ({
@@ -497,12 +323,11 @@ function Airesearchgenerator() {
             url: constructIeeeUrl(article.doi),
             is_simulated: false,
           }));
-  
-          papers = [...papers, ...ieeePapers].slice(0, 3); // Combine and limit to 3 papers
+
+          papers = [...papers, ...ieeePapers].slice(0, 3);
           console.log("IEEE API papers fetched:", ieeePapers);
         } catch (apiErr) {
           console.error("IEEE API error:", apiErr.message);
-          // Fallback with simulated IEEE-like papers if API fails
           const fallbackPapers = generateFallbackPapers(selectedMol.newSmiles);
           papers = [...papers, ...fallbackPapers].slice(0, 3);
           toast.warning("IEEE API failed; using simulated fallback papers.");
@@ -512,8 +337,7 @@ function Airesearchgenerator() {
         const fallbackPapers = generateFallbackPapers(selectedMol.newSmiles);
         papers = [...papers, ...fallbackPapers].slice(0, 3);
       }
-  
-      // Ensure all URLs are workable
+
       papers = papers.map((paper) => {
         let validUrl = paper.url;
         if (!validUrl || !validUrl.startsWith("https://ieeexplore.ieee.org/document/")) {
@@ -524,10 +348,10 @@ function Airesearchgenerator() {
           ...paper,
           doi: paper.doi || validUrl.split("/document/")[1],
           url: validUrl,
-          is_valid: true, // Assume constructed URLs are structurally valid
+          is_valid: true,
         };
       });
-  
+
       setResearchPapers(papers);
       await savePapers(selectedMol, papers);
       toast.success("Related research papers fetched and saved successfully!");
@@ -539,21 +363,19 @@ function Airesearchgenerator() {
       setLoading(false);
     }
   };
-  
-  // Helper functions
+
   const constructIeeeUrl = (doi) => {
     if (!doi) return `https://ieeexplore.ieee.org/document/${generateUniqueDoi()}`;
     const doiSuffix = doi.includes("10.") ? doi.split("/").pop() : doi.replace(/[^0-9]/g, "");
     return `https://ieeexplore.ieee.org/document/${doiSuffix}`;
   };
-  
+
   const generateUniqueDoi = (year = 2025, index = 0) => {
     const randomId = Math.floor(Math.random() * 1000000) + index;
     return `10.1109/TBME.${year}.${randomId}`;
   };
-  
+
   const generateFallbackPapers = (smiles) => {
-    // Simulate realistic IEEE papers based on SMILES features
     const inferredFeatures = smiles.includes("c") ? "aromatic rings" : "aliphatic chains";
     return [
       {
@@ -576,7 +398,7 @@ function Airesearchgenerator() {
       },
     ];
   };
-  
+
   const handleGeneratePaperClick = async () => {
     if (!selectedTitle || !selectedSmiles) {
       toast.error("Please select both a title and SMILES string");
@@ -606,44 +428,44 @@ function Airesearchgenerator() {
     }
 
     const geminiPrompt = `
-    You are an expert in cheminformatics, molecular modeling, and academic writing. The molecule provided is newly generated, so exact research papers about it do not exist. However, you will infer potential applications, synthesis, and significance based on its structure, properties, and related literature. Use the following molecule details to generate a research paper in IEEE format:
+      You are an expert in cheminformatics, molecular modeling, and academic writing. The molecule provided is newly generated, so exact research papers about it do not exist. However, you will infer potential applications, synthesis, and significance based on its structure, properties, and related literature. Use the following molecule details to generate a research paper in IEEE format:
 
-    - Molecule Title: "${selectedMol.newmoleculetitle}"
-    - SMILES String: "${selectedMol.newSmiles}"
-    - IUPAC Name: "${selectedMol.newIupacName}"
-    - Conversion Details (Synthesis Pathway): "${selectedMol.conversionDetails}"
-    - Potential Diseases (Therapeutic Targets): "${selectedMol.potentialDiseases}"
-    - Additional Information (Pharmacokinetics, Toxicity, or Mechanism of Action): "${selectedMol.information}"
+      - Molecule Title: "${selectedMol.newmoleculetitle}"
+      - SMILES String: "${selectedMol.newSmiles}"
+      - IUPAC Name: "${selectedMol.newIupacName}"
+      - Conversion Details (Synthesis Pathway): "${selectedMol.conversionDetails}"
+      - Potential Diseases (Therapeutic Targets): "${selectedMol.potentialDiseases}"
+      - Additional Information (Pharmacokinetics, Toxicity, or Mechanism of Action): "${selectedMol.information}"
 
-    ### Instructions:
-    1. **Generate a Research Paper in IEEE Format**:
-       - **Title**: Refine the molecule title to reflect its scientific importance.
-       - **Authors**: Use the placeholder "Author Name" (to be replaced by the user's name later).
-       - **Abstract**: Write a 150-200 word abstract summarizing the molecule’s chemical structure, synthesis, pharmacological relevance, and connection to existing research.
-       - **Keywords**: Provide 4-5 relevant keywords such as "cheminformatics," "drug discovery," "bioactivity prediction," "synthetic pathway."
-       - **Introduction**: Explain the motivation behind this molecule’s study, its significance in drug discovery, and how it differs from known compounds (1-2 paragraphs).
-       - **Methodology**: Describe the synthesis process (use the conversion details) and structural analysis techniques (e.g., NMR, Mass Spectrometry, Molecular Docking).
-       - **Results and Discussion**: Discuss the molecule's properties (SMILES, IUPAC name), potential biological activity (based on potential diseases), and compare with existing drugs (using structure-activity relationships).
-       - **Conclusion**: Summarize key findings, highlight the molecule’s novelty, and suggest future research directions.
-       - **References**: Generate 3-5 **authentic references** based on related molecules or therapeutic areas from sources like PubMed, Google Scholar, or ACS Publications. Format references in IEEE style (e.g., [1] Author(s), "Title," Journal, vol., no., pp., year.).
+      ### Instructions:
+      1. **Generate a Research Paper in IEEE Format**:
+         - **Title**: Refine the molecule title to reflect its scientific importance.
+         - **Authors**: Use the placeholder "Author Name" (to be replaced by the user's name later).
+         - **Abstract**: Write a 150-200 word abstract summarizing the molecule’s chemical structure, synthesis, pharmacological relevance, and connection to existing research.
+         - **Keywords**: Provide 4-5 relevant keywords such as "cheminformatics," "drug discovery," "bioactivity prediction," "synthetic pathway."
+         - **Introduction**: Explain the motivation behind this molecule’s study, its significance in drug discovery, and how it differs from known compounds (1-2 paragraphs).
+         - **Methodology**: Describe the synthesis process (use the conversion details) and structural analysis techniques (e.g., NMR, Mass Spectrometry, Molecular Docking).
+         - **Results and Discussion**: Discuss the molecule's properties (SMILES, IUPAC name), potential biological activity (based on potential diseases), and compare with existing drugs (using structure-activity relationships).
+         - **Conclusion**: Summarize key findings, highlight the molecule’s novelty, and suggest future research directions.
+         - **References**: Generate 3-5 **authentic references** based on related molecules or therapeutic areas from sources like PubMed, Google Scholar, or ACS Publications. Format references in IEEE style (e.g., [1] Author(s), "Title," Journal, vol., no., pp., year.).
 
-    2. **Return the Paper in a Structured JSON Format**:
-       Provide the following in a structured JSON format **and nothing else**:
-       {
-         "title": "Refined Paper Title",
-         "authors": "Author Name",
-         "abstract": "Abstract text summarizing the molecule’s significance.",
-         "keywords": ["keyword1", "keyword2", "keyword3", "keyword4"],
-         "introduction": "Introduction text providing scientific context.",
-         "methodology": "Synthesis pathway and structural analysis methods.",
-         "resultsAndDiscussion": "Molecular properties, bioactivity, and comparison with existing drugs.",
-         "conclusion": "Summary of key insights and future directions.",
-         "references": [
-           "[1] Author(s), 'Title,' Journal, vol., no., pp., year.",
-           "[2] Author(s), 'Title,' Journal, vol., no., pp., year."
-         ]
-       }
-  `;
+      2. **Return the Paper in a Structured JSON Format**:
+         Provide the following in a structured JSON format **and nothing else**:
+         {
+           "title": "Refined Paper Title",
+           "authors": "Author Name",
+           "abstract": "Abstract text summarizing the molecule’s significance.",
+           "keywords": ["keyword1", "keyword2", "keyword3", "keyword4"],
+           "introduction": "Introduction text providing scientific context.",
+           "methodology": "Synthesis pathway and structural analysis methods.",
+           "resultsAndDiscussion": "Molecular properties, bioactivity, and comparison with existing drugs.",
+           "conclusion": "Summary of key insights and future directions.",
+           "references": [
+             "[1] Author(s), 'Title,' Journal, vol., no., pp., year.",
+             "[2] Author(s), 'Title,' Journal, vol., no., pp., year."
+           ]
+         }
+    `;
 
     try {
       const geminiResponse = await axiosInstance.post("/protein/proxy/gemini", {
@@ -681,7 +503,6 @@ function Airesearchgenerator() {
     const margin = 15;
     let yPosition = margin;
 
-    // Helper function to check if we need a new page
     const checkPageBreak = (requiredHeight) => {
       if (yPosition + requiredHeight > pageHeight - margin) {
         pdf.addPage();
@@ -689,7 +510,6 @@ function Airesearchgenerator() {
       }
     };
 
-    // Helper function to add text with pagination
     const addTextWithPagination = (text, fontSize, x, y, maxWidth) => {
       pdf.setFontSize(fontSize);
       pdf.setFont("times", "normal");
@@ -705,20 +525,18 @@ function Airesearchgenerator() {
       return yPosition;
     };
 
-    // Add Title (Centered, with wrapping for long titles)
     pdf.setFontSize(16);
     pdf.setFont("times", "bold");
     const titleLines = pdf.splitTextToSize(paper.title, pageWidth - 2 * margin);
-    const titleLineHeight = 16 * 0.4; // Line height for title
+    const titleLineHeight = 16 * 0.4;
     titleLines.forEach((line) => {
       checkPageBreak(titleLineHeight);
       const lineWidth = pdf.getTextWidth(line);
-      pdf.text(line, (pageWidth - lineWidth) / 2, yPosition); // Center each line
+      pdf.text(line, (pageWidth - lineWidth) / 2, yPosition);
       yPosition += titleLineHeight;
     });
-    yPosition += 10; // Extra spacing after title
+    yPosition += 10;
 
-    // Add Authors (Centered)
     pdf.setFontSize(12);
     pdf.setFont("times", "normal");
     const authorsWidth = pdf.getTextWidth(paper.authors);
@@ -726,7 +544,6 @@ function Airesearchgenerator() {
     pdf.text(paper.authors, (pageWidth - authorsWidth) / 2, yPosition);
     yPosition += 15;
 
-    // Add Abstract
     pdf.setFontSize(12);
     pdf.setFont("times", "bold");
     checkPageBreak(8);
@@ -735,7 +552,6 @@ function Airesearchgenerator() {
     yPosition = addTextWithPagination(paper.abstract, 10, margin, yPosition, pageWidth - 2 * margin);
     yPosition += 10;
 
-    // Add Keywords
     pdf.setFontSize(12);
     pdf.setFont("times", "bold");
     checkPageBreak(8);
@@ -744,7 +560,6 @@ function Airesearchgenerator() {
     yPosition = addTextWithPagination(paper.keywords.join(", "), 10, margin, yPosition, pageWidth - 2 * margin);
     yPosition += 15;
 
-    // Add Introduction
     pdf.setFontSize(12);
     pdf.setFont("times", "bold");
     checkPageBreak(8);
@@ -753,7 +568,6 @@ function Airesearchgenerator() {
     yPosition = addTextWithPagination(paper.introduction, 10, margin, yPosition, pageWidth - 2 * margin);
     yPosition += 15;
 
-    // Add Methodology
     pdf.setFontSize(12);
     pdf.setFont("times", "bold");
     checkPageBreak(8);
@@ -762,7 +576,6 @@ function Airesearchgenerator() {
     yPosition = addTextWithPagination(paper.methodology, 10, margin, yPosition, pageWidth - 2 * margin);
     yPosition += 15;
 
-    // Add Results and Discussion
     pdf.setFontSize(12);
     pdf.setFont("times", "bold");
     checkPageBreak(8);
@@ -771,7 +584,6 @@ function Airesearchgenerator() {
     yPosition = addTextWithPagination(paper.resultsAndDiscussion, 10, margin, yPosition, pageWidth - 2 * margin);
     yPosition += 15;
 
-    // Add Conclusion
     pdf.setFontSize(12);
     pdf.setFont("times", "bold");
     checkPageBreak(8);
@@ -780,7 +592,6 @@ function Airesearchgenerator() {
     yPosition = addTextWithPagination(paper.conclusion, 10, margin, yPosition, pageWidth - 2 * margin);
     yPosition += 15;
 
-    // Add References
     pdf.setFontSize(12);
     pdf.setFont("times", "bold");
     checkPageBreak(8);
@@ -799,7 +610,6 @@ function Airesearchgenerator() {
       yPosition += 2;
     });
 
-    // Save the PDF
     pdf.save(`${paper.title.replace(/\s+/g, "_")}.pdf`);
     toast.success("PDF downloaded successfully!");
   };
@@ -819,10 +629,10 @@ function Airesearchgenerator() {
   if (!user) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-100">
-        <div className="text-center p-6 bg-white rounded-lg shadow-lg">
+        <div className="text-center p-6 bg-white rounded-lg shadow-lg max-w-md w-full">
           <p className="text-gray-600 mb-4">Please log in to access AI Research Generator</p>
           <button
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors w-full sm:w-auto"
             onClick={() => (window.location.href = "/login")}
           >
             Go to Login
@@ -833,19 +643,18 @@ function Airesearchgenerator() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gray-100 py-6 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto">
-        <h1 className="text-4xl font-bold text-blue-700 mb-10 text-center">
+        <h1 className="text-3xl sm:text-4xl font-bold text-blue-700 mb-6 text-center">
           AI Research Generator
-          <p className="text-xs  p-1 text-blue-700 font-semibold">(Powered by Gemini)</p>
-
+          <p className="text-xs sm:text-sm p-1 text-blue-700 font-semibold">(Powered by Gemini)</p>
         </h1>
 
-        <div className="flex justify-center mb-8 space-x-4">
+        <div className="flex flex-col sm:flex-row justify-center mb-6 space-y-2 sm:space-y-0 sm:space-x-4">
           {["related", "saved", "generate", "savedGenerated"].map((tab) => (
             <button
               key={tab}
-              className={`px-6 py-2 rounded-lg font-medium transition-all duration-300 ${
+              className={`px-4 sm:px-6 py-2 rounded-lg font-medium text-sm sm:text-base transition-all duration-300 ${
                 activeTab === tab
                   ? "bg-blue-600 text-white shadow-md"
                   : "bg-gray-200 text-gray-700 hover:bg-gray-300"
@@ -860,22 +669,22 @@ function Airesearchgenerator() {
           ))}
         </div>
 
-        <div className="bg-white p-8 rounded-xl shadow-lg border border-gray-200">
+        <div className="bg-white p-4 sm:p-6 rounded-xl shadow-lg border border-gray-200">
           {activeTab === "related" && (
             <>
-              <h2 className="text-2xl font-semibold text-blue-700 mb-6">
+              <h2 className="text-xl sm:text-2xl font-semibold text-blue-700 mb-4 sm:mb-6">
                 Related Research Papers
               </h2>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 mb-4 sm:mb-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm sm:text-base font-medium text-gray-700 mb-2">
                     Select Molecule Title
                   </label>
                   <select
                     value={selectedTitle}
                     onChange={(e) => setSelectedTitle(e.target.value)}
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                    className="w-full p-2 sm:p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all text-sm sm:text-base"
                     disabled={loading || molecules.length === 0}
                   >
                     {molecules.length === 0 ? (
@@ -890,13 +699,13 @@ function Airesearchgenerator() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm sm:text-base font-medium text-gray-700 mb-2">
                     Select SMILES String
                   </label>
                   <select
                     value={selectedSmiles}
                     onChange={(e) => setSelectedSmiles(e.target.value)}
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                    className="w-full p-2 sm:p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all text-sm sm:text-base"
                     disabled={loading || molecules.length === 0}
                   >
                     {molecules.length === 0 ? (
@@ -915,58 +724,58 @@ function Airesearchgenerator() {
               <button
                 onClick={handleResearchClick}
                 disabled={loading || !selectedTitle || !selectedSmiles}
-                className="w-full py-3 px-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-all duration-300"
+                className="w-full py-2 sm:py-3 px-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-all duration-300 text-sm sm:text-base"
               >
                 {loading ? "Fetching Research..." : "Fetch Related Research"}
               </button>
 
-              {/* {error && (
-                <div className="mt-6 bg-red-50 border border-red-300 text-red-700 px-4 py-3 rounded-lg flex justify-between items-center">
-                  <p>{error}</p>
+              {error && (
+                <div className="mt-4 sm:mt-6 bg-red-50 border border-red-300 text-red-700 px-4 py-3 rounded-lg flex justify-between items-center">
+                  <p className="text-sm sm:text-base">{error}</p>
                   <button
-                    className="text-red-700 underline hover:text-red-900"
+                    className="text-red-700 underline hover:text-red-900 text-sm sm:text-base"
                     onClick={() => setError(null)}
                   >
                     Dismiss
                   </button>
                 </div>
-              )} */}
+              )}
 
               {(researchSummary || researchPapers.length > 0) && (
-                <div className="mt-8 bg-blue-50 p-6 rounded-xl border border-blue-200">
-                  <h3 className="text-lg font-semibold text-blue-700 mb-4">
+                <div className="mt-6 sm:mt-8 bg-blue-50 p-4 sm:p-6 rounded-xl border border-blue-200">
+                  <h3 className="text-lg sm:text-xl font-semibold text-blue-700 mb-4">
                     Related Research Information
                   </h3>
 
                   {researchSummary && (
-                    <div className="mb-8">
-                      <h4 className="text-md font-semibold text-gray-800 mb-2">Research Context</h4>
-                      <p className="text-gray-700 text-sm leading-relaxed">{researchSummary}</p>
+                    <div className="mb-6 sm:mb-8">
+                      <h4 className="text-md sm:text-lg font-semibold text-gray-800 mb-2">Research Context</h4>
+                      <p className="text-sm sm:text-base leading-relaxed text-gray-700">{researchSummary}</p>
                     </div>
                   )}
 
                   {researchPapers.length > 0 && (
-                    <div className="mb-8">
-                      <h4 className="text-md font-semibold text-gray-800 mb-4">
+                    <div className="mb-6 sm:mb-8">
+                      <h4 className="text-md sm:text-lg font-semibold text-gray-800 mb-4">
                         Newly Fetched Research Papers
                       </h4>
-                      <div className="space-y-8">
+                      <div className="space-y-6 sm:space-y-8">
                         {researchPapers.map((paper, index) => (
                           <div key={index} className="border-l-4 border-blue-500 pl-4">
-                            <h5 className="text-lg font-bold text-gray-900 mb-2 uppercase">
+                            <h5 className="text-lg sm:text-xl font-bold text-gray-900 mb-2 uppercase">
                               {paper.title}
                             </h5>
-                            <p className="text-gray-700 text-sm mb-1">
+                            <p className="text-gray-700 text-sm sm:text-base mb-1">
                               <span className="font-bold">Authors:</span> {paper.authors}
                             </p>
-                            <p className="text-gray-700 text-sm mb-1">
+                            <p className="text-gray-700 text-sm sm:text-base mb-1">
                               <span className="font-bold">Published:</span> {paper.year}
                             </p>
-                            <p className="text-gray-700 text-sm mb-1">
+                            <p className="text-gray-700 text-sm sm:text-base mb-1">
                               <span className="font-bold">Abstract:</span> {paper.abstract}
                             </p>
                             {paper.doi && paper.url !== "No URL available" && (
-                              <p className="text-blue-600 text-sm">
+                              <p className="text-blue-600 text-sm sm:text-base">
                                 <span className="font-bold">DOI:</span>{" "}
                                 <a
                                   href={paper.url}
@@ -990,37 +799,37 @@ function Airesearchgenerator() {
 
           {activeTab === "saved" && (
             <>
-              <h2 className="text-2xl font-semibold text-blue-700 mb-6">
+              <h2 className="text-xl sm:text-2xl font-semibold text-blue-700 mb-4 sm:mb-6">
                 Saved Research Papers
               </h2>
               {savedPapers.length > 0 ? (
-                <div className="space-y-10">
+                <div className="space-y-6 sm:space-y-10">
                   {savedPapers.map((entry, index) => {
                     if (!entry.molecule || !entry.molecule.title || !entry.molecule.smiles) {
                       return null;
                     }
                     return (
-                      <div key={index} className="bg-blue-50 p-6 rounded-xl border border-blue-200">
-                        <h3 className="text-lg font-semibold text-gray-800 mb-4">
+                      <div key={index} className="bg-blue-50 p-4 sm:p-6 rounded-xl border border-blue-200">
+                        <h3 className="text-lg sm:text-xl font-semibold text-gray-800 mb-4">
                           Molecule: {entry.molecule.title} (SMILES: {entry.molecule.smiles})
                         </h3>
-                        <div className="space-y-8">
+                        <div className="space-y-6 sm:space-y-8">
                           {entry.papers.map((paper, paperIndex) => (
                             <div key={paperIndex} className="border-l-4 border-blue-500 pl-4">
-                              <h5 className="text-lg font-bold text-gray-900 mb-2 uppercase">
+                              <h5 className="text-lg sm:text-xl font-bold text-gray-900 mb-2 uppercase">
                                 {paper.title}
                               </h5>
-                              <p className="text-gray-700 text-sm mb-1">
+                              <p className="text-gray-700 text-sm sm:text-base mb-1">
                                 <span className="font-bold">Authors:</span> {paper.authors}
                               </p>
-                              <p className="text-gray-700 text-sm mb-1">
+                              <p className="text-gray-700 text-sm sm:text-base mb-1">
                                 <span className="font-bold">Published:</span> {paper.year}
                               </p>
-                              <p className="text-gray-700 text-sm mb-1">
+                              <p className="text-gray-700 text-sm sm:text-base mb-1">
                                 <span className="font-bold">Abstract:</span> {paper.abstract}
                               </p>
                               {paper.doi && paper.url !== "No URL available" && (
-                                <p className="text-blue-600 text-sm">
+                                <p className="text-blue-600 text-sm sm:text-base">
                                   <span className="font-bold">DOI:</span>{" "}
                                   <a
                                     href={paper.url}
@@ -1040,26 +849,26 @@ function Airesearchgenerator() {
                   })}
                 </div>
               ) : (
-                <p className="text-gray-600 text-center">No saved research papers found.</p>
+                <p className="text-gray-600 text-center text-sm sm:text-base">No saved research papers found.</p>
               )}
             </>
           )}
 
           {activeTab === "generate" && (
             <>
-              <h2 className="text-2xl font-semibold text-blue-700 mb-6">
+              <h2 className="text-xl sm:text-2xl font-semibold text-blue-700 mb-4 sm:mb-6">
                 Generate Research Paper
               </h2>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 mb-4 sm:mb-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm sm:text-base font-medium text-gray-700 mb-2">
                     Select Molecule Title
                   </label>
                   <select
                     value={selectedTitle}
                     onChange={(e) => setSelectedTitle(e.target.value)}
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                    className="w-full p-2 sm:p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all text-sm sm:text-base"
                     disabled={loading || molecules.length === 0}
                   >
                     {molecules.length === 0 ? (
@@ -1074,13 +883,13 @@ function Airesearchgenerator() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm sm:text-base font-medium text-gray-700 mb-2">
                     Select SMILES String
                   </label>
                   <select
                     value={selectedSmiles}
                     onChange={(e) => setSelectedSmiles(e.target.value)}
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                    className="w-full p-2 sm:p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all text-sm sm:text-base"
                     disabled={loading || molecules.length === 0}
                   >
                     {molecules.length === 0 ? (
@@ -1099,16 +908,16 @@ function Airesearchgenerator() {
               <button
                 onClick={handleGeneratePaperClick}
                 disabled={loading || !selectedTitle || !selectedSmiles}
-                className="w-full py-3 px-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-all duration-300"
+                className="w-full py-2 sm:py-3 px-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-all duration-300 text-sm sm:text-base"
               >
                 {loading ? "Generating Paper..." : "Generate Research Paper"}
               </button>
 
               {error && (
-                <div className="mt-6 bg-red-50 border border-red-300 text-red-700 px-4 py-3 rounded-lg flex justify-between items-center">
-                  <p>{error}</p>
+                <div className="mt-4 sm:mt-6 bg-red-50 border border-red-300 text-red-700 px-4 py-3 rounded-lg flex justify-between items-center">
+                  <p className="text-sm sm:text-base">{error}</p>
                   <button
-                    className="text-red-700 underline hover:text-red-900"
+                    className="text-red-700 underline hover:text-red-900 text-sm sm:text-base"
                     onClick={() => setError(null)}
                   >
                     Dismiss
@@ -1117,59 +926,59 @@ function Airesearchgenerator() {
               )}
 
               {generatedPaper && (
-                <div className="mt-8 p-6 rounded-xl border border-blue-200 bg-blue-50">
-                  <h3 className="text-lg font-semibold text-blue-700 mb-4">
+                <div className="mt-6 sm:mt-8 p-4 sm:p-6 rounded-xl border border-blue-200 bg-blue-50">
+                  <h3 className="text-lg sm:text-xl font-semibold text-blue-700 mb-4">
                     Generated Research Paper (IEEE Format)
                   </h3>
 
                   <div className="flex justify-end mb-4">
                     <button
                       onClick={() => exportToPDF(generatedPaper)}
-                      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all duration-300"
+                      className="px-3 sm:px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all duration-300 text-sm sm:text-base"
                     >
                       Download as PDF
                     </button>
                   </div>
 
-                  <div className="space-y-6">
-                    <h4 className="text-2xl font-bold text-center text-gray-900">
+                  <div className="space-y-6 sm:space-y-8">
+                    <h4 className="text-xl sm:text-2xl font-bold text-center text-gray-900">
                       {generatedPaper.title}
                     </h4>
-                    <p className="text-center text-gray-700">{generatedPaper.authors}</p>
+                    <p className="text-center text-gray-700 text-sm sm:text-base">{generatedPaper.authors}</p>
 
                     <div>
-                      <h5 className="text-lg font-semibold mb-2 text-gray-800">Abstract</h5>
-                      <p className="text-sm leading-relaxed text-gray-700">{generatedPaper.abstract}</p>
+                      <h5 className="text-lg sm:text-xl font-semibold mb-2 text-gray-800">Abstract</h5>
+                      <p className="text-sm sm:text-base leading-relaxed text-gray-700">{generatedPaper.abstract}</p>
                     </div>
 
                     <div>
-                      <h5 className="text-lg font-semibold mb-2 text-gray-800">Keywords</h5>
-                      <p className="text-sm text-gray-700">{generatedPaper.keywords.join(", ")}</p>
+                      <h5 className="text-lg sm:text-xl font-semibold mb-2 text-gray-800">Keywords</h5>
+                      <p className="text-sm sm:text-base text-gray-700">{generatedPaper.keywords.join(", ")}</p>
                     </div>
 
                     <div>
-                      <h5 className="text-lg font-semibold mb-2 text-gray-800">I. Introduction</h5>
-                      <p className="text-sm leading-relaxed text-gray-700">{generatedPaper.introduction}</p>
+                      <h5 className="text-lg sm:text-xl font-semibold mb-2 text-gray-800">I. Introduction</h5>
+                      <p className="text-sm sm:text-base leading-relaxed text-gray-700">{generatedPaper.introduction}</p>
                     </div>
 
                     <div>
-                      <h5 className="text-lg font-semibold mb-2 text-gray-800">II. Methodology</h5>
-                      <p className="text-sm leading-relaxed text-gray-700">{generatedPaper.methodology}</p>
+                      <h5 className="text-lg sm:text-xl font-semibold mb-2 text-gray-800">II. Methodology</h5>
+                      <p className="text-sm sm:text-base leading-relaxed text-gray-700">{generatedPaper.methodology}</p>
                     </div>
 
                     <div>
-                      <h5 className="text-lg font-semibold mb-2 text-gray-800">III. Results and Discussion</h5>
-                      <p className="text-sm leading-relaxed text-gray-700">{generatedPaper.resultsAndDiscussion}</p>
+                      <h5 className="text-lg sm:text-xl font-semibold mb-2 text-gray-800">III. Results and Discussion</h5>
+                      <p className="text-sm sm:text-base leading-relaxed text-gray-700">{generatedPaper.resultsAndDiscussion}</p>
                     </div>
 
                     <div>
-                      <h5 className="text-lg font-semibold mb-2 text-gray-800">IV. Conclusion</h5>
-                      <p className="text-sm leading-relaxed text-gray-700">{generatedPaper.conclusion}</p>
+                      <h5 className="text-lg sm:text-xl font-semibold mb-2 text-gray-800">IV. Conclusion</h5>
+                      <p className="text-sm sm:text-base leading-relaxed text-gray-700">{generatedPaper.conclusion}</p>
                     </div>
 
                     <div>
-                      <h5 className="text-lg font-semibold mb-2 text-gray-800">References</h5>
-                      <ul className="list-none text-sm space-y-2 text-gray-700">
+                      <h5 className="text-lg sm:text-xl font-semibold mb-2 text-gray-800">References</h5>
+                      <ul className="list-none text-sm sm:text-base space-y-2 text-gray-700">
                         {generatedPaper.references.map((ref, index) => (
                           <li key={index}>{ref}</li>
                         ))}
@@ -1183,67 +992,67 @@ function Airesearchgenerator() {
 
           {activeTab === "savedGenerated" && (
             <>
-              <h2 className="text-2xl font-semibold text-blue-700 mb-6">
+              <h2 className="text-xl sm:text-2xl font-semibold text-blue-700 mb-4 sm:mb-6">
                 Saved Generated Research Papers
               </h2>
               {savedGeneratedPapers.length > 0 ? (
-                <div className="space-y-10">
+                <div className="space-y-6 sm:space-y-10">
                   {savedGeneratedPapers.map((entry, index) => {
                     if (!entry.molecule || !entry.molecule.title || !entry.molecule.smiles || !entry.paper) {
                       return null;
                     }
                     return (
-                      <div key={index} className="p-6 rounded-xl border border-blue-200 bg-blue-50">
-                        <h3 className="text-lg font-semibold text-gray-800 mb-4">
+                      <div key={index} className="p-4 sm:p-6 rounded-xl border border-blue-200 bg-blue-50">
+                        <h3 className="text-lg sm:text-xl font-semibold text-gray-800 mb-4">
                           Molecule: {entry.molecule.title} (SMILES: {entry.molecule.smiles})
                         </h3>
                         <div className="flex justify-end mb-4">
                           <button
                             onClick={() => exportToPDF(entry.paper)}
-                            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all duration-300"
+                            className="px-3 sm:px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all duration-300 text-sm sm:text-base"
                           >
                             Download as PDF
                           </button>
                         </div>
-                        <div className="space-y-6">
-                          <h4 className="text-2xl font-bold text-center text-gray-900">
+                        <div className="space-y-6 sm:space-y-8">
+                          <h4 className="text-xl sm:text-2xl font-bold text-center text-gray-900">
                             {entry.paper.title}
                           </h4>
-                          <p className="text-center text-gray-700">{entry.paper.authors}</p>
+                          <p className="text-center text-gray-700 text-sm sm:text-base">{entry.paper.authors}</p>
 
                           <div>
-                            <h5 className="text-lg font-semibold mb-2 text-gray-800">Abstract</h5>
-                            <p className="text-sm leading-relaxed text-gray-700">{entry.paper.abstract}</p>
+                            <h5 className="text-lg sm:text-xl font-semibold mb-2 text-gray-800">Abstract</h5>
+                            <p className="text-sm sm:text-base leading-relaxed text-gray-700">{entry.paper.abstract}</p>
                           </div>
 
                           <div>
-                            <h5 className="text-lg font-semibold mb-2 text-gray-800">Keywords</h5>
-                            <p className="text-sm text-gray-700">{entry.paper.keywords.join(", ")}</p>
+                            <h5 className="text-lg sm:text-xl font-semibold mb-2 text-gray-800">Keywords</h5>
+                            <p className="text-sm sm:text-base text-gray-700">{entry.paper.keywords.join(", ")}</p>
                           </div>
 
                           <div>
-                            <h5 className="text-lg font-semibold mb-2 text-gray-800">I. Introduction</h5>
-                            <p className="text-sm leading-relaxed text-gray-700">{entry.paper.introduction}</p>
+                            <h5 className="text-lg sm:text-xl font-semibold mb-2 text-gray-800">I. Introduction</h5>
+                            <p className="text-sm sm:text-base leading-relaxed text-gray-700">{entry.paper.introduction}</p>
                           </div>
 
                           <div>
-                            <h5 className="text-lg font-semibold mb-2 text-gray-800">II. Methodology</h5>
-                            <p className="text-sm leading-relaxed text-gray-700">{entry.paper.methodology}</p>
+                            <h5 className="text-lg sm:text-xl font-semibold mb-2 text-gray-800">II. Methodology</h5>
+                            <p className="text-sm sm:text-base leading-relaxed text-gray-700">{entry.paper.methodology}</p>
                           </div>
 
                           <div>
-                            <h5 className="text-lg font-semibold mb-2 text-gray-800">III. Results and Discussion</h5>
-                            <p className="text-sm leading-relaxed text-gray-700">{entry.paper.resultsAndDiscussion}</p>
+                            <h5 className="text-lg sm:text-xl font-semibold mb-2 text-gray-800">III. Results and Discussion</h5>
+                            <p className="text-sm sm:text-base leading-relaxed text-gray-700">{entry.paper.resultsAndDiscussion}</p>
                           </div>
 
                           <div>
-                            <h5 className="text-lg font-semibold mb-2 text-gray-800">IV. Conclusion</h5>
-                            <p className="text-sm leading-relaxed text-gray-700">{entry.paper.conclusion}</p>
+                            <h5 className="text-lg sm:text-xl font-semibold mb-2 text-gray-800">IV. Conclusion</h5>
+                            <p className="text-sm sm:text-base leading-relaxed text-gray-700">{entry.paper.conclusion}</p>
                           </div>
 
                           <div>
-                            <h5 className="text-lg font-semibold mb-2 text-gray-800">References</h5>
-                            <ul className="list-none text-sm space-y-2 text-gray-700">
+                            <h5 className="text-lg sm:text-xl font-semibold mb-2 text-gray-800">References</h5>
+                            <ul className="list-none text-sm sm:text-base space-y-2 text-gray-700">
                               {entry.paper.references.map((ref, refIndex) => (
                                 <li key={refIndex}>{ref}</li>
                               ))}
@@ -1255,7 +1064,7 @@ function Airesearchgenerator() {
                   })}
                 </div>
               ) : (
-                <p className="text-gray-600 text-center">No saved generated research papers found.</p>
+                <p className="text-gray-600 text-center text-sm sm:text-base">No saved generated research papers found.</p>
               )}
             </>
           )}

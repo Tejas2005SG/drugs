@@ -101,7 +101,7 @@ function LiveNews() {
             </svg>
           </div>
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">Health News Live</h1>
+            <h1 className="text-2xl font-bold tracking-tight">Drugs News Live</h1>
             <p className="mt-1 text-sm opacity-90 font-medium">Real-time medical breakthroughs and updates</p>
           </div>
         </div>
