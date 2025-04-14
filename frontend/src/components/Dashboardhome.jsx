@@ -1,9 +1,29 @@
+import { useEffect,useRef } from "react";
 import { useAuthStore } from "../Store/auth.store.js";
 import { Link } from "react-router-dom";
 import { Home } from "lucide-react";
+import { toast, Toaster } from 'react-hot-toast';
 function DashboardHome() {
   const { user } = useAuthStore();
-
+  const toastShown = useRef(false);
+ useEffect(() => {
+    if (!toastShown.current) {
+      toast(
+        "Our research shows the software needs further training to improve information authenticity, highlighting the need for mentorship.",
+        {
+          position: "top-right",
+          duration: 3000,
+          style: {
+            background: "#fefcbf",
+            color: "#92400e",
+            border: "1px solid #f59e0b",
+          },
+          icon: "⚠️",
+        }
+      );
+      toastShown.current = true;
+    }
+  }, []);
   return (
     <div className="p-6 max-w-7xl mx-auto">
       {/* Header section */}
