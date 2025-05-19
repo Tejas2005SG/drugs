@@ -107,7 +107,7 @@ export default function JarvisVoiceAssistant() {
         console.error("Error starting recognition:", error)
         stopConversation()
       }
-    }, 1000)
+    }, 100)
   }
 
   // Stop conversation
@@ -178,7 +178,7 @@ export default function JarvisVoiceAssistant() {
         title: `Drug Discovery Query: ${query.slice(0, 50)}`,
         questions: query,
         answers: text,
-        userId:user._id, // Hardcoded; replace with auth in production
+        userId: user._id, // Hardcoded; replace with auth in production
         createdAt: new Date().toISOString(),
       }
       const storedEntries = JSON.parse(localStorage.getItem("jarvisEntries") || "[]")
@@ -463,11 +463,12 @@ export default function JarvisVoiceAssistant() {
   //       </div>
   //     )}
 
-     
+
   //   </div>
   // )
-  
-return (
+
+
+  return (
     <div className="font-sans">
       {/* Trigger Button */}
       <div className="relative">
@@ -476,11 +477,10 @@ return (
           disabled={isListening}
           onMouseEnter={() => setShowTooltip("trigger")}
           onMouseLeave={() => setShowTooltip("")}
-          className={`fixed bottom-6 right-6 h-16 w-16 rounded-full shadow-lg transition-all transform hover:scale-105 flex items-center justify-center ${
-            isListening
+          className={`fixed bottom-6 right-6 h-16 w-16 rounded-full shadow-lg transition-all transform hover:scale-105 flex items-center justify-center ${isListening
               ? "bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700"
               : "bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600"
-          }`}
+            }`}
         >
           {isListening ? <MicOff className="h-6 w-6 text-white" /> : <Mic className="h-6 w-6 text-white" />}
         </button>
@@ -490,6 +490,42 @@ return (
           </div>
         )}
       </div>
+      {/* Pointing Message - hidden when popup is open */}
+      {!isPopupOpen && (
+        <div className="fixed bottom-24 right-7">
+          <div
+            className="relative bg-white rounded-lg shadow-lg p-3 mb-2"
+            style={{
+              animation: 'pulse-scale 2s infinite ease-in-out',
+              transformOrigin: 'center'
+            }}
+          >
+            <style>
+              {`
+          @keyframes pulse-scale {
+            0%, 100% {
+              transform: scale(1);
+            }
+            50% {
+              transform: scale(1.05);
+            }
+          }
+        `}
+            </style>
+            <div className="absolute right-4 bottom-2 transform translate-y-full w-3 h-3 bg-white rotate-45"></div>
+            {/* <div className="absolute -rig transform -translate-x-1/2 translate-y-1/2 w-3 h-3 bg-white rotate-45"></div> */}
+            <div className="flex items-center space-x-2">
+              <div className="bg-blue-500/20 p-1.5 rounded-full">
+                <Mic className="h-4 w-4 text-blue-600" />
+              </div>
+              <div>
+                <div className="text-sm font-medium text-gray-800">Drug Discovery Voice Assistant</div>
+                <div className="text-xs text-gray-500">Click to speak with Jarvis</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Popup Modal */}
       {isPopupOpen && (
@@ -599,11 +635,10 @@ return (
                   {conversationHistory.map((message, index) => (
                     <div key={index} className={`flex ${message.type === "user" ? "justify-end" : "justify-start"}`}>
                       <div
-                        className={`max-w-[80%] rounded-2xl px-4 py-2 ${
-                          message.type === "user"
+                        className={`max-w-[80%] rounded-2xl px-4 py-2 ${message.type === "user"
                             ? "bg-blue-500 text-white rounded-tr-none"
                             : "bg-white text-gray-800 rounded-tl-none border border-gray-200 shadow-sm"
-                        }`}
+                          }`}
                       >
                         {message.type === "jarvis" && (
                           <div className="flex items-center space-x-2 mb-1 pb-1 border-b border-gray-200">
@@ -665,9 +700,8 @@ return (
 
                       <button
                         onClick={isListening ? stopConversation : startConversation}
-                        className={`px-4 py-2 rounded-lg text-sm font-medium text-white ${
-                          isListening ? "bg-red-500 hover:bg-red-600" : "bg-blue-500 hover:bg-blue-600"
-                        } transition-colors`}
+                        className={`px-4 py-2 rounded-lg text-sm font-medium text-white ${isListening ? "bg-red-500 hover:bg-red-600" : "bg-blue-500 hover:bg-blue-600"
+                          } transition-colors`}
                       >
                         {isListening ? "Stop" : "Start"}
                       </button>
@@ -685,7 +719,7 @@ return (
         </div>
       )}
 
-      
+
     </div>
   )
 }
