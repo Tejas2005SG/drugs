@@ -13,6 +13,8 @@ import newsRoutes from "./routes/news.routes.js";
 import alphafoldRoutes from "./routes/alphafold.routes.js";
 import toxicityRoutes from "./routes/toxicity.routes.js"
 import summaryRoutes from "./routes/summary.routes.js";
+import notesRoutes from "./routes/notes.routes.js";
+// import jarvisRoutes from "./routes/jarvis.routes.js"
 dotenv.config();
 
 const app = express();
@@ -69,6 +71,9 @@ app.use("/api/news", newsRoutes);
 app.use("/api/alphafold", alphafoldRoutes);
 app.use("/api/toxicity", toxicityRoutes)
 app.use("/api/summary", summaryRoutes);
+app.use("/api/toxicity", toxicityRoutes);
+app.use("/api/notes", notesRoutes);
+// app.use("/api/jarvis",jarvisRoutes);
 
 if (process.env.NODE_ENV === "production") {
   app.use(express.static(path.join(__dirname, "/frontend/dist")));
