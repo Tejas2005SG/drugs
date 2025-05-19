@@ -22,6 +22,8 @@ import LiveNews from "./pages/Livenews/Livenews.jsx";
 import GetAlphaFoldStructure from "./pages/Alphafold/Alphafold.jsx"
 import AINamingSuggestion from './pages/AINamingSuggestion/AINamingSuggestion.jsx';
 import ToxicityPrediction from './pages/ToxicityPrediction/ToxicityPrediction.jsx';
+import VoiceToTextNotes from './pages/VoiceToTextNotes/VoicetoTextNotes.jsx';
+import Chatbot from './pages/Chatbot/Chatbot.jsx';
 // import Toxicityprediction from './pages/Toxicityprediction/Toxicityprediction.jsx';
 
 const ProtectedRoute = ({ children }) => {
@@ -95,6 +97,14 @@ function App() {
               </ProtectedRoute>
             }
           />
+          <Route
+            path="voice-text-notes"
+            element={
+              <ProtectedRoute>
+                <VoiceToTextNotes />
+              </ProtectedRoute>
+            }
+          />
           {/* <Route
             path="drug-discovery-recommendation"
             element={
@@ -111,7 +121,7 @@ function App() {
               </ProtectedRoute>
             }
           />
-         
+
           <Route
             path="getalphafoldstrcture"
             element={
@@ -121,11 +131,19 @@ function App() {
             }
           />
 
-<Route
+          <Route
             path="toxicityPrediction"
             element={
               <ProtectedRoute>
                 <ToxicityPrediction />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="chatbot"
+            element={
+              <ProtectedRoute>
+                <Chatbot/>
               </ProtectedRoute>
             }
           />
