@@ -10,3 +10,5 @@ import Summary from "./pages/Summary/Summary.jsx";
     </ProtectedRoute>
   }
 />
+
+export default Summary
