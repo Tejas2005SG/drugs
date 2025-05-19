@@ -22,6 +22,7 @@ import LiveNews from "./pages/Livenews/Livenews.jsx";
 import GetAlphaFoldStructure from "./pages/Alphafold/Alphafold.jsx"
 import AINamingSuggestion from './pages/AINamingSuggestion/AINamingSuggestion.jsx';
 import ToxicityPrediction from './pages/ToxicityPrediction/ToxicityPrediction.jsx';
+import Summary from './pages/Summary/Summary.jsx';
 // import Toxicityprediction from './pages/Toxicityprediction/Toxicityprediction.jsx';
 
 const ProtectedRoute = ({ children }) => {
@@ -130,7 +131,18 @@ function App() {
             }
           />
 
+<Route
+  path="summary"
+  element={
+    <ProtectedRoute>
+      <Summary />
+    </ProtectedRoute>
+  }
+/>
+
         </Route>
+
+        
 
       </Routes>
       <Toaster />

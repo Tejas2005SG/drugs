@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useAuthStore } from '../Store/auth.store.js';
 import { Outlet, Link, useNavigate } from 'react-router-dom';
-import { UserPlus, LogIn, LogOut, Menu, ChevronRight, Activity,BrainCog, Settings, Home, Layers, Dna, DollarSign, FileText, Target, Pill, Newspaper, MessageSquare, X, Torus } from 'lucide-react';
+import { UserPlus, LogIn, LogOut, Menu, ChevronRight, Activity,BrainCog, Settings, Home, Layers, Dna, DollarSign, FileText, Target, Pill, Newspaper, MessageSquare, X, Torus, FileDown } from 'lucide-react';
 import { toast, Toaster } from 'react-hot-toast';
 import ToxicityPrediction from '../pages/ToxicityPrediction/ToxicityPrediction.jsx';
 
@@ -89,6 +89,13 @@ function DashboardPage() {
       navigation: () => navigate('/dashboard/ai-driven-target-prediction'), 
       roles: ['admin', 'citizen', 'guest']
     },
+
+{
+  name: 'Summary',
+  icon: <FileDown size={20} className="mr-3" />,
+  navigation: () => navigate('/dashboard/summary'),
+  roles: ['admin', 'citizen', 'guest']
+},
 
     // { 
     //   name: 'AI Naming suggestions', 

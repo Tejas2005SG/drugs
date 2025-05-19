@@ -31,6 +31,8 @@ const router = express.Router();
 // Existing Routes
 router.get("/getproteinstructure/:id", protectRoute, getProteinStructure);
 router.post("/postproteinstructure/:id", protectRoute, postProteinStructure);
+
+
 router.post("/generatenewmolecule/:id", protectRoute, generatenewmolecule);
 router.get("/generatednewmolecule", protectRoute, getgeneratednewmolecule);
 
