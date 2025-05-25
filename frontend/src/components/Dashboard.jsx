@@ -1,7 +1,7 @@
-// Add Summary to the navElements array in Dashboard.jsx
+// Add this to your navElements array
 {
-  name: 'Summary',
-  icon: <FileDown size={20} className="mr-3" />,
-  navigation: () => navigate('/dashboard/summary'),
+  name: 'Symptom Checker',
+  icon: <Activity size={20} className="mr-3" />,
+  navigation: () => navigate('/dashboard/symptom-checker'),
   roles: ['admin', 'citizen', 'guest']
 },

@@ -1,14 +1,12 @@
-// Update the routes in App.jsx to include the new Summary component
-import Summary from "./pages/Summary/Summary.jsx";
+// Add this import with other route imports
+import SymptomChecker from "./pages/SymptomChecker/SymptomChecker.jsx";
 
-// Add this to your routes array inside the Dashboard route
+// Add this route inside your Routes component
 <Route
-  path="summary"
+  path="dashboard/symptom-checker"
   element={
     <ProtectedRoute>
-      <Summary />
+      <SymptomChecker />
     </ProtectedRoute>
   }
 />
-
-export default Summary
