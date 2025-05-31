@@ -59,6 +59,12 @@ function DashboardPage() {
       navigation: () => navigate('/dashboard/protein-structure'), 
       roles: ['admin', 'citizen', 'guest']
     },
+    {
+  name: 'Symptom Checker',
+  icon: <Activity size={20} className="mr-3" />,
+  navigation: () => navigate('/dashboard/symptom-checker'),
+  roles: ['admin', 'citizen', 'guest']
+},
     { 
       name: 'New Drug Discovery', 
       icon: <Layers size={20} className="mr-3" />,
@@ -132,7 +138,13 @@ function DashboardPage() {
       roles: ['admin', 'citizen', 'guest']
     },
 
-   
+    { 
+      name: 'RDKit Reaction Simulator', 
+      icon: <Torus size={20} className="mr-3" />,
+      navigation: () => navigate('/dashboard/RDkit'), 
+      roles: ['admin', 'citizen', 'guest']
+    },
+
    
   ];
 

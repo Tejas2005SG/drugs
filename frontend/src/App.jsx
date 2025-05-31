@@ -25,6 +25,8 @@ import ToxicityPrediction from './pages/ToxicityPrediction/ToxicityPrediction.js
 import Summary from './pages/Summary/Summary.jsx';
 import VoiceToTextNotes from './pages/VoiceToTextNotes/VoicetoTextNotes.jsx';
 import Chatbot from './pages/Chatbot/Chatbot.jsx';
+import SymptomChecker from './pages/SymptomChecker/SymptomChecker.jsx';
+import RDkit from './pages/RDkit/RDkit.jsx';
 // import Toxicityprediction from './pages/Toxicityprediction/Toxicityprediction.jsx';
 
 const ProtectedRoute = ({ children }) => {
@@ -157,7 +159,24 @@ function App() {
     </ProtectedRoute>
   }
 />
+<Route
+  path="symptom-checker"
+  element={
+    <ProtectedRoute>
+      <SymptomChecker />
+    </ProtectedRoute>
+  }
+/>
 
+
+ <Route
+            path="RDkit"
+            element={
+              <ProtectedRoute>
+                <RDkit/>
+              </ProtectedRoute>
+            }
+          />
         </Route>
 
         
