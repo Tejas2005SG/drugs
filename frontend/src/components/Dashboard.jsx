@@ -90,13 +90,18 @@ function DashboardPage() {
       navigation: () => navigate('/dashboard/ai-driven-target-prediction'), 
       roles: ['admin', 'citizen', 'guest']
     },
-    { 
-      name: 'Chatbot', 
-      icon: <Target size={20} className="mr-3" />,
-      navigation: () => navigate('/dashboard/chatbot'), 
+    // { 
+    //   name: 'Chatbot', 
+    //   icon: <Target size={20} className="mr-3" />,
+    //   navigation: () => navigate('/dashboard/chatbot'), 
+    //   roles: ['admin', 'citizen', 'guest']
+    // },
+{ 
+      name: 'Toxicity Prediction', 
+      icon: <Torus size={20} className="mr-3" />,
+      navigation: () => navigate('/dashboard/ToxicityPrediction'), 
       roles: ['admin', 'citizen', 'guest']
     },
-
 
 {
   name: 'Summary',
@@ -111,12 +116,7 @@ function DashboardPage() {
     //   navigation: () => navigate('/dashboard/ai-naming'), 
     //   roles: ['admin', 'citizen', 'guest']
     // },
-    { 
-      name: 'Toxicity Prediction', 
-      icon: <Torus size={20} className="mr-3" />,
-      navigation: () => navigate('/dashboard/ToxicityPrediction'), 
-      roles: ['admin', 'citizen', 'guest']
-    },
+    
       { 
       name: 'Voice to text Notes', 
       icon: <Torus size={20} className="mr-3" />,
