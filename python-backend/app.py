@@ -8,7 +8,12 @@ import logging
 import traceback
 from pymongo import MongoClient
 from itertools import combinations
-from rdchiral.main import rdchiralRun, rdchiralReaction, rdchiralReactants
+from rxn4chemistry import RXN4ChemistryWrapper
+import os
+import time
+from datetime import datetime
+from pydantic import BaseModel, Field, ValidationError
+from typing import List, Dict, Any, Union
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -24,54 +29,136 @@ CORS(app, resources={r"/api/*": {"origins": ["http://localhost:5173"]}})
 mongo_client = MongoClient('mongodb+srv://bhangaletejas003:G0yEjQa9yrTChtDU@h2skill.nnmre.mongodb.net/?retryWrites=true&w=majority&appName=h2skill')
 db = mongo_client['test']
 target_protein_collection = db['targetproteins']
+reaction_responses_collection = db['reaction_responses']
 
-# Drug-relevant reaction SMARTS
+# RXN4Chemistry configuration
+RXN_API_KEY = os.getenv('RXN_API_KEY', 'apk-c01d9c918e326ad080245e040134343481fe4a7513d859ae56743d11740cf93e')
+if not RXN_API_KEY or RXN_API_KEY == 'apk-c01d9c918e326ad080245e040134343481fe4a7513d859ae56743d11740cf93e':
+    logger.error("RXN_API_KEY not set. Reaction prediction will rely on RDKit fallback.")
+    rxn = None
+else:
+    try:
+        rxn = RXN4ChemistryWrapper(api_key=RXN_API_KEY)
+        project_name = "rxn4chemistry_tour"
+        projects = rxn.get_projects()
+        project_exists = any(project['name'] == project_name for project in projects)
+        if not project_exists:
+            rxn.create_project(project_name)
+        rxn.set_project(project_name)
+        logger.info(f"Using RXN4Chemistry project ID: {rxn.project_id}")
+    except Exception as e:
+        logger.error(f"Failed to initialize RXN4Chemistry: {str(e)}")
+        rxn = None
+
+# RDKit Reaction SMARTS
 reaction_smarts_map = {
-    'NucleophilicAddition': {
-        'smarts': '[C:1]=[O:2].[N:3]>>[C:1]([O:2])[N:3]',
-        'description': 'Carbonyl + Amine -> Secondary Alcohol/Amine Adduct',
-        'drug_relevance': 'Common in biguanide and amine drug synthesis'
-    },
-    'AromaticSubstitution': {
-        'smarts': '[c:1][Cl:2].[c:3][NH2:4]>>[c:1][c:3][NH2:4].[Cl:2]',
-        'description': 'Aryl Chloride + Amine -> Aryl Amine',
-        'drug_relevance': 'Used in kinase inhibitors and CNS drugs'
-    },
     'Esterification': {
-        'smarts': '[C:1][OH:2].[C:3](=O)[OH:4]>>[C:1][O:2][C:3](=O).[O:4]',
-        'description': 'Alcohol + Carboxylic Acid -> Ester + Water',
-        'drug_relevance': 'Esters improve lipophilicity'
+        'smarts': '[C:1][OH:2].[C:3](=[O])[OH:4]>>[C:1][O:2][C:3](=[O]).[OH2:4]',
+        'description': 'Alcohol + Carboxylic Acid -> Ester + Water'
     },
     'AmideFormation': {
-        'smarts': '[C:1][NH2:2].[C:3](=O)[OH:4]>>[C:1][NH:2][C:3](=O).[O:4]',
-        'description': 'Amine + Carboxylic Acid -> Amide + Water',
-        'drug_relevance': 'Amides are prevalent in biologics'
+        'smarts': '[N:1].[C:2](=[O])[OH:3]>>[N:1][C:2](=[O]).[OH2:3]',
+        'description': 'Amine + Carboxylic Acid -> Amide + Water'
     },
-    'Reduction': {
-        'smarts': '[C:1](=O)>>[C:1][OH]',
-        'description': 'Ketone/Aldehyde -> Alcohol',
-        'drug_relevance': 'Alcohols increase polarity'
+    'Hydrolysis': {
+        'smarts': '[C:1][O:2][C:3](=[O])>>[C:1][OH:2].[C:3](=[O])[OH]',
+        'description': 'Ester -> Alcohol + Carboxylic Acid'
+    },
+    'AmideHydrolysis': {
+        'smarts': '[C:1][C:2](=[O])[N:3]>>[C:1][C:2](=[O])[OH].[N:3]',
+        'description': 'Amide -> Carboxylic Acid + Amine'
+    },
+    'ThiocarbonylHydrolysis': {
+        'smarts': '[C:1](=[S:2])>>[C:1](=[O:2]).[H][S][H]',
+        'description': 'Thiocarbonyl -> Carbonyl + H2S'
+    },
+    'ThioureaFormation': {
+        'smarts': '[N:1][H].[C:2]=[S:3]>>[H][N:1][C:2](=[S:3])[N:1][H]',
+        'description': 'Amine + Thiocarbonyl -> Thiourea Derivative'
+    },
+    'SecondaryAmineThiourea': {
+        'smarts': '[N:1]([H])[C:4].[C:2]=[S:3]>>[C:4][N:1][C:2](=[S:3])[N:1][H]',
+        'description': 'Secondary Amine + Thiocarbonyl -> Substituted Thiourea'
+    },
+    'Dehalogenation': {
+        'smarts': '[c:1][I:2].[H][O:3][H]>>[c:1][H].[I:2][O:3][H]',
+        'description': 'Aryl Iodide + Water -> Aryl Hydrogen + Hypoiodous Acid'
     }
-}
-
-# Functional group SMARTS for validation
-functional_group_smarts = {
-    'NucleophilicAddition': ['[C:1]=[O:2]', '[N:3]'],
-    'AromaticSubstitution': ['[c:1][Cl:2]', '[c:3][NH2:4]'],
-    'Esterification': ['[C:1][OH:2]', '[C:3](=O)[OH:4]'],
-    'AmideFormation': ['[C:1][NH2:2]', '[C:3](=O)[OH:4]'],
-    'Reduction': ['[C:1](=O)']
 }
 
 # Functional group detection patterns
 functional_group_patterns = {
     'alcohol': Chem.MolFromSmarts('[#6][OH1]'),
-    'amine': Chem.MolFromSmarts('[#6][NH2]'),
+    'amine': Chem.MolFromSmarts('[#7]'),
+    'secondary_amine': Chem.MolFromSmarts('[#7H1]'),
     'carbonyl': Chem.MolFromSmarts('[#6]=[O]'),
     'carboxylic_acid': Chem.MolFromSmarts('[#6](=[O])[OH]'),
-    'aryl_chloride': Chem.MolFromSmarts('[c][Cl]'),
-    'biguanide': Chem.MolFromSmarts('[N:1]=C(N)N=C(N)N')
+    'aryl_halide': Chem.MolFromSmarts('[c][Cl,Br,I]'),
+    'boronic_acid': Chem.MolFromSmarts('[B](O)(O)'),
+    'ester': Chem.MolFromSmarts('[#6][O][C](=[O])'),
+    'alkyl_halide': Chem.MolFromSmarts('[#6][Cl,Br,I]'),
+    'alkene': Chem.MolFromSmarts('[#6]=[#6]'),
+    'alkyne': Chem.MolFromSmarts('[#6]#[#6]'),
+    'nitro': Chem.MolFromSmarts('[N](=O)(=O)'),
+    'amide': Chem.MolFromSmarts('[#6][C](=[O])[N]'),
+    'thiocarbonyl': Chem.MolFromSmarts('[#6]=[S]'),
+    'thiourea': Chem.MolFromSmarts('[N][C](=[S])[N]')
 }
+
+# Pydantic models for schema validation
+class Properties(BaseModel):
+    smiles: str
+    molecular_weight: float
+    num_atoms: int
+    logP: float
+    tpsa: float
+    num_h_donors: int
+    num_h_acceptors: int
+    num_rotatable_bonds: int
+    has_stereochemistry: bool
+    functional_groups: List[str]
+
+class Reactant(BaseModel):
+    smiles: str
+    properties: Properties
+
+class Product(BaseModel):
+    smiles: str
+    molecular_weight: float
+    num_atoms: int
+    logP: float
+    tpsa: float
+    num_h_donors: int
+    num_h_acceptors: int
+    num_rotatable_bonds: int
+    has_stereochemistry: bool
+    functional_groups: List[str]
+
+class ReactionResult(BaseModel):
+    reactionType: str
+    description: str
+    reactants: List[str]
+    reactantGroups: List[List[str]]
+    products: List[Product]
+    confidence: float
+    productSmiles: str
+
+class FailedReaction(BaseModel):
+    reactants: List[str]
+    reason: str
+
+class Statistics(BaseModel):
+    mean_mw: float
+    std_mw: float
+    min_mw: float
+    max_mw: float
+
+class ReactionResponse(BaseModel):
+    reactants: List[Reactant]
+    reactionResults: List[ReactionResult]
+    failedReactions: List[FailedReaction]
+    statistics: Statistics
+    createdAt: datetime
 
 def detect_functional_groups(mol):
     """Detect functional groups in a molecule."""
@@ -79,28 +166,66 @@ def detect_functional_groups(mol):
         return []
     groups = []
     for group_name, pattern in functional_group_patterns.items():
-        if mol.HasSubstructMatch(pattern):
+        if pattern and mol.HasSubstructMatch(pattern):
             groups.append(group_name)
+    logger.info(f"Detected functional groups for molecule: {groups}")
     return groups
 
-def validate_reactants(mol1, mol2, reaction_type):
-    """Validate if reactants match required functional groups."""
-    if reaction_type not in functional_group_smarts:
-        return False, f"Unknown reaction type: {reaction_type}"
+def preprocess_molecule(mol, target_group=None):
+    """Preprocess a molecule to enable reactions."""
+    if not mol:
+        return None
+    try:
+        groups = detect_functional_groups(mol)
+        if target_group == 'carbonyl' and 'thiocarbonyl' in groups:
+            logger.info("Preprocessing: Converting thiocarbonyl to carbonyl")
+            rxn_smarts = rdChemReactions.ReactionFromSmarts(reaction_smarts_map['ThiocarbonylHydrolysis']['smarts'])
+            products = rxn_smarts.RunReactants((mol,))
+            if products:
+                for prod_set in products:
+                    for prod in prod_set:
+                        if prod.HasSubstructMatch(Chem.MolFromSmarts('[#6]=[O]')):
+                            return standardize_molecule(prod)
+        if target_group == 'carboxylic_acid' and 'amide' in groups:
+            logger.info("Preprocessing: Hydrolyzing amide to carboxylic acid")
+            rxn_smarts = rdChemReactions.ReactionFromSmarts(reaction_smarts_map['AmideHydrolysis']['smarts'])
+            products = rxn_smarts.RunReactants((mol,))
+            if products:
+                for prod_set in products:
+                    for prod in prod_set:
+                        if prod.HasSubstructMatch(Chem.MolFromSmarts('[#6](=[O])[OH]')):
+                            return standardize_molecule(prod)
+        if target_group == 'aryl_hydrogen' and 'aryl_halide' in groups:
+            logger.info("Preprocessing: Dehalogenating aryl iodide")
+            rxn_smarts = rdChemReactions.ReactionFromSmarts(reaction_smarts_map['Dehalogenation']['smarts'])
+            products = rxn_smarts.RunReactants((mol,))
+            if products:
+                for prod_set in products:
+                    for prod in prod_set:
+                        if not prod.HasSubstructMatch(Chem.MolFromSmarts('[c][I]')):
+                            return standardize_molecule(prod)
+        return mol
+    except Exception as e:
+        logger.warning(f"Preprocessing failed: {str(e)}")
+        return mol
 
-    required_groups = functional_group_smarts[reaction_type]
-    mols = [mol1, mol2] if len(required_groups) == 2 else [mol1]
-
-    for i, (mol, smarts) in enumerate(zip(mols, required_groups)):
-        pattern = Chem.MolFromSmarts(smarts)
-        if not mol or not pattern or not mol.HasSubstructMatch(pattern):
-            group_name = smarts.split(':')[1].split(']')[0] if ':' in smarts else smarts
-            return False, f"Reactant {i+1} lacks {group_name} for {reaction_type}"
-    return True, ""
+def standardize_molecule(mol):
+    """Standardize molecule (tautomers, protonation, stereochemistry)."""
+    if not mol:
+        return None
+    try:
+        standardizer = MolStandardize.Standardizer()
+        mol = standardizer.standardize(mol)
+        Chem.AssignStereochemistry(mol, cleanIt=True, force=True)
+        return mol
+    except Exception as e:
+        logger.warning(f"Standardization failed: {str(e)}")
+        return mol
 
 def compute_product_properties(mol):
     """Compute chemical properties for a molecule."""
     try:
+        Chem.SanitizeMol(mol)
         return {
             'smiles': Chem.MolToSmiles(mol, isomericSmiles=True, canonical=True),
             'molecular_weight': Descriptors.MolWt(mol),
@@ -117,50 +242,149 @@ def compute_product_properties(mol):
         logger.warning(f"Property computation failed: {str(e)}")
         return {'error': f'Property computation failed: {str(e)}', 'functional_groups': []}
 
-def score_reaction(mol1, mol2, reaction_type):
-    """Score reaction feasibility based on functional groups and complexity."""
+def predict_reaction_with_rxn(reactant1_smiles, reactant2_smiles):
+    """Predict reaction products using RXN4ChemistryWrapper."""
+    if not rxn:
+        logger.error("RXN4ChemistryWrapper not initialized. Falling back to RDKit.")
+        return None, 0.0
+
+    try:
+        reactants = f"{reactant1_smiles}>>{reactant2_smiles}"
+        response = rxn.predict_reaction(reactants)
+        logger.info(f"RXN4Chemistry predict_reaction response: {response}")
+        
+        time.sleep(5)
+        prediction_id = response['prediction_id']
+        results = rxn.get_predict_reaction_results(prediction_id)
+        
+        max_attempts = 10
+        for _ in range(max_attempts):
+            if 'results' in results:
+                break
+            time.sleep(5)
+            results = rxn.get_predict_reaction_results(prediction_id)
+        
+        if 'results' not in results or not results['results']:
+            logger.warning("No predictions returned from RXN4Chemistry")
+            return None, 0.0
+        
+        top_prediction = results['results'][0]
+        product_smiles = top_prediction['smiles']
+        confidence = top_prediction.get('confidence', 0.0)
+        return product_smiles, confidence
+    except Exception as e:
+        logger.error(f"RXN4Chemistry prediction failed: {str(e)}")
+        return None, 0.0
+
+def predict_reaction_with_rdkit(mol1, mol2, smiles1, smiles2):
+    """Fallback to RDKit reaction prediction if RXN API fails."""
     groups1 = detect_functional_groups(mol1)
     groups2 = detect_functional_groups(mol2)
-    required_groups = {
-        'NucleophilicAddition': ['carbonyl', 'amine'],
-        'AromaticSubstitution': ['aryl_chloride', 'amine'],
-        'Esterification': ['alcohol', 'carboxylic_acid'],
-        'AmideFormation': ['amine', 'carboxylic_acid'],
-        'Reduction': ['carbonyl']
-    }
+    applicable_reactions = []
 
-    score = 0.0
-    if reaction_type in required_groups:
-        needed = required_groups[reaction_type]
-        if len(needed) == 2:
-            if needed[0] in groups1 and needed[1] in groups2 or needed[0] in groups2 and needed[1] in groups1:
-                score += 0.8
-        elif needed[0] in groups1 or needed[0] in groups2:
-            score += 0.8
-    score -= 0.1 * (mol1.GetNumAtoms() + mol2.GetNumAtoms()) / 100
-    return max(0.0, min(1.0, score))
+    if 'alcohol' in groups1 and 'carboxylic_acid' in groups2 or 'alcohol' in groups2 and 'carboxylic_acid' in groups1:
+        applicable_reactions.append('Esterification')
+    if 'amine' in groups1 and 'carboxylic_acid' in groups2 or 'amine' in groups2 and 'carboxylic_acid' in groups1:
+        applicable_reactions.append('AmideFormation')
+    if 'ester' in groups1 or 'ester' in groups2:
+        applicable_reactions.append('Hydrolysis')
+    if 'amide' in groups1 or 'amide' in groups2:
+        applicable_reactions.append('AmideHydrolysis')
+    if 'amine' in groups1 and 'thiocarbonyl' in groups2 or 'amine' in groups2 and 'thiocarbonyl' in groups1:
+        applicable_reactions.append('ThioureaFormation')
+    if 'secondary_amine' in groups1 and 'thiocarbonyl' in groups2 or 'secondary_amine' in groups2 and 'thiocarbonyl' in groups1:
+        applicable_reactions.append('SecondaryAmineThiourea')
+    if 'aryl_halide' in groups1 or 'aryl_halide' in groups2:
+        applicable_reactions.append('Dehalogenation')
 
-def standardize_molecule(mol):
-    """Standardize molecule (tautomers, protonation)."""
-    if not mol:
-        return None
-    try:
-        standardizer = MolStandardize.Standardizer()
-        return standardizer.standardize(mol)
-    except Exception as e:
-        logger.warning(f"Standardization failed: {str(e)}")
-        return mol
+    mol1_pre = mol1
+    mol2_pre = mol2
+    if 'thiocarbonyl' in groups1:
+        mol1_pre = preprocess_molecule(mol1, 'carbonyl')
+        groups1 = detect_functional_groups(mol1_pre)
+    if 'thiocarbonyl' in groups2:
+        mol2_pre = preprocess_molecule(mol2, 'carbonyl')
+        groups2 = detect_functional_groups(mol2_pre)
+    if 'amide' in groups1:
+        mol1_pre = preprocess_molecule(mol1, 'carboxylic_acid')
+        groups1 = detect_functional_groups(mol1_pre)
+    if 'amide' in groups2:
+        mol2_pre = preprocess_molecule(mol2, 'carboxylic_acid')
+        groups2 = detect_functional_groups(mol2_pre)
+    if 'aryl_halide' in groups1:
+        mol1_pre = preprocess_molecule(mol1, 'aryl_hydrogen')
+        groups1 = detect_functional_groups(mol1_pre)
+    if 'aryl_halide' in groups2:
+        mol2_pre = preprocess_molecule(mol2, 'aryl_hydrogen')
+        groups2 = detect_functional_groups(mol2_pre)
+
+    if 'alcohol' in groups1 and 'carboxylic_acid' in groups2 or 'alcohol' in groups2 and 'carboxylic_acid' in groups1:
+        applicable_reactions.append('Esterification')
+    if 'amine' in groups1 and 'carboxylic_acid' in groups2 or 'amine' in groups2 and 'carboxylic_acid' in groups1:
+        applicable_reactions.append('AmideFormation')
+
+    if not applicable_reactions:
+        logger.info(f"No applicable RDKit reactions for groups: {groups1}, {groups2}")
+        return None, 0.0, None
+
+    for reaction_type in applicable_reactions:
+        try:
+            logger.info(f"Attempting RDKit reaction: {reaction_type}")
+            rxn_smarts = rdChemReactions.ReactionFromSmarts(reaction_smarts_map[reaction_type]['smarts'])
+            rxn_smarts.Initialize()
+            reactants = (mol1_pre, mol2_pre) if len(rxn_smarts.GetReactants()) == 2 else (mol1_pre,)
+            products = rxn_smarts.RunReactants(reactants)
+            
+            if products:
+                product_mols = []
+                for product_set in products:
+                    product_mols.extend(product_set)
+                product_smiles = '.'.join(Chem.MolToSmiles(mol, isomericSmiles=True) for mol in product_mols)
+                confidence = 0.8
+                logger.info(f"Successful RDKit reaction: {reaction_type}, products: {product_smiles}")
+                return product_mols, confidence, reaction_type
+            else:
+                logger.warning(f"RDKit reaction {reaction_type} produced no products")
+        except Exception as e:
+            logger.warning(f"RDKit reaction {reaction_type} failed: {str(e)}")
+            continue
+    
+    return None, 0.0, None
+
+def process_product_smiles(product_smiles):
+    """Convert product SMILES to molecule and split if needed."""
+    if not product_smiles:
+        return []
+    
+    products = []
+    mol = Chem.MolFromSmiles(product_smiles, sanitize=False)
+    if mol:
+        try:
+            Chem.SanitizeMol(mol)
+            products.append(mol)
+        except:
+            pass
+    
+    if not products:
+        for part in product_smiles.split('.'):
+            part_mol = Chem.MolFromSmiles(part, sanitize=False)
+            if part_mol:
+                try:
+                    Chem.SanitizeMol(part_mol)
+                    products.append(part_mol)
+                except:
+                    continue
+    
+    return products
 
 @app.route('/api/react', methods=['GET'])
 def handle_reaction():
     try:
-        # Fetch latest TargetProtein entry
         latest_entry = target_protein_collection.find_one(sort=[('createdAt', -1)])
         if not latest_entry:
             logger.error("No TargetProtein entries found")
             return jsonify({'error': 'No TargetProtein entries found in database'}), 404
 
-        # Extract ligand SMILES
         ligands = latest_entry.get('TargetLigands', [])
         ligand_smiles = [
             ligand['LigandSmile'] for ligand in ligands
@@ -178,16 +402,14 @@ def handle_reaction():
         molecular_weights = []
         processed_pairs = set()
 
-        # Process all pairwise combinations
         for smiles1, smiles2 in combinations(ligand_smiles, 2):
             pair_key = tuple(sorted([smiles1, smiles2]))
             if pair_key in processed_pairs:
                 continue
             processed_pairs.add(pair_key)
 
-            # Initialize and standardize molecules
-            mol1 = Chem.MolFromSmiles(smiles1, sanitize=False)
-            mol2 = Chem.MolFromSmiles(smiles2, sanitize=False)
+            mol1 = Chem.MolFromSmiles(smiles1)
+            mol2 = Chem.MolFromSmiles(smiles2)
             if not mol1 or not mol2:
                 failed_reactions.append({
                     'reactants': [smiles1, smiles2],
@@ -199,102 +421,91 @@ def handle_reaction():
             try:
                 mol1 = standardize_molecule(mol1)
                 mol2 = standardize_molecule(mol2)
-                Chem.SanitizeMol(mol1, sanitizeOps=Chem.SanitizeFlags.SANITIZE_ALL)
-                Chem.SanitizeMol(mol2, sanitizeOps=Chem.SanitizeFlags.SANITIZE_ALL)
-            except Exception as e:
-                failed_reactions.append({
-                    'reactants': [smiles1, smiles2],
-                    'reason': f'Molecule sanitization/standardization failed: {str(e)}'
-                })
-                logger.warning(f"Sanitization failed for {smiles1}, {smiles2}: {str(e)}")
-                continue
+                Chem.SanitizeMol(mol1)
+                Chem.SanitizeMol(mol2)
+                
+                groups1 = detect_functional_groups(mol1)
+                groups2 = detect_functional_groups(mol2)
+                
+                product_smiles, confidence = predict_reaction_with_rxn(smiles1, smiles2)
+                time.sleep(0.2)
+                reaction_type = 'RXN4Chemistry_Prediction'
 
-            # Detect functional groups
-            groups1 = detect_functional_groups(mol1)
-            groups2 = detect_functional_groups(mol2)
-            logger.info(f"Functional groups for {smiles1}: {groups1}")
-            logger.info(f"Functional groups for {smiles2}: {groups2}")
+                if not product_smiles or confidence < 0.01:
+                    logger.info(f"RXN4Chemistry failed or low confidence ({confidence:.2f}). Falling back to RDKit.")
+                    product_mols, confidence, rdkit_reaction_type = predict_reaction_with_rdkit(mol1, mol2, smiles1, smiles2)
+                    if product_mols:
+                        product_smiles = '.'.join(Chem.MolToSmiles(mol, isomericSmiles=True) for mol in product_mols)
+                        reaction_type = rdkit_reaction_type
+                    else:
+                        failed_reactions.append({
+                            'reactants': [smiles1, smiles2],
+                            'reason': f'No reaction predicted (RXN confidence: {confidence:.2f}, RDKit failed)'
+                        })
+                        logger.info(f"No reaction for {smiles1} + {smiles2}")
+                        continue
+                else:
+                    product_mols = process_product_smiles(product_smiles)
 
-            # Try all reactions
-            for reaction_type in reaction_smarts_map:
-                # Validate functional groups
-                is_valid, reason = validate_reactants(mol1, mol2, reaction_type)
-                if not is_valid:
+                if not product_mols:
                     failed_reactions.append({
                         'reactants': [smiles1, smiles2],
-                        'reactionType': reaction_type,
-                        'reason': reason
+                        'reason': f'Could not parse product SMILES: {product_smiles}'
                     })
-                    logger.info(f"Validation failed for {reaction_type}: {reason}")
+                    logger.warning(f"Failed to parse products: {product_smiles}")
                     continue
-
-                # Score reaction feasibility
-                confidence = score_reaction(mol1, mol2, reaction_type)
-                if confidence < 0.3:
-                    failed_reactions.append({
-                        'reactants': [smiles1, smiles2],
-                        'reactionType': reaction_type,
-                        'reason': f'Low reaction feasibility (confidence: {confidence:.2f})'
-                    })
-                    logger.info(f"Low confidence for {reaction_type}: {confidence:.2f}")
-                    continue
-
-                # Run reaction with RDChiral
-                try:
-                    rxn = rdchiralReaction(reaction_smarts_map[reaction_type]['smarts'])
-                    reactants = rdchiralReactants(f'{smiles1}.{smiles2}')
-                    products = rdchiralRun(rxn, reactants, keep_isotopes=True)
-                except Exception as e:
-                    failed_reactions.append({
-                        'reactants': [smiles1, smiles2],
-                        'reactionType': reaction_type,
-                        'reason': f'RDChiral reaction failed: {str(e)}'
-                    })
-                    logger.error(f"RDChiral failed for {reaction_type}: {str(e)}")
-                    continue
-
-                if not products:
-                    failed_reactions.append({
-                        'reactants': [smiles1, smiles2],
-                        'reactionType': reaction_type,
-                        'reason': 'No products formed, possibly due to steric hindrance or incompatible substituents'
-                    })
-                    logger.info(f"No products for {reaction_type} with {smiles1}, {smiles2}")
-                    continue
-
-                # Process products
-                step_product_info = []
-                for product_smiles in products:
-                    mol = Chem.MolFromSmiles(product_smiles, sanitize=False)
-                    if mol:
-                        try:
-                            Chem.SanitizeMol(mol, sanitizeOps=Chem.SanitizeFlags.SANITIZE_ALL)
-                            props = compute_product_properties(mol)
-                            if 'error' not in props:
-                                props['confidence'] = confidence
-                                step_product_info.append([props])
-                                molecular_weights.append(props['molecular_weight'])
-                                logger.info(f"Product for {reaction_type}: {props['smiles']}")
-                        except Exception as e:
-                            logger.warning(f"Product processing failed: {str(e)}")
-                            continue
-
-                if step_product_info:
+                
+                product_info = []
+                for mol in product_mols:
+                    try:
+                        mol = standardize_molecule(mol)
+                        Chem.SanitizeMol(mol)
+                        props = compute_product_properties(mol)
+                        if 'error' not in props:
+                            product_info.append(props)
+                            molecular_weights.append(props['molecular_weight'])
+                    except Exception as e:
+                        logger.warning(f"Product processing failed: {str(e)}")
+                        continue
+                
+                if product_info:
                     all_reaction_results.append({
                         'reactionType': reaction_type,
-                        'description': reaction_smarts_map[reaction_type]['description'],
-                        'drugRelevance': reaction_smarts_map[reaction_type]['drug_relevance'],
+                        'description': reaction_smarts_map.get(reaction_type, {}).get('description', 'Predicted by RXN4Chemistry'),
                         'reactants': [smiles1, smiles2],
                         'reactantGroups': [groups1, groups2],
-                        'productSets': step_product_info,
-                        'confidence': confidence
+                        'products': product_info,
+                        'confidence': confidence,
+                        'productSmiles': product_smiles
+                    })
+                else:
+                    failed_reactions.append({
+                        'reactants': [smiles1, smiles2],
+                        'reason': 'All products failed processing'
                     })
 
-        if not all_reaction_results and not failed_reactions:
-            logger.error("No reactions processed")
-            return jsonify({'error': 'No reactions could be processed'}), 400
+            except Exception as e:
+                logger.error(f"Error processing pair {smiles1}, {smiles2}: {str(e)}")
+                failed_reactions.append({
+                    'reactants': [smiles1, smiles2],
+                    'reason': f'Processing error: {str(e)}'
+                })
 
-        # Statistics
+        reactant_props = []
+        for smiles in ligand_smiles:
+            mol = Chem.MolFromSmiles(smiles)
+            if mol:
+                try:
+                    mol = standardize_molecule(mol)
+                    Chem.SanitizeMol(mol)
+                    props = compute_product_properties(mol)
+                    if 'error' not in props:
+                        reactant_props.append({'smiles': smiles, 'properties': props})
+                except Exception as e:
+                    logger.warning(f"Failed to compute properties for {smiles}: {str(e)}")
+            else:
+                logger.warning(f"Invalid SMILES: {smiles}")
+
         mw_stats = {
             'mean_mw': float(np.mean(molecular_weights)) if molecular_weights else 0.0,
             'std_mw': float(np.std(molecular_weights)) if molecular_weights else 0.0,
@@ -302,38 +513,36 @@ def handle_reaction():
             'max_mw': float(np.max(molecular_weights)) if molecular_weights else 0.0
         }
 
-        # Reactant properties
-        reactant_props = []
-        for smiles in ligand_smiles:
-            mol = Chem.MolFromSmiles(smiles, sanitize=False)
-            if mol:
-                try:
-                    mol = standardize_molecule(mol)
-                    Chem.SanitizeMol(mol, sanitizeOps=Chem.SanitizeFlags.SANITIZE_ALL)
-                    props = compute_product_properties(mol)
-                    if 'error' not in props:
-                        reactant_props.append({'smiles': smiles, 'properties': props})
-                    else:
-                        logger.warning(f"Failed to compute properties for {smiles}: {props['error']}")
-                except Exception as e:
-                    logger.warning(f"Processing failed for {smiles}: {str(e)}")
-                    continue
-            else:
-                logger.warning(f"Invalid SMILES: {smiles}")
-
         response = {
             'reactants': reactant_props,
             'reactionResults': all_reaction_results,
             'failedReactions': failed_reactions,
-            'statistics': mw_stats
+            'statistics': mw_stats,
+            'createdAt': datetime.utcnow()
         }
+
+        # Validate the response against the Pydantic schema
+        try:
+            validated_response = ReactionResponse(**response)
+        except ValidationError as e:
+            logger.error(f"Response validation failed: {str(e)}")
+            return jsonify({'error': f'Response validation failed: {str(e)}'}), 500
+
+        # Save the validated response to MongoDB
+        try:
+            reaction_responses_collection.insert_one(validated_response.dict())
+            logger.info("Successfully saved validated reaction response to MongoDB")
+        except Exception as e:
+            logger.error(f"Failed to save response to MongoDB: {str(e)}")
+            return jsonify({'error': f'Failed to save response to MongoDB: {str(e)}'}), 500
+
         logger.info(f"Response generated with {len(all_reaction_results)} successful and {len(failed_reactions)} failed reactions")
         return jsonify(response)
 
     except Exception as e:
-        logger.error(f"Error: {str(e)}")
+        logger.error(f"Server error: {str(e)}")
         traceback.print_exc()
-        return jsonify({'error': f'Error processing reaction: {str(e)}'}), 500
+        return jsonify({'error': f'Server error: {str(e)}'}), 500
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5001, debug=True)

@@ -1,3 +1,7 @@
+
+
+
+
 import React, { useState, useEffect } from 'react';
 import {
   Container,
@@ -29,7 +33,6 @@ const timelineSteps = {
   ],
   react: [
     'Fetching Ligands from Database',
-    'Detecting Functional Groups',
     'Validating Reactants',
     'Running Chemical Reactions',
     'Finalizing Reaction Outputs',
@@ -46,14 +49,13 @@ const loadingMessages = {
   ],
   react: [
     'Fetching ligand SMILES from MongoDB...',
-    'Analyzing ligand structures for functional groups...',
     'Validating reactants for chemical compatibility...',
-    'Simulating reactions with RDChiral and RDKit...',
+    'Simulating reactions with RXN4Chemistry...',
     'Generating and scoring reaction products...',
   ],
 };
 
-const RDkit = () => {
+const DrugDiscoveryPipeline = () => {
   const [symptoms, setSymptoms] = useState('');
   const [loading, setLoading] = useState(false);
   const [reactionLoading, setReactionLoading] = useState(false);
@@ -180,15 +182,7 @@ const RDkit = () => {
     if (ligandSmile === 'Not applicable') {
       return 'N/A (Protein)';
     }
-    if (!reactionResult || !reactionResult.reactants) {
-      return 'Run reactions to analyze functional groups';
-    }
-    const reactant = reactionResult.reactants.find((r) => r.smiles === ligandSmile);
-    if (!reactant || !Array.isArray(reactant.properties?.functional_groups)) {
-      console.warn(`No functional groups found for ligand SMILES: ${ligandSmile}`);
-      return 'Not identified';
-    }
-    return reactant.properties.functional_groups.join(', ') || 'None';
+    return 'Functional group detection not available'; // Simplified since RDKit is removed
   };
 
   return (
@@ -465,9 +459,16 @@ const RDkit = () => {
                   <Grid item xs={12} md={6}>
                     <Typography variant="subtitle1">Successful Reactions</Typography>
                     {reactionResult.reactionResults.length === 0 ? (
-                      <Typography variant="body2" color="textSecondary">
-                        No successful reactions found.
-                      </Typography>
+                      <Box>
+                        <Typography variant="body2" color="textSecondary">
+                          No successful reactions found.
+                        </Typography>
+                        {reactionResult.failedReactions.some(fail => fail.reason.includes('RXN4Chemistry API not initialized')) && (
+                          <Typography variant="body2" color="error" sx={{ mt: 1 }}>
+                            It looks like the RXN4Chemistry API key is invalid or not set. Please contact the administrator to provide a valid API key.
+                          </Typography>
+                        )}
+                      </Box>
                     ) : (
                       reactionResult.reactionResults.map((reaction, index) => (
                         <Box key={index} sx={{ mb: 2 }}>
@@ -491,8 +492,6 @@ const RDkit = () => {
                                   primary={`Reactants: ${reaction.reactants.join(', ')}`}
                                   secondary={
                                     <>
-                                      Functional Groups: {reaction.reactantGroups.map((g) => g.join(', ')).join(' | ')}
-                                      <br />
                                       Description: {reaction.description}
                                       <br />
                                       Confidence: {(reaction.confidence * 100).toFixed(1)}%
@@ -506,22 +505,6 @@ const RDkit = () => {
                                   secondary={reaction.products.map((product, prodIndex) => (
                                     <Box key={prodIndex} sx={{ mb: 1 }}>
                                       SMILES: {product.smiles}
-                                      <br />
-                                      MW: {product.molecular_weight.toFixed(2)}
-                                      <br />
-                                      LogP: {product.logP.toFixed(2)}
-                                      <br />
-                                      TPSA: {product.tpsa.toFixed(2)}
-                                      <br />
-                                      H-Donors: {product.num_h_donors}
-                                      <br />
-                                      H-Acceptors: {product.num_h_acceptors}
-                                      <br />
-                                      Rotatable Bonds: {product.num_rotatable_bonds}
-                                      <br />
-                                      Stereochemistry: {product.has_stereochemistry ? 'Yes' : 'No'}
-                                      <br />
-                                      Functional Groups: {product.functional_groups.join(', ') || 'None'}
                                     </Box>
                                   ))}
                                 />
@@ -546,8 +529,6 @@ const RDkit = () => {
                               primary={`Reactants: ${fail.reactants.join(', ')}`}
                               secondary={
                                 <>
-                                  Reaction: {fail.reactionType || 'N/A'}
-                                  <br />
                                   Reason: {fail.reason}
                                 </>
                               }
@@ -558,20 +539,6 @@ const RDkit = () => {
                     )}
                   </Grid>
                 </Grid>
-                <Typography variant="subtitle1" sx={{ mt: 2 }}>
-                  Statistics
-                </Typography>
-                <Box sx={{ pl: 2 }}>
-                  <Typography variant="body2">
-                    Mean MW: {reactionResult.statistics.mean_mw.toFixed(2)}
-                    <br />
-                    Std MW: {reactionResult.statistics.std_mw.toFixed(2)}
-                    <br />
-                    Min MW: {reactionResult.statistics.min_mw.toFixed(2)}
-                    <br />
-                    Max MW: {reactionResult.statistics.max_mw.toFixed(2)}
-                  </Typography>
-                </Box>
               </Paper>
             )}
           </Box>
@@ -581,4 +548,4 @@ const RDkit = () => {
   );
 };
 
-export default RDkit;
+export default DrugDiscoveryPipeline;

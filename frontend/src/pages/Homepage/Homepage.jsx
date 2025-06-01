@@ -26,6 +26,7 @@ import {
 } from "lucide-react"
 import { motion, useScroll, useTransform, useInView, useMotionValue, useSpring } from "framer-motion"
 import Navbar from "../../components/Navbar"
+import { Link } from 'react-router-dom';
 
 function Homepage() {
   const [activeFeature, setActiveFeature] = useState(null)
@@ -564,14 +565,16 @@ function Homepage() {
                     whileHover={{ scale: 1.05, boxShadow: "0 10px 25px -5px rgba(59, 130, 246, 0.5)" }}
                     whileTap={{ scale: 0.98 }}
                   >
-                    Start Your Discovery Journey
-                    <motion.span
-                      className="ml-2 inline-block"
-                      whileHover={{ x: 5 }}
-                      transition={{ type: "spring", stiffness: 400, damping: 10 }}
-                    >
-                      <ArrowRight className="w-5 h-5" />
-                    </motion.span>
+                    <Link to="/dashboard" className="flex items-center">
+                      Start Your Discovery Journey
+                      <motion.span
+                        className="ml-2 inline-block"
+                        whileHover={{ x: 5 }}
+                        transition={{ type: "spring", stiffness: 400, damping: 10 }}
+                      >
+                        <ArrowRight className="w-5 h-5" />
+                      </motion.span>
+                    </Link>
                   </motion.button>
                   <motion.button
                     className="group border-2 border-gray-300 text-gray-700 px-8 py-4 rounded-lg hover:border-blue-600 hover:text-blue-600 transition-all duration-300 font-semibold"

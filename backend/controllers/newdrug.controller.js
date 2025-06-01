@@ -1277,14 +1277,15 @@ export const predictTargetProtein = async (req, res) => {
     }
 
     // Use Gemini to identify target proteins and ligands, matching the TargetProteinSchema
-    const geminiPrompt = `Act as a biomedical, bioinformatics, and drug discovery expert.
+   const geminiPrompt = `Act as a biomedical, bioinformatics, and drug discovery expert.
 
-Objective: For the associated symptoms (${symptoms.join(
-      ", "
-    )}), identify and present comprehensive, evidence-based information about all relevant target proteins and their associated therapeutic ligands.
-
+Objective:
+For the associated symptoms (${symptoms.join(
+  ", "
+)}), identify and present **comprehensive**, **evidence-based**, and **multi-entity** information about all relevant target proteins and their associated therapeutic ligands.
 Instructions:
-1. Search authoritative biomedical databases and knowledge sources, including but not limited to:
+
+1. Perform an exhaustive search using authoritative biomedical databases and public repositories, including but not limited to:
    - UniProt
    - Protein Data Bank (PDB)
    - PubMed
@@ -1296,70 +1297,75 @@ Instructions:
    - KEGG
    - Open Targets Platform
 
-2. Perform live web searches or web scraping of the above sources or equivalent publicly available biomedical data repositories to extract accurate, verifiable, and biologically relevant information. Use reliable references only.
+2. Search and extract accurate, verifiable, and biologically relevant information from these databases using live queries, scraping, or API access. Use only reliable, peer-reviewed, or curated biomedical sources.
 
-3. For each target protein involved in the disease or symptom mechanisms, provide the following:
+3. For each **target protein** involved in the pathophysiology or biological mechanism of the symptom(s)/disease(s), return greater than 4 unique and scientifically validated proteins**. For **each**, provide:
    - Full name of the protein
-   - Complete biological function and relevance to the disease
+   - Detailed biological function and its relevance to the entered symptoms/disease mechanism
    - List of associated diseases or pathological conditions
    - Gene symbol or identifier
    - UniProt ID (if available)
-   - PDB ID for structure (if available; else state "Not available")
-   - Brief description of the protein (1-2 sentences) for ProtienDiscription
-   - Detailed functional and structural description of the protein (3-5 sentences), including cellular localization, pathway involvement, biological interactions, and its specific role in the disease mechanism for proteinDetailedDiscription
-   - Include source links used for data gathering
+   - PDB ID (if available, otherwise state "Not available")
+   - Brief protein description (1–2 sentences) as "ProtienDiscription"
+   - Detailed functional and structural description (3–5 sentences), including its cellular localization, pathway involvement, molecular interactions, and relevance to the symptom or condition under investigation (field: "proteinDetailedDiscription")
+   - Data source links for traceability
+   - Note: Proteins **do not** have SMILES; include "Not applicable" under "ProteinSmile"
 
-4. For each ligand or drug compound that interacts with the identified target proteins, provide:
-   - Name and type (e.g., antagonist, agonist, inhibitor, modulator)
-   - Full biological or pharmacological function in relation to the target protein
+4. For each identified target protein, return a minimum of **one therapeutic ligand or drug compound**, with a greater than  4 or more distinct ligands**. For each ligand, provide:
+   - Ligand name and type (e.g., antagonist, agonist, inhibitor, modulator)
+   - Full pharmacological or biological function in relation to the target protein and symptoms
    - Mechanism of action
-   - List of diseases or symptoms the ligand is used to treat
-   - Brief description of the ligand (1-2 sentences) for LigandDiscription
-   - Detailed description of therapeutic use, interaction mechanism, pharmacodynamics/pharmacokinetics, and clinical relevance (3-5 sentences) for LigandDetailedDiscription
-   - Valid SMILES string for the ligand (retrieved from DrugBank, PubChem, or ChEMBL). If not available, state "Not applicable"
-   - DrugBank ID for the ligand (e.g., DB00737 for Meclizine). If not available, state "Not available"
-   - Include data source links
+   - Associated diseases or symptoms the ligand is known to treat
+   - LigandDiscription: A concise (1–2 sentence) overview
+   - LigandDetailedDiscription: An expanded (3–5 sentence) description covering mechanism of action, therapeutic relevance, pharmacodynamics/pharmacokinetics, and any clinical insights
+   - Valid SMILES string (from DrugBank, PubChem, or ChEMBL); if unavailable, state "Not applicable"
+   - DrugBank ID (or state "Not available")
+   - Source links used
 
-Output Format (Strict JSON Schema):
+5. Ensure factual scientific clarity, use domain-specific nomenclature, and provide traceable source links for every field. Avoid summarization — prioritize depth, citation, and comprehensiveness.
+
+ Output JSON Format:
 {
   "TargetProteins": [
     {
-      "proteinName": "Full protein name",
-      "proteinFunction": "Complete biological function and role in disease",
-      "associatedDiseases": ["Disease1", "Disease2", "..."],
-      "associatedGene": "Gene symbol or ID",
-      "proteinUniport": "UniProt ID, e.g., P35367",
-      "pdbID": "e.g., 2RH1 or 'Not available'",
-      "ProtienDiscription": "Brief description of the protein (1-2 sentences)",
-      "proteinDetailedDiscription": "Detailed explanation of the protein’s role in disease biology, cellular activity, signaling pathways, and structural relevance (3-5 sentences)",
-      "ProteinSmile": "Not applicable (proteins do not have SMILES strings)",
-      "dataSources": ["https://uniprot.org/...", "https://pubmed.ncbi.nlm.nih.gov/..."]
+      "proteinName": "...",
+      "proteinFunction": "...",
+      "associatedDiseases": ["..."],
+      "associatedGene": "...",
+      "proteinUniport": "...",
+      "pdbID": "...",
+      "ProtienDiscription": "...",
+      "proteinDetailedDiscription": "...",
+      "ProteinSmile": "Not applicable",
+      "dataSources": ["..."]
     }
-    // Repeat for all relevant target proteins, at least one
+    // Minimum of 4 target proteins required
   ],
   "TargetLigands": [
     {
-      "ligandName": "Full name of the ligand or drug",
-      "ligandFunction": "Precise function in relation to the target and disease",
-      "ligandType": "e.g., H1 antagonist, kinase inhibitor, etc.",
-      "associatedDiseases": ["Disease1", "Disease2", "..."],
-      "LigandDiscription": "Brief description of the ligand (1-2 sentences)",
-      "LigandDetailedDiscription": "Comprehensive pharmacological profile, mechanism of interaction, therapeutic application, and clinical relevance (3-5 sentences)",
-      "LigandSmile": "Valid SMILES string or 'Not applicable'",
-      "ligandDrugBankID": "DrugBank ID, e.g., DB00737 or 'Not available'",
-      "dataSources": ["https://drugbank.ca/...", "https://pubchem.ncbi.nlm.nih.gov/..."]
+      "ligandName": "...",
+      "ligandFunction": "...",
+      "ligandType": "...",
+      "associatedDiseases": ["..."],
+      "LigandDiscription": "...",
+      "LigandDetailedDiscription": "...",
+      "LigandSmile": "...",
+      "ligandDrugBankID": "...",
+      "dataSources": ["..."]
     }
-    // Repeat for all ligands interacting with target proteins, at least one
+    // Minimum of 4 therapeutic ligands required
   ]
 }
 
-Additional Requirements:
-- Ensure that the content is exhaustive and accurate, avoiding summarization. Include as much detail as available from scientific sources.
-- If no data is available for any field, explicitly use the placeholder "Not available".
-- Protein entries must not include SMILES strings, as they are macromolecules. SMILES are applicable only to ligands.
-- Ensure factual accuracy, scientific clarity, and standard nomenclature. Use professional and domain-specific biomedical language throughout.
-- Every entity should be traceable via source links to its original database entry or publication.
-- Provide at least one entry for both TargetProteins and TargetLigands.`;
+ Additional Requirements:
+- Do not leave fields blank — if data is missing, use "Not available"
+- Do not provide SMILES for proteins
+- Include complete citations/URLs for verification
+- Do not simplify or generalize any descriptions — be thorough
+- All entries should be relevant to the symptom(s) provided
+- Provide **at least 4 well-validated entries each** for both proteins and ligands to ensure rich scientific value
+`;
+
 
     // Call Gemini API with the updated prompt
     const geminiResponse = (await callGemini(geminiPrompt)) || "{}";
