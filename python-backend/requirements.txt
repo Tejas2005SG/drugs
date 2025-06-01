@@ -1,0 +1,5 @@
+Flask==2.3.3
+pymongo==4.6.1
+rdkit-pypi==2022.9.5
+rdchiral==1.1.0
+numpy==1.26.4
