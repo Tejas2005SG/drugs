@@ -3,7 +3,7 @@ import { predictDisease,predictTargetProtein } from '../controllers/newdrug.cont
 import { protectRoute } from '../middleware/auth.middleware.js';
 const router = express.Router();
 
-router.post("/predictDisease",protectRoute,predictDisease);
-router.post("/predictTargetProtein",protectRoute,predictTargetProtein);
+router.post("/predictDisease",predictDisease);
+router.post("/predictTargetProtein",predictTargetProtein);
 
 export default router;
