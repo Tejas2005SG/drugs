@@ -1,4 +1,6 @@
-import React, { useState, useEffect } from 'react';
+"use client"
+
+import { useState, useEffect } from "react"
 import {
   Container,
   TextField,
@@ -7,578 +9,1096 @@ import {
   Box,
   CircularProgress,
   Alert,
-  List,
-  ListItem,
-  ListItemText,
   Paper,
   Grid,
   Collapse,
   IconButton,
   Tooltip,
-} from '@mui/material';
-import { ExpandMore, ExpandLess, Science, CheckCircle } from '@mui/icons-material';
-import axios from 'axios';
+  Menu,
+  MenuItem,
+  Chip,
+  Divider,
+  LinearProgress,
+  Card,
+  CardContent,
+  CardHeader,
+} from "@mui/material"
+import {
+  ExpandMore,
+  ExpandLess,
+  Science,
+  CheckCircle,
+  LocalHospital,
+  Biotech,
+  Psychology,
+  Warning,
+  Info,
+  Visibility,
+  RestartAlt,
+} from "@mui/icons-material"
+import axios from "axios"
 
 const timelineSteps = {
   predict: [
-    'Fetching Symptoms',
-    'Predicting Diseases',
-    'Identifying Target Proteins',
-    'Retrieving Ligands',
-    'Finalizing Analysis',
+    "Fetching Symptoms",
+    "Predicting Diseases",
+    "Identifying Target Proteins",
+    "Retrieving Ligands",
+    "Finalizing Analysis",
   ],
   react: [
-    'Fetching Ligands from Database',
-    'Detecting Functional Groups',
-    'Validating Reactants',
-    'Running Chemical Reactions',
-    'Finalizing Reaction Outputs',
+    "Fetching Ligands from Database",
+    "Detecting Functional Groups",
+    "Validating Reactants",
+    "Running Chemical Reactions",
+    "Finalizing Reaction Outputs",
   ],
-};
+}
 
 const loadingMessages = {
   predict: [
-    'Processing your symptoms to identify potential diseases...',
-    'Analyzing symptom patterns to predict diseases...',
-    'Identifying target proteins for therapeutic intervention...',
-    'Retrieving ligand structures from the database...',
-    'Finalizing disease and target analysis for reaction processing...',
+    "Processing your symptoms to identify potential diseases...",
+    "Analyzing symptom patterns to predict diseases...",
+    "Identifying target proteins for therapeutic intervention...",
+    "Retrieving ligand structures from the database...",
+    "Finalizing disease and target analysis for reaction processing...",
   ],
   react: [
-    'Fetching ligand SMILES from MongoDB...',
-    'Analyzing ligand structures for functional groups...',
-    'Validating reactants for chemical compatibility...',
-    'Simulating reactions with RDChiral and RDKit...',
-    'Generating and scoring reaction products...',
+    "Fetching ligand SMILES from MongoDB...",
+    "Analyzing ligand structures for functional groups...",
+    "Validating reactants for chemical compatibility...",
+    "Simulating reactions with RDChiral and RDKit...",
+    "Generating and scoring reaction products...",
   ],
-};
+}
 
 const RDkit = () => {
-  const [symptoms, setSymptoms] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [reactionLoading, setReactionLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [result, setResult] = useState(null);
-  const [reactionResult, setReactionResult] = useState(null);
-  const [expanded, setExpanded] = useState({});
-  const [currentStep, setCurrentStep] = useState(0);
+  const [symptoms, setSymptoms] = useState("")
+  const [loading, setLoading] = useState(false)
+  const [reactionLoading, setReactionLoading] = useState(false)
+  const [error, setError] = useState("")
+  const [result, setResult] = useState(null)
+  const [reactionResult, setReactionResult] = useState(null)
+  const [expanded, setExpanded] = useState({})
+  const [currentStep, setCurrentStep] = useState(0)
+  const [availableReactions, setAvailableReactions] = useState([])
+  const [reactionsLoading, setReactionsLoading] = useState(false)
+  const [anchorEl, setAnchorEl] = useState(null)
+
+  // Fetch available reactions on component mount
+  useEffect(() => {
+    const fetchAvailableReactions = async () => {
+      setReactionsLoading(true)
+      try {
+        const response = await axios.get("http://127.0.0.1:5001/api/reactions")
+        setAvailableReactions(response.data.reactions)
+      } catch (err) {
+        setError(err.response?.data?.error || "Error fetching available reactions.")
+      } finally {
+        setReactionsLoading(false)
+      }
+    }
+
+    fetchAvailableReactions()
+  }, [])
 
   // Handle timeline progress
   useEffect(() => {
-    if (!loading && !reactionLoading) return;
+    if (!loading && !reactionLoading) return
 
-    const steps = loading ? timelineSteps.predict : timelineSteps.react;
+    const steps = loading ? timelineSteps.predict : timelineSteps.react
     const interval = setInterval(() => {
       setCurrentStep((prev) => {
         if (prev < steps.length - 1) {
-          return prev + 1;
+          return prev + 1
         }
-        return prev;
-      });
-    }, 2000);
+        return prev
+      })
+    }, 2000)
 
-    return () => clearInterval(interval);
-  }, [loading, reactionLoading]);
+    return () => clearInterval(interval)
+  }, [loading, reactionLoading])
 
   // Reset currentStep on error or completion
   useEffect(() => {
     if (!loading && !reactionLoading) {
       if (error) {
-        setCurrentStep(0); // Reset on error
+        setCurrentStep(0)
       } else if (currentStep > 0) {
-        const steps = loading ? timelineSteps.predict : timelineSteps.react;
-        setCurrentStep(steps.length - 1);
+        const steps = loading ? timelineSteps.predict : timelineSteps.react
+        setCurrentStep(steps.length - 1)
       }
     }
-  }, [loading, reactionLoading, error, currentStep]);
+  }, [loading, reactionLoading, error, currentStep])
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError('');
-    setResult(null);
-    setReactionResult(null);
-    setLoading(true);
-    setCurrentStep(0);
+    e.preventDefault()
+    setError("")
+    setResult(null)
+    setLoading(true)
+    setCurrentStep(0)
 
     try {
-      const symptomList = symptoms
-        .split(',')
+      const symptomsList = symptoms
+        .split(",")
         .map((s) => s.trim())
-        .filter((s) => s);
+        .filter((s) => s)
 
-      if (symptomList.length === 0) {
-        setError('Please enter at least one symptom.');
-        setLoading(false);
-        return;
+      if (symptomsList.length === 0) {
+        setError("Please enter at least one symptom.")
+        setLoading(false)
+        return
       }
 
       const diseaseResponse = await axios.post(
-        'http://localhost:5000/api/newdrug/predictDisease',
-        { symptoms: symptomList },
+        "http://localhost:5000/api/newdrug/predictDisease",
+        { symptoms: symptomsList },
         {
-          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
-        }
-      );
+          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+        },
+      )
 
       const proteinResponse = await axios.post(
-        'http://localhost:5000/api/newdrug/predictTargetProtein',
+        "http://localhost:5000/api/newdrug/predictTargetProtein",
         {},
         {
-          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
-        }
-      );
+          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+        },
+      )
 
       setResult({
         disease: diseaseResponse.data,
         proteins: proteinResponse.data,
-      });
+      })
     } catch (err) {
-      setError(
-        err.response?.data?.error || 'Error processing disease/protein prediction.'
-      );
-      setLoading(false);
-      setCurrentStep(0); // Reset timeline on error
+      setError(err.response?.data?.error || "Error processing disease/protein prediction.")
+      setLoading(false)
+      setCurrentStep(0)
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   const handleRunReactions = async () => {
-    setReactionLoading(true);
-    setError('');
-    setReactionResult(null);
-    setCurrentStep(0);
+    setReactionLoading(true)
+    setError("")
+    setReactionResult(null)
+    setCurrentStep(0)
 
     try {
-      const reactionResponse = await axios.get('http://127.0.0.1:5001/api/react');
-      setReactionResult(reactionResponse.data);
+      const reactionResponse = await axios.get("http://127.0.0.1:5001/api/react")
+      setReactionResult(reactionResponse.data)
     } catch (err) {
-      setError(err.response?.data?.error || 'Error running reactions.');
-      setReactionLoading(false);
-      setCurrentStep(0); // Reset timeline on error
+      setError(err.response?.data?.error || "Error running reactions.")
+      setReactionLoading(false)
+      setCurrentStep(0)
     } finally {
-      setReactionLoading(false);
+      setReactionLoading(false)
     }
-  };
+  }
 
   const handleReset = () => {
-    setSymptoms('');
-    setError('');
-    setResult(null);
-    setReactionResult(null);
-    setLoading(false);
-    setReactionLoading(false);
-    setCurrentStep(0);
-    setExpanded({});
-  };
+    setSymptoms("")
+    setError("")
+    setResult(null)
+    setReactionResult(null)
+    setLoading(false)
+    setReactionLoading(false)
+    setCurrentStep(0)
+    setExpanded({})
+    setAnchorEl(null)
+  }
 
   const handleToggle = (key) => {
-    setExpanded((prev) => ({ ...prev, [key]: !prev[key] }));
-  };
+    setExpanded((prev) => ({ ...prev, [key]: !prev[key] }))
+  }
 
   const getFunctionalGroups = (ligandSmile) => {
-    if (ligandSmile === 'Not applicable') {
-      return 'N/A (Protein)';
+    if (ligandSmile === "Not applicable") {
+      return "N/A (Protein)"
     }
     if (!reactionResult || !reactionResult.reactants) {
-      return 'Run reactions to analyze functional groups';
+      return "Run reactions to analyze functional groups"
     }
-    const reactant = reactionResult.reactants.find((r) => r.smiles === ligandSmile);
+    const reactant = reactionResult.reactants.find((r) => r.smiles === ligandSmile)
     if (!reactant || !Array.isArray(reactant.properties?.functional_groups)) {
-      console.warn(`No functional groups found for ligand SMILES: ${ligandSmile}`);
-      return 'Not identified';
+      console.warn(`No functional groups found for ligand SMILES: ${ligandSmile}`)
+      return "Not identified"
     }
-    return reactant.properties.functional_groups.join(', ') || 'None';
-  };
+    return reactant.properties.functional_groups.join(", ") || "None"
+  }
+
+  const handleMenuOpen = (event) => {
+    setAnchorEl(event.currentTarget)
+  }
+
+  const handleMenuClose = () => {
+    setAnchorEl(null)
+  }
+
+  const deduplicateReactions = (reactions) => {
+    const seen = new Set()
+    return reactions.filter((reaction) => {
+      const key = `${reaction.reactionType}:${[...reaction.reactants].sort().join(":")}`
+      if (seen.has(key)) {
+        return false
+      }
+      seen.add(key)
+      return true
+    })
+  }
+
+  const deduplicateProducts = (products) => {
+    const seenSmiles = new Set()
+    return products.filter((product) => {
+      if (seenSmiles.has(product.smiles)) {
+        return false
+      }
+      seenSmiles.add(product.smiles)
+      return true
+    })
+  }
 
   return (
-    <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
-      <Paper elevation={3} sx={{ p: 4 }}>
-        <Typography variant="h4" gutterBottom>
-          Drug Discovery Pipeline
-        </Typography>
-        <Typography variant="subtitle1" color="textSecondary" gutterBottom>
-          Enter symptoms to predict diseases, identify targets, and run optimized ligand reactions.
-        </Typography>
-
-        <Box component="form" onSubmit={handleSubmit} sx={{ mt: 2, display: 'flex', gap: 2, alignItems: 'center' }}>
-          <TextField
-            fullWidth
-            label="Symptoms (comma-separated)"
-            value={symptoms}
-            onChange={(e) => setSymptoms(e.target.value)}
-            placeholder="e.g., fever, cough, fatigue"
-            variant="outlined"
-            margin="normal"
-            aria-label="Enter symptoms separated by commas"
-          />
-          <Box sx={{ display: 'flex', gap: 2 }}>
-            <Button
-              type="submit"
-              variant="contained"
-              color="primary"
-              disabled={loading || reactionLoading}
-              aria-label="Predict and analyze symptoms"
-            >
-              {loading ? <CircularProgress size={24} /> : 'Predict and Analyze'}
-            </Button>
-            {result && (
-              <Button
-                variant="contained"
-                color="secondary"
-                onClick={handleRunReactions}
-                disabled={loading || reactionLoading}
-                aria-label="Run chemical reactions"
-              >
-                {reactionLoading ? <CircularProgress size={24} /> : 'Run Reactions'}
-              </Button>
-            )}
-            <Button
-              variant="outlined"
-              color="secondary"
-              onClick={handleReset}
-              disabled={loading || reactionLoading}
-              aria-label="Reset the form and results"
-            >
-              Reset
-            </Button>
-          </Box>
-        </Box>
-
-        {(loading || reactionLoading) && (
-          <Box sx={{ mt: 4, p: 3, bgcolor: 'grey.100', borderRadius: 2, boxShadow: 1 }}>
-            <Typography variant="h6" gutterBottom>
-              Processing Pipeline
+    <Box sx={{ minHeight: "100vh", bgcolor: "#f5f5f5", py: 4 }}>
+      <Container maxWidth="xl">
+        {/* Header Section */}
+        <Paper elevation={2} sx={{ p: 4, mb: 4, borderRadius: 1 }}>
+          <Box sx={{ textAlign: "center", mb: 4 }}>
+            <Typography variant="h4" sx={{ fontWeight: 700, color: "#2c3e50", mb: 1 }}>
+              Drug Discovery Pipeline
             </Typography>
-            <Grid container spacing={2}>
-              {/* Left: Vertical Timeline */}
-              <Grid item xs={12} md={6}>
-                {(loading ? timelineSteps.predict : timelineSteps.react).map((step, index) => (
-                  <Box key={index} sx={{ display: 'flex', alignItems: 'center', mb: 2, position: 'relative' }}>
-                    {/* Step Dot */}
-                    <Box
-                      sx={{
-                        width: 24,
-                        height: 24,
-                        borderRadius: '50%',
-                        bgcolor: index <= currentStep ? 'primary.main' : 'grey.300',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        transition: 'all 0.5s',
-                      }}
-                    >
-                      {index < currentStep ? (
-                        <CheckCircle sx={{ color: 'white', fontSize: 16 }} />
-                      ) : (
-                        <Typography sx={{ color: index <= currentStep ? 'white' : 'grey.600', fontSize: 12 }}>
-                          {index + 1}
-                        </Typography>
-                      )}
-                    </Box>
-                    {/* Step Label */}
-                    <Typography
-                      sx={{
-                        ml: 2,
-                        fontWeight: index === currentStep ? 'bold' : 'normal',
-                        color: index === currentStep ? 'primary.main' : 'text.secondary',
-                        transition: 'color 0.5s',
-                      }}
-                      aria-live={index === currentStep ? 'polite' : 'off'}
-                    >
-                      {step}
-                    </Typography>
-                    {/* Connecting Line */}
-                    {index < (loading ? timelineSteps.predict : timelineSteps.react).length - 1 && (
-                      <Box
-                        sx={{
-                          position: 'absolute',
-                          left: 12,
-                          top: 24,
-                          width: 2,
-                          height: 40,
-                          bgcolor: index < currentStep ? 'primary.main' : 'grey.300',
-                          transition: 'background-color 0.5s',
-                        }}
-                      />
-                    )}
-                  </Box>
-                ))}
-              </Grid>
-              {/* Right: Dynamic Message */}
-              <Grid item xs={12} md={6} sx={{ display: 'flex', alignItems: 'center' }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', opacity: 1, transition: 'opacity 0.5s' }}>
-                  <Science sx={{ mr: 2, color: 'primary.main', animation: 'spin 2s linear infinite' }} />
-                  <Typography
-                    variant="body1"
-                    sx={{ color: 'text.primary', fontWeight: 'medium' }}
-                    aria-live="polite"
-                  >
-                    {loading ? loadingMessages.predict[currentStep] : loadingMessages.react[currentStep]}
-                  </Typography>
-                </Box>
-              </Grid>
-            </Grid>
-          </Box>
-        )}
-
-        {error && (
-          <Alert severity="error" sx={{ mt: 2 }} onClose={() => setError('')}>
-            {error}
-          </Alert>
-        )}
-
-        {result && (
-          <Box sx={{ mt: 4 }}>
-            <Typography variant="h5" gutterBottom>
-              Results
+            <Typography variant="subtitle1" sx={{ color: "#5d6d7e", maxWidth: 800, mx: "auto" }}>
+              Advanced molecular analysis system for symptom-based disease prediction, target identification, and
+              optimized ligand reaction simulation
             </Typography>
+          </Box>
 
-            {/* Disease Prediction */}
-            <Paper elevation={2} sx={{ p: 2, mb: 2 }}>
-              <Typography variant="h6">Predicted Disease</Typography>
-              <List>
-                {result.disease.predictedDiseases.map((disease, index) => (
-                  <ListItem key={index}>
-                    <ListItemText
-                      primary={`Disease: ${disease.diseaseName}`}
-                      secondary={
-                        <>
-                          Match: {disease.DiseaseMatchness}
-                          <br />
-                          Cautions: {disease.diseaseCautions.join(', ')}
-                        </>
-                      }
+          {/* Input Form */}
+          <Card variant="outlined" sx={{ mb: 4, borderRadius: 1 }}>
+            <CardContent sx={{ p: 3 }}>
+              <Box component="form" onSubmit={handleSubmit}>
+                <Grid container spacing={3} alignItems="center">
+                  <Grid item xs={12} md={6}>
+                    <TextField
+                      fullWidth
+                      label="Enter Symptoms"
+                      value={symptoms}
+                      onChange={(e) => setSymptoms(e.target.value)}
+                      placeholder="e.g., fever, cough, fatigue, headache"
+                      variant="outlined"
+                      InputProps={{
+                        startAdornment: <LocalHospital sx={{ mr: 1, color: "text.secondary" }} />,
+                      }}
                     />
-                  </ListItem>
-                ))}
-              </List>
-              <Typography variant="subtitle1" sx={{ mt: 2 }}>
-                Disease Analysis
-              </Typography>
-              {Object.entries(result.disease.DiseaseAnalysis).map(([key, items]) => (
-                <Box key={key} sx={{ mt: 1 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                    <Typography variant="body1" fontWeight="bold">
-                      {key.replace(/([A-Z])/g, ' $1').trim()}
-                    </Typography>
-                    <IconButton
-                      onClick={() => handleToggle(key)}
-                      aria-label={expanded[key] ? `Collapse ${key}` : `Expand ${key}`}
-                    >
-                      {expanded[key] ? <ExpandLess /> : <ExpandMore />}
-                    </IconButton>
-                  </Box>
-                  <Collapse in={expanded[key]}>
-                    <List dense>
-                      {items.map((item, idx) => (
-                        <ListItem key={idx}>
-                          <ListItemText
-                            primary={item.summary}
-                            secondary={
-                              <>
-                                Source: {item.source}
-                                <br />
-                                {item.url && (
-                                  <a href={item.url} target="_blank" rel="noopener noreferrer">
-                                    Link
-                                  </a>
-                                )}
-                              </>
-                            }
-                          />
-                        </ListItem>
-                      ))}
-                    </List>
-                  </Collapse>
-                </Box>
-              ))}
-            </Paper>
-
-            {/* Target Proteins and Ligands */}
-            <Paper elevation={2} sx={{ p: 2, mb: 2 }}>
-              <Typography variant="h6">Target Proteins and Ligands</Typography>
-              <Grid container spacing={2}>
-                <Grid item xs={12} md={6}>
-                  <Typography variant="subtitle1">Target Proteins</Typography>
-                  <List dense>
-                    {result.proteins.TargetProteins.map((protein, index) => (
-                      <ListItem key={index}>
-                        <ListItemText
-                          primary={protein.proteinName}
-                          secondary={
-                            <>
-                              Function: {protein.proteinFunction}
-                              <br />
-                              Description: {protein.ProtienDiscription}
-                              <br />
-                              Detailed: {protein.proteinDetailedDiscription}
-                              <br />
-                              UniProt ID: {protein.proteinUniport}
-                            </>
-                          }
-                        />
-                      </ListItem>
-                    ))}
-                  </List>
-                </Grid>
-                <Grid item xs={12} md={6}>
-                  <Typography variant="subtitle1">Target Ligands</Typography>
-                  <List dense>
-                    {result.proteins.TargetLigands.map((ligand, index) => (
-                      <ListItem key={index}>
-                        <ListItemText
-                          primary={ligand.ligandName}
-                          secondary={
-                            <>
-                              Function: {ligand.ligandFunction}
-                              <br />
-                              Description: {ligand.LigandDiscription}
-                              <br />
-                              Detailed: {ligand.LigandDetailedDiscription}
-                              <br />
-                              SMILES: {ligand.LigandSmile}
-                              <br />
-                              Functional Groups: {getFunctionalGroups(ligand.LigandSmile)}
-                              <br />
-                              DrugBank ID: {ligand.ligandDrugBankID}
-                              {ligand.LigandSmile === 'Not applicable' && (
-                                <Alert severity="warning" sx={{ mt: 1 }}>
-                                  This ligand is a protein and cannot be processed for reactions.
-                                </Alert>
-                              )}
-                            </>
-                          }
-                        />
-                      </ListItem>
-                    ))}
-                  </List>
-                </Grid>
-              </Grid>
-            </Paper>
-
-            {/* Reaction Results */}
-            {reactionResult && (
-              <Paper elevation={2} sx={{ p: 2 }}>
-                <Typography variant="h6">Reaction Results</Typography>
-                <Grid container spacing={2}>
-                  <Grid item xs={12} md={6}>
-                    <Typography variant="subtitle1">Successful Reactions</Typography>
-                    {reactionResult.reactionResults.length === 0 ? (
-                      <Typography variant="body2" color="textSecondary">
-                        No successful reactions found.
-                      </Typography>
-                    ) : (
-                      reactionResult.reactionResults.map((reaction, index) => (
-                        <Box key={index} sx={{ mb: 2 }}>
-                          <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                            <Tooltip title={`Confidence: ${(reaction.confidence * 100).toFixed(1)}%`}>
-                              <Typography variant="body1" fontWeight="bold">
-                                {reaction.reactionType}
-                              </Typography>
-                            </Tooltip>
-                            <IconButton
-                              onClick={() => handleToggle(`reaction-${index}`)}
-                              aria-label={expanded[`reaction-${index}`] ? `Collapse reaction ${index + 1}` : `Expand reaction ${index + 1}`}
-                            >
-                              {expanded[`reaction-${index}`] ? <ExpandLess /> : <ExpandMore />}
-                            </IconButton>
-                          </Box>
-                          <Collapse in={expanded[`reaction-${index}`]}>
-                            <List dense>
-                              <ListItem>
-                                <ListItemText
-                                  primary={`Reactants: ${reaction.reactants.join(', ')}`}
-                                  secondary={
-                                    <>
-                                      Functional Groups: {reaction.reactantGroups.map((g) => g.join(', ')).join(' | ')}
-                                      <br />
-                                      Description: {reaction.description}
-                                      <br />
-                                      Confidence: {(reaction.confidence * 100).toFixed(1)}%
-                                    </>
-                                  }
-                                />
-                              </ListItem>
-                              <ListItem>
-                                <ListItemText
-                                  primary="Products"
-                                  secondary={reaction.products.map((product, prodIndex) => (
-                                    <Box key={prodIndex} sx={{ mb: 1 }}>
-                                      SMILES: {product.smiles}
-                                      <br />
-                                      MW: {product.molecular_weight.toFixed(2)}
-                                      <br />
-                                      LogP: {product.logP.toFixed(2)}
-                                      <br />
-                                      TPSA: {product.tpsa.toFixed(2)}
-                                      <br />
-                                      H-Donors: {product.num_h_donors}
-                                      <br />
-                                      H-Acceptors: {product.num_h_acceptors}
-                                      <br />
-                                      Rotatable Bonds: {product.num_rotatable_bonds}
-                                      <br />
-                                      Stereochemistry: {product.has_stereochemistry ? 'Yes' : 'No'}
-                                      <br />
-                                      Functional Groups: {product.functional_groups.join(', ') || 'None'}
-                                    </Box>
-                                  ))}
-                                />
-                              </ListItem>
-                            </List>
-                          </Collapse>
-                        </Box>
-                      ))
-                    )}
                   </Grid>
                   <Grid item xs={12} md={6}>
-                    <Typography variant="subtitle1">Failed Reactions</Typography>
-                    {reactionResult.failedReactions.length === 0 ? (
-                      <Typography variant="body2" color="textSecondary">
-                        No failed reactions.
-                      </Typography>
-                    ) : (
-                      <List dense>
-                        {reactionResult.failedReactions.map((fail, index) => (
-                          <ListItem key={index}>
-                            <ListItemText
-                              primary={`Reactants: ${fail.reactants.join(', ')}`}
-                              secondary={
-                                <>
-                                  Reaction: {fail.reactionType || 'N/A'}
-                                  <br />
-                                  Reason: {fail.reason}
-                                </>
-                              }
-                            />
-                          </ListItem>
-                        ))}
-                      </List>
-                    )}
+                    <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap" }}>
+                      <Button
+                        type="submit"
+                        variant="contained"
+                        size="large"
+                        disabled={loading || reactionLoading}
+                        startIcon={loading ? <CircularProgress size={20} /> : <Psychology />}
+                        sx={{
+                          bgcolor: "#2c3e50",
+                          "&:hover": {
+                            bgcolor: "#1a252f",
+                          },
+                          textTransform: "none",
+                        }}
+                      >
+                        {loading ? "Analyzing..." : "Predict & Analyze"}
+                      </Button>
+                      {result && (
+                        <Button
+                          variant="contained"
+                          size="large"
+                          onClick={handleRunReactions}
+                          disabled={loading || reactionLoading}
+                          startIcon={reactionLoading ? <CircularProgress size={20} /> : <Biotech />}
+                          sx={{
+                            bgcolor: "#34495e",
+                            "&:hover": {
+                              bgcolor: "#2c3e50",
+                            },
+                            textTransform: "none",
+                          }}
+                        >
+                          {reactionLoading ? "Processing..." : "Run Reactions"}
+                        </Button>
+                      )}
+                      <Button
+                        variant="outlined"
+                        size="large"
+                        onClick={handleReset}
+                        disabled={loading || reactionLoading}
+                        startIcon={<RestartAlt />}
+                        sx={{
+                          color: "#2c3e50",
+                          borderColor: "#2c3e50",
+                          "&:hover": {
+                            borderColor: "#1a252f",
+                            bgcolor: "rgba(44, 62, 80, 0.04)",
+                          },
+                          textTransform: "none",
+                        }}
+                      >
+                        Reset
+                      </Button>
+                    </Box>
                   </Grid>
                 </Grid>
-                <Typography variant="subtitle1" sx={{ mt: 2 }}>
-                  Statistics
-                </Typography>
-                <Box sx={{ pl: 2 }}>
-                  <Typography variant="body2">
-                    Mean MW: {reactionResult.statistics.mean_mw.toFixed(2)}
-                    <br />
-                    Std MW: {reactionResult.statistics.std_mw.toFixed(2)}
-                    <br />
-                    Min MW: {reactionResult.statistics.min_mw.toFixed(2)}
-                    <br />
-                    Max MW: {reactionResult.statistics.max_mw.toFixed(2)}
+              </Box>
+            </CardContent>
+          </Card>
+
+          {/* Processing Timeline */}
+          {(loading || reactionLoading) && (
+            <Card variant="outlined" sx={{ mb: 4, borderRadius: 1 }}>
+              <CardHeader
+                title={
+                  <Typography variant="h6" sx={{ fontWeight: 600, color: "#2c3e50" }}>
+                    Processing Pipeline
                   </Typography>
+                }
+                subheader={
+                  <Typography variant="body2" sx={{ color: "text.secondary", mt: 0.5 }}>
+                    Real-time analysis progress tracking
+                  </Typography>
+                }
+              />
+              <CardContent sx={{ pt: 0 }}>
+                <LinearProgress
+                  variant="determinate"
+                  value={(currentStep / (loading ? timelineSteps.predict : timelineSteps.react).length) * 100}
+                  sx={{
+                    mb: 4,
+                    height: 6,
+                    borderRadius: 3,
+                    bgcolor: "#e0e0e0",
+                  }}
+                />
+                <Grid container spacing={4}>
+                  <Grid item xs={12} lg={7}>
+                    <Box sx={{ position: "relative" }}>
+                      {(loading ? timelineSteps.predict : timelineSteps.react).map((step, index) => (
+                        <Box key={index} sx={{ display: "flex", alignItems: "center", mb: 3, position: "relative" }}>
+                          <Box
+                            sx={{
+                              width: 36,
+                              height: 36,
+                              borderRadius: "50%",
+                              bgcolor: index <= currentStep ? "#2c3e50" : "#e0e0e0",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              transition: "all 0.3s ease",
+                              zIndex: 2,
+                              position: "relative",
+                            }}
+                          >
+                            {index < currentStep ? (
+                              <CheckCircle sx={{ color: "white", fontSize: 20 }} />
+                            ) : index === currentStep ? (
+                              <CircularProgress size={18} sx={{ color: "white" }} />
+                            ) : (
+                              <Typography sx={{ color: "grey.600", fontSize: 14, fontWeight: 600 }}>
+                                {index + 1}
+                              </Typography>
+                            )}
+                          </Box>
+                          <Box sx={{ ml: 2, flex: 1 }}>
+                            <Typography
+                              variant="body1"
+                              sx={{
+                                fontWeight: index === currentStep ? 600 : 400,
+                                color: index === currentStep ? "#2c3e50" : index < currentStep ? "#2c3e50" : "#5d6d7e",
+                                transition: "all 0.3s ease",
+                              }}
+                            >
+                              {step}
+                            </Typography>
+                          </Box>
+                          {index < (loading ? timelineSteps.predict : timelineSteps.react).length - 1 && (
+                            <Box
+                              sx={{
+                                position: "absolute",
+                                left: 18,
+                                top: 36,
+                                width: 2,
+                                height: 40,
+                                bgcolor: index < currentStep ? "#2c3e50" : "#e0e0e0",
+                                transition: "all 0.3s ease",
+                                zIndex: 1,
+                              }}
+                            />
+                          )}
+                        </Box>
+                      ))}
+                    </Box>
+                  </Grid>
+                  <Grid item xs={12} lg={5}>
+                    <Card variant="outlined" sx={{ height: "100%", display: "flex", alignItems: "center" }}>
+                      <CardContent sx={{ textAlign: "center", width: "100%" }}>
+                        <Science sx={{ fontSize: 40, color: "#2c3e50", mb: 2 }} />
+                        <Typography variant="subtitle1" sx={{ color: "#2c3e50", fontWeight: 600, mb: 1 }}>
+                          Current Process
+                        </Typography>
+                        <Typography variant="body2" sx={{ color: "#5d6d7e" }}>
+                          {loading ? loadingMessages.predict[currentStep] : loadingMessages.react[currentStep]}
+                        </Typography>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                </Grid>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Error Alert */}
+          {error && (
+            <Alert
+              severity="error"
+              sx={{
+                mb: 4,
+                "& .MuiAlert-icon": {
+                  fontSize: 20,
+                },
+              }}
+              onClose={() => setError("")}
+              icon={<Warning />}
+            >
+              <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                {error}
+              </Typography>
+            </Alert>
+          )}
+
+          {/* Available Reactions Section */}
+          <Card variant="outlined" sx={{ mb: 4, borderRadius: 1 }}>
+            <CardHeader
+              title={
+                <Typography variant="h6" sx={{ fontWeight: 600, color: "#2c3e50" }}>
+                  Available Chemical Reactions
+                </Typography>
+              }
+              subheader={
+                <Typography variant="body2" sx={{ color: "text.secondary", mt: 0.5 }}>
+                  Browse supported reaction types and mechanisms
+                </Typography>
+              }
+            />
+            <CardContent>
+              {reactionsLoading ? (
+                <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+                  <CircularProgress size={24} />
+                  <Typography>Loading available reactions...</Typography>
                 </Box>
+              ) : availableReactions.length > 0 ? (
+                <Box>
+                  <Button
+                    variant="contained"
+                    onClick={handleMenuOpen}
+                    startIcon={<Visibility />}
+                    sx={{
+                      bgcolor: "#2c3e50",
+                      "&:hover": {
+                        bgcolor: "#1a252f",
+                      },
+                      textTransform: "none",
+                    }}
+                  >
+                    View Available Reactions ({availableReactions.length})
+                  </Button>
+                  <Menu
+                    anchorEl={anchorEl}
+                    open={Boolean(anchorEl)}
+                    onClose={handleMenuClose}
+                    PaperProps={{
+                      style: {
+                        maxHeight: 500,
+                        width: "700px",
+                      },
+                    }}
+                  >
+                    {availableReactions.map((reaction, index) => (
+                      <MenuItem key={index} onClick={handleMenuClose} sx={{ py: 2 }}>
+                        <Box sx={{ width: "100%" }}>
+                          <Box sx={{ display: "flex", alignItems: "center", mb: 1 }}>
+                            <Chip
+                              label={reaction.type}
+                              size="small"
+                              sx={{
+                                mr: 2,
+                                bgcolor: "#2c3e50",
+                                color: "white",
+                                fontWeight: 600,
+                              }}
+                            />
+                            <Chip
+                              label={`Priority: ${reaction.priority}`}
+                              size="small"
+                              variant="outlined"
+                              sx={{ borderColor: "#5d6d7e", color: "#5d6d7e" }}
+                            />
+                          </Box>
+                          <Typography variant="body2" sx={{ mb: 1 }}>
+                            {reaction.description}
+                          </Typography>
+                          <Typography
+                            variant="body2"
+                            sx={{
+                              fontFamily: "monospace",
+                              bgcolor: "#f5f5f5",
+                              p: 1,
+                              borderRadius: 1,
+                              fontSize: "0.85rem",
+                            }}
+                          >
+                            <strong>SMARTS:</strong> {reaction.smarts}
+                          </Typography>
+                        </Box>
+                      </MenuItem>
+                    ))}
+                  </Menu>
+                </Box>
+              ) : (
+                <Alert severity="info" icon={<Info />}>
+                  <Typography variant="body2">
+                    No reactions currently available. Please check your connection or try again later.
+                  </Typography>
+                </Alert>
+              )}
+            </CardContent>
+          </Card>
+        </Paper>
+
+        {/* Results Section - Vertical Layout */}
+        {result && (
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
+            {/* Disease Prediction Results */}
+            <Paper elevation={2} sx={{ borderRadius: 1 }}>
+              <CardHeader
+                title={
+                  <Typography variant="h6" sx={{ fontWeight: 600, color: "#2c3e50" }}>
+                    Disease Prediction Results
+                  </Typography>
+                }
+                subheader={
+                  <Typography variant="body2" sx={{ color: "text.secondary", mt: 0.5 }}>
+                    AI-powered disease identification and analysis
+                  </Typography>
+                }
+              />
+              <CardContent>
+                <Box sx={{ mb: 4 }}>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 2, color: "#2c3e50" }}>
+                    Predicted Diseases
+                  </Typography>
+                  {result.disease.predictedDiseases.map((disease, index) => (
+                    <Card key={index} variant="outlined" sx={{ mb: 2, borderRadius: 1 }}>
+                      <CardContent sx={{ p: 2 }}>
+                        <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
+                          <Typography variant="subtitle1" sx={{ fontWeight: 600, flex: 1 }}>
+                            {disease.diseaseName || "Unknown Disease"}
+                          </Typography>
+                          <Chip
+                            label={`Match: ${disease.DiseaseMatchness || "N/A"}`}
+                            size="small"
+                            sx={{
+                              bgcolor: "#e8f5e9",
+                              color: "#2e7d32",
+                              fontWeight: 500,
+                            }}
+                          />
+                        </Box>
+                        {disease.diseaseCautions && disease.diseaseCautions.length > 0 && (
+                          <Box>
+                            <Typography variant="body2" sx={{ fontWeight: 600, mb: 1, color: "#5d6d7e" }}>
+                              Cautions:
+                            </Typography>
+                            <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
+                              {disease.diseaseCautions.map((caution, idx) => (
+                                <Chip
+                                  key={idx}
+                                  label={caution}
+                                  size="small"
+                                  variant="outlined"
+                                  sx={{ borderColor: "#d32f2f", color: "#d32f2f" }}
+                                />
+                              ))}
+                            </Box>
+                          </Box>
+                        )}
+                      </CardContent>
+                    </Card>
+                  ))}
+                </Box>
+
+                <Divider sx={{ my: 3 }} />
+
+                <Box>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 2, color: "#2c3e50" }}>
+                    Detailed Disease Analysis
+                  </Typography>
+                  {Object.entries(result.disease.DiseaseAnalysis || {}).map(([key, items]) => (
+                    <Card key={key} variant="outlined" sx={{ mb: 2, borderRadius: 1 }}>
+                      <CardContent sx={{ p: 2 }}>
+                        <Box
+                          sx={{ display: "flex", alignItems: "center", cursor: "pointer" }}
+                          onClick={() => handleToggle(key)}
+                        >
+                          <Typography
+                            variant="subtitle1"
+                            sx={{ fontWeight: 600, flex: 1, textTransform: "capitalize" }}
+                          >
+                            {key.replace(/([A-Z])/g, " $1").trim()}
+                          </Typography>
+                          <Chip label={items.length} size="small" sx={{ mr: 1, bgcolor: "#e0e0e0" }} />
+                          <IconButton size="small">{expanded[key] ? <ExpandLess /> : <ExpandMore />}</IconButton>
+                        </Box>
+                        <Collapse in={expanded[key]}>
+                          <Box sx={{ mt: 2 }}>
+                            {items.map((item, idx) => (
+                              <Paper key={idx} variant="outlined" sx={{ p: 2, mb: 2, bgcolor: "#fafafa" }}>
+                                <Typography variant="body2" sx={{ fontWeight: 500, mb: 1 }}>
+                                  {item.summary || "No summary available"}
+                                </Typography>
+                                <Box sx={{ display: "flex", alignItems: "center", gap: 2, mt: 1 }}>
+                                  <Chip label={`Source: ${item.source || "N/A"}`} size="small" variant="outlined" />
+                                  {item.url && (
+                                    <Button
+                                      size="small"
+                                      href={item.url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      sx={{ textTransform: "none", color: "#2c3e50" }}
+                                    >
+                                      View Source
+                                    </Button>
+                                  )}
+                                </Box>
+                              </Paper>
+                            ))}
+                          </Box>
+                        </Collapse>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </Box>
+              </CardContent>
+            </Paper>
+
+            {/* Target Proteins */}
+            <Paper elevation={2} sx={{ borderRadius: 1 }}>
+              <CardHeader
+                title={
+                  <Typography variant="h6" sx={{ fontWeight: 600, color: "#2c3e50" }}>
+                    Target Proteins
+                  </Typography>
+                }
+                subheader={
+                  <Typography variant="body2" sx={{ color: "text.secondary", mt: 0.5 }}>
+                    Identified protein targets for therapeutic intervention
+                  </Typography>
+                }
+              />
+              <CardContent>
+                {result.proteins.TargetProteins.map((protein, index) => (
+                  <Card key={index} variant="outlined" sx={{ mb: 2, borderRadius: 1 }}>
+                    <CardContent sx={{ p: 2 }}>
+                      <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 2 }}>
+                        {protein.proteinName || "Unknown Protein"}
+                      </Typography>
+                      <Grid container spacing={2}>
+                        <Grid item xs={12} sm={6}>
+                          <Typography variant="body2" sx={{ fontWeight: 600, color: "#5d6d7e" }}>
+                            Function:
+                          </Typography>
+                          <Typography variant="body2" sx={{ mb: 1 }}>
+                            {protein.proteinFunction || "N/A"}
+                          </Typography>
+                        </Grid>
+                        <Grid item xs={12} sm={6}>
+                          <Typography variant="body2" sx={{ fontWeight: 600, color: "#5d6d7e" }}>
+                            UniProt ID:
+                          </Typography>
+                          <Chip label={protein.proteinUniport || "N/A"} size="small" sx={{ fontFamily: "monospace" }} />
+                        </Grid>
+                        <Grid item xs={12}>
+                          <Typography variant="body2" sx={{ fontWeight: 600, color: "#5d6d7e" }}>
+                            Description:
+                          </Typography>
+                          <Typography variant="body2" sx={{ mb: 1 }}>
+                            {protein.ProtienDiscription || "N/A"}
+                          </Typography>
+                        </Grid>
+                        <Grid item xs={12}>
+                          <Typography variant="body2" sx={{ fontWeight: 600, color: "#5d6d7e" }}>
+                            Detailed Information:
+                          </Typography>
+                          <Typography variant="body2">{protein.proteinDetailedDiscription || "N/A"}</Typography>
+                        </Grid>
+                      </Grid>
+                    </CardContent>
+                  </Card>
+                ))}
+              </CardContent>
+            </Paper>
+
+            {/* Target Ligands */}
+            <Paper elevation={2} sx={{ borderRadius: 1 }}>
+              <CardHeader
+                title={
+                  <Typography variant="h6" sx={{ fontWeight: 600, color: "#2c3e50" }}>
+                    Target Ligands
+                  </Typography>
+                }
+                subheader={
+                  <Typography variant="body2" sx={{ color: "text.secondary", mt: 0.5 }}>
+                    Therapeutic compounds and molecular ligands
+                  </Typography>
+                }
+              />
+              <CardContent>
+                {result.proteins.TargetLigands.map((ligand, index) => (
+                  <Card key={index} variant="outlined" sx={{ mb: 2, borderRadius: 1 }}>
+                    <CardContent sx={{ p: 2 }}>
+                      <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
+                        <Typography variant="subtitle1" sx={{ fontWeight: 600, flex: 1 }}>
+                          {ligand.ligandName || "Unknown Ligand"}
+                        </Typography>
+                        {ligand.LigandSmile === "Not applicable" && (
+                          <Chip label="Protein" size="small" sx={{ bgcolor: "#fff3e0", color: "#e65100" }} />
+                        )}
+                      </Box>
+
+                      <Grid container spacing={2}>
+                        <Grid item xs={12} sm={6}>
+                          <Typography variant="body2" sx={{ fontWeight: 600, color: "#5d6d7e" }}>
+                            Function:
+                          </Typography>
+                          <Typography variant="body2" sx={{ mb: 1 }}>
+                            {ligand.ligandFunction || "N/A"}
+                          </Typography>
+                        </Grid>
+                        <Grid item xs={12} sm={6}>
+                          <Typography variant="body2" sx={{ fontWeight: 600, color: "#5d6d7e" }}>
+                            DrugBank ID:
+                          </Typography>
+                          <Chip
+                            label={ligand.ligandDrugBankID || "N/A"}
+                            size="small"
+                            sx={{ fontFamily: "monospace" }}
+                          />
+                        </Grid>
+                        <Grid item xs={12}>
+                          <Typography variant="body2" sx={{ fontWeight: 600, color: "#5d6d7e" }}>
+                            SMILES:
+                          </Typography>
+                          <Paper
+                            variant="outlined"
+                            sx={{
+                              p: 1,
+                              bgcolor: "#fafafa",
+                              fontFamily: "monospace",
+                              fontSize: "0.85rem",
+                              wordBreak: "break-all",
+                            }}
+                          >
+                            {ligand.LigandSmile || "N/A"}
+                          </Paper>
+                        </Grid>
+                        <Grid item xs={12}>
+                          <Typography variant="body2" sx={{ fontWeight: 600, color: "#5d6d7e" }}>
+                            Functional Groups:
+                          </Typography>
+                          <Typography variant="body2" sx={{ mb: 1 }}>
+                            {getFunctionalGroups(ligand.LigandSmile)}
+                          </Typography>
+                        </Grid>
+                        <Grid item xs={12}>
+                          <Typography variant="body2" sx={{ fontWeight: 600, color: "#5d6d7e" }}>
+                            Description:
+                          </Typography>
+                          <Typography variant="body2">{ligand.LigandDiscription || "N/A"}</Typography>
+                        </Grid>
+                      </Grid>
+
+                      {ligand.LigandSmile === "Not applicable" && (
+                        <Alert severity="warning" sx={{ mt: 2 }} icon={<Warning />}>
+                          <Typography variant="body2">
+                            This ligand is a protein and cannot be processed for chemical reactions.
+                          </Typography>
+                        </Alert>
+                      )}
+                    </CardContent>
+                  </Card>
+                ))}
+              </CardContent>
+            </Paper>
+
+            {/* Chemical Reaction Results */}
+            {reactionResult && (
+              <Paper elevation={2} sx={{ borderRadius: 1 }}>
+                <CardHeader
+                  title={
+                    <Typography variant="h6" sx={{ fontWeight: 600, color: "#2c3e50" }}>
+                      Chemical Reaction Results
+                    </Typography>
+                  }
+                  subheader={
+                    <Typography variant="body2" sx={{ color: "text.secondary", mt: 0.5 }}>
+                      Computational chemistry analysis and product generation
+                    </Typography>
+                  }
+                />
+                <CardContent>
+                  <Grid container spacing={3}>
+                    {/* Successful Reactions */}
+                    <Grid item xs={12} lg={8}>
+                      <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 2, color: "#2c3e50" }}>
+                        Successful Reactions
+                      </Typography>
+                      {reactionResult.reactionResults.length === 0 ? (
+                        <Alert severity="info" icon={<Info />}>
+                          <Typography variant="body2">
+                            No successful reactions were found with the current parameters.
+                          </Typography>
+                        </Alert>
+                      ) : (
+                        deduplicateReactions(reactionResult.reactionResults).map((reaction, index) => (
+                          <Card key={index} variant="outlined" sx={{ mb: 3, borderRadius: 1 }}>
+                            <CardContent sx={{ p: 2 }}>
+                              <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
+                                <Typography variant="subtitle1" sx={{ fontWeight: 600, flex: 1 }}>
+                                  {reaction.reactionType}
+                                </Typography>
+                                <Tooltip title={`Confidence: ${(reaction.confidence * 100).toFixed(1)}%`}>
+                                  <Chip
+                                    label={`${(reaction.confidence * 100).toFixed(1)}% Confidence`}
+                                    size="small"
+                                    sx={{
+                                      bgcolor:
+                                        reaction.confidence > 0.7
+                                          ? "#e8f5e9"
+                                          : reaction.confidence > 0.4
+                                            ? "#fff3e0"
+                                            : "#ffebee",
+                                      color:
+                                        reaction.confidence > 0.7
+                                          ? "#2e7d32"
+                                          : reaction.confidence > 0.4
+                                            ? "#e65100"
+                                            : "#c62828",
+                                      fontWeight: 500,
+                                    }}
+                                  />
+                                </Tooltip>
+                                <IconButton size="small" onClick={() => handleToggle(`reaction-${index}`)}>
+                                  {expanded[`reaction-${index}`] ? <ExpandLess /> : <ExpandMore />}
+                                </IconButton>
+                              </Box>
+
+                              <Typography variant="body2" sx={{ mb: 2, color: "#5d6d7e" }}>
+                                {reaction.description}
+                              </Typography>
+
+                              <Box sx={{ mb: 2 }}>
+                                <Typography variant="body2" sx={{ fontWeight: 600, mb: 1, color: "#5d6d7e" }}>
+                                  Reactants:
+                                </Typography>
+                                <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
+                                  {reaction.reactants.map((reactant, idx) => (
+                                    <Chip
+                                      key={idx}
+                                      label={reactant}
+                                      size="small"
+                                      variant="outlined"
+                                      sx={{ fontFamily: "monospace" }}
+                                    />
+                                  ))}
+                                </Box>
+                              </Box>
+
+                              <Collapse in={expanded[`reaction-${index}`]}>
+                                <Divider sx={{ my: 2 }} />
+                                <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 2 }}>
+                                  Reaction Products
+                                </Typography>
+                                <Grid container spacing={2}>
+                                  {deduplicateProducts(reaction.products).map((product, prodIndex) => (
+                                    <Grid item xs={12} md={6} key={prodIndex}>
+                                      <Paper variant="outlined" sx={{ p: 2, borderRadius: 1, bgcolor: "#fafafa" }}>
+                                        <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 2 }}>
+                                          Product {prodIndex + 1}
+                                        </Typography>
+                                        <Grid container spacing={1}>
+                                          <Grid item xs={12}>
+                                            <Typography variant="caption" sx={{ fontWeight: 600, color: "#5d6d7e" }}>
+                                              SMILES:
+                                            </Typography>
+                                            <Paper
+                                              variant="outlined"
+                                              sx={{
+                                                p: 1,
+                                                mt: 0.5,
+                                                bgcolor: "white",
+                                                fontFamily: "monospace",
+                                                fontSize: "0.8rem",
+                                                wordBreak: "break-all",
+                                              }}
+                                            >
+                                              {product.smiles}
+                                            </Paper>
+                                          </Grid>
+                                          <Grid item xs={6}>
+                                            <Typography variant="caption" sx={{ fontWeight: 600, color: "#5d6d7e" }}>
+                                              Molecular Weight:
+                                            </Typography>
+                                            <Typography variant="body2">
+                                              {product.molecular_weight.toFixed(2)} g/mol
+                                            </Typography>
+                                          </Grid>
+                                          <Grid item xs={6}>
+                                            <Typography variant="caption" sx={{ fontWeight: 600, color: "#5d6d7e" }}>
+                                              LogP:
+                                            </Typography>
+                                            <Typography variant="body2">{product.logP.toFixed(2)}</Typography>
+                                          </Grid>
+                                          <Grid item xs={6}>
+                                            <Typography variant="caption" sx={{ fontWeight: 600, color: "#5d6d7e" }}>
+                                              TPSA:
+                                            </Typography>
+                                            <Typography variant="body2">{product.tpsa.toFixed(2)} Ų</Typography>
+                                          </Grid>
+                                          <Grid item xs={6}>
+                                            <Typography variant="caption" sx={{ fontWeight: 600, color: "#5d6d7e" }}>
+                                              H-Donors/Acceptors:
+                                            </Typography>
+                                            <Typography variant="body2">
+                                              {product.num_h_donors}/{product.num_h_acceptors}
+                                            </Typography>
+                                          </Grid>
+                                          <Grid item xs={12}>
+                                            <Typography variant="caption" sx={{ fontWeight: 600, color: "#5d6d7e" }}>
+                                              Functional Groups:
+                                            </Typography>
+                                            <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5, mt: 0.5 }}>
+                                              {product.functional_groups.length > 0 ? (
+                                                product.functional_groups.map((group, groupIdx) => (
+                                                  <Chip
+                                                    key={groupIdx}
+                                                    label={group}
+                                                    size="small"
+                                                    variant="outlined"
+                                                    sx={{ fontSize: "0.7rem" }}
+                                                  />
+                                                ))
+                                              ) : (
+                                                <Typography variant="body2" sx={{ color: "text.secondary" }}>
+                                                  None identified
+                                                </Typography>
+                                              )}
+                                            </Box>
+                                          </Grid>
+                                        </Grid>
+                                      </Paper>
+                                    </Grid>
+                                  ))}
+                                </Grid>
+                              </Collapse>
+                            </CardContent>
+                          </Card>
+                        ))
+                      )}
+                    </Grid>
+
+                    {/* Failed Reactions & Statistics */}
+                    <Grid item xs={12} lg={4}>
+                      <Box sx={{ mb: 4 }}>
+                        <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 2, color: "#2c3e50" }}>
+                          Failed Reactions
+                        </Typography>
+                        {reactionResult.failedReactions.length === 0 ? (
+                          <Alert severity="success" icon={<CheckCircle />}>
+                            <Typography variant="body2">All reactions completed successfully!</Typography>
+                          </Alert>
+                        ) : (
+                          reactionResult.failedReactions.map((fail, index) => (
+                            <Card key={index} variant="outlined" sx={{ mb: 2, borderRadius: 1 }}>
+                              <CardContent sx={{ p: 2 }}>
+                                <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>
+                                  {fail.reactionType || "Unknown Reaction"}
+                                </Typography>
+                                <Typography variant="body2" sx={{ mb: 1, color: "#5d6d7e" }}>
+                                  Reactants: {fail.reactants.join(", ")}
+                                </Typography>
+                                <Typography variant="body2" sx={{ color: "#d32f2f" }}>
+                                  Reason: {fail.reason}
+                                </Typography>
+                              </CardContent>
+                            </Card>
+                          ))
+                        )}
+                      </Box>
+
+                      <Card variant="outlined" sx={{ borderRadius: 1, bgcolor: "#fafafa" }}>
+                        <CardHeader
+                          title={
+                            <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+                              Statistics
+                            </Typography>
+                          }
+                        />
+                        <CardContent sx={{ pt: 0 }}>
+                          <Grid container spacing={2}>
+                            <Grid item xs={6}>
+                              <Typography variant="caption" sx={{ fontWeight: 600, color: "#5d6d7e" }}>
+                                Mean MW:
+                              </Typography>
+                              <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                                {reactionResult.statistics.mean_mw.toFixed(2)}
+                              </Typography>
+                            </Grid>
+                            <Grid item xs={6}>
+                              <Typography variant="caption" sx={{ fontWeight: 600, color: "#5d6d7e" }}>
+                                Std MW:
+                              </Typography>
+                              <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                                {reactionResult.statistics.std_mw.toFixed(2)}
+                              </Typography>
+                            </Grid>
+                            <Grid item xs={6}>
+                              <Typography variant="caption" sx={{ fontWeight: 600, color: "#5d6d7e" }}>
+                                Min MW:
+                              </Typography>
+                              <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                                {reactionResult.statistics.min_mw.toFixed(2)}
+                              </Typography>
+                            </Grid>
+                            <Grid item xs={6}>
+                              <Typography variant="caption" sx={{ fontWeight: 600, color: "#5d6d7e" }}>
+                                Max MW:
+                              </Typography>
+                              <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                                {reactionResult.statistics.max_mw.toFixed(2)}
+                              </Typography>
+                            </Grid>
+                          </Grid>
+                        </CardContent>
+                      </Card>
+                    </Grid>
+                  </Grid>
+                </CardContent>
               </Paper>
             )}
           </Box>
         )}
-      </Paper>
-    </Container>
-  );
-};
+      </Container>
+    </Box>
+  )
+}
 
-export default RDkit;
+export default RDkit
