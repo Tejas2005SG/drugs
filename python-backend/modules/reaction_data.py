@@ -1,4 +1,3 @@
-# Comprehensive RDKit Reaction SMARTS - Expanded with 100 additional reactions
 reaction_smarts_map = {
     # Basic Organic Reactions (Original)
     'Esterification': {

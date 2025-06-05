@@ -22,6 +22,11 @@ import {
   Card,
   CardContent,
   CardHeader,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableRow,
 } from "@mui/material"
 import {
   ExpandMore,
@@ -37,6 +42,8 @@ import {
   RestartAlt,
 } from "@mui/icons-material"
 import axios from "axios"
+import { Radar } from "react-chartjs-2"
+import Chart from "chart.js/auto"
 
 const timelineSteps = {
   predict: [
@@ -51,6 +58,7 @@ const timelineSteps = {
     "Detecting Functional Groups",
     "Validating Reactants",
     "Running Chemical Reactions",
+    "Computing ADMET Properties",
     "Finalizing Reaction Outputs",
   ],
 }
@@ -68,6 +76,7 @@ const loadingMessages = {
     "Analyzing ligand structures for functional groups...",
     "Validating reactants for chemical compatibility...",
     "Simulating reactions with RDChiral and RDKit...",
+    "Computing ADMET properties for reactants and products...",
     "Generating and scoring reaction products...",
   ],
 }
@@ -84,8 +93,8 @@ const RDkit = () => {
   const [availableReactions, setAvailableReactions] = useState([])
   const [reactionsLoading, setReactionsLoading] = useState(false)
   const [anchorEl, setAnchorEl] = useState(null)
+  const [smilesImages, setSmilesImages] = useState({})
 
-  // Fetch available reactions on component mount
   useEffect(() => {
     const fetchAvailableReactions = async () => {
       setReactionsLoading(true)
@@ -102,7 +111,6 @@ const RDkit = () => {
     fetchAvailableReactions()
   }, [])
 
-  // Handle timeline progress
   useEffect(() => {
     if (!loading && !reactionLoading) return
 
@@ -119,7 +127,6 @@ const RDkit = () => {
     return () => clearInterval(interval)
   }, [loading, reactionLoading])
 
-  // Reset currentStep on error or completion
   useEffect(() => {
     if (!loading && !reactionLoading) {
       if (error) {
@@ -130,6 +137,44 @@ const RDkit = () => {
       }
     }
   }, [loading, reactionLoading, error, currentStep])
+
+  useEffect(() => {
+    const fetchSmilesImages = async () => {
+      if (!reactionResult) return
+
+      const allSmiles = new Set()
+
+      reactionResult.reactants.forEach((reactant) => {
+        if (reactant.smiles && reactant.smiles !== "Not applicable" && reactant.smiles.length > 1) {
+          allSmiles.add(reactant.smiles)
+        }
+      })
+
+      reactionResult.reactionResults.forEach((reaction) => {
+        reaction.products.forEach((product) => {
+          if (product.smiles && product.smiles.length > 1) {
+            allSmiles.add(product.smiles)
+          }
+        })
+      })
+
+      const newImages = { ...smilesImages }
+      for (const smiles of allSmiles) {
+        if (!newImages[smiles]) {
+          try {
+            const response = await axios.get(`http://127.0.0.1:5001/api/smiles_to_image?smiles=${encodeURIComponent(smiles)}`)
+            newImages[smiles] = response.data.image
+          } catch (err) {
+            console.warn(`Failed to fetch image for SMILES: ${smiles} - ${err.message}`)
+            newImages[smiles] = null
+          }
+        }
+      }
+      setSmilesImages(newImages)
+    }
+
+    fetchSmilesImages()
+  }, [reactionResult])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -184,9 +229,10 @@ const RDkit = () => {
     setError("")
     setReactionResult(null)
     setCurrentStep(0)
+    setSmilesImages({})
 
     try {
-      const reactionResponse = await axios.get("http://127.0.0.1:5001/api/react")
+      const reactionResponse = await axios.get("http://127.0.0.1:5001/api/react?include_admet=true")
       setReactionResult(reactionResponse.data)
     } catch (err) {
       setError(err.response?.data?.error || "Error running reactions.")
@@ -207,22 +253,23 @@ const RDkit = () => {
     setCurrentStep(0)
     setExpanded({})
     setAnchorEl(null)
+    setSmilesImages({})
   }
 
   const handleToggle = (key) => {
     setExpanded((prev) => ({ ...prev, [key]: !prev[key] }))
   }
 
-  const getFunctionalGroups = (ligandSmile) => {
-    if (ligandSmile === "Not applicable") {
+  const getFunctionalGroups = (ligandSmiles) => {
+    if (ligandSmiles === "Not applicable") {
       return "N/A (Protein)"
     }
     if (!reactionResult || !reactionResult.reactants) {
       return "Run reactions to analyze functional groups"
     }
-    const reactant = reactionResult.reactants.find((r) => r.smiles === ligandSmile)
+    const reactant = reactionResult.reactants.find((r) => r.smiles === ligandSmiles)
     if (!reactant || !Array.isArray(reactant.properties?.functional_groups)) {
-      console.warn(`No functional groups found for ligand SMILES: ${ligandSmile}`)
+      console.warn(`No functional groups found for ligand SMILES: ${ligandSmiles}`)
       return "Not identified"
     }
     return reactant.properties.functional_groups.join(", ") || "None"
@@ -236,18 +283,6 @@ const RDkit = () => {
     setAnchorEl(null)
   }
 
-  const deduplicateReactions = (reactions) => {
-    const seen = new Set()
-    return reactions.filter((reaction) => {
-      const key = `${reaction.reactionType}:${[...reaction.reactants].sort().join(":")}`
-      if (seen.has(key)) {
-        return false
-      }
-      seen.add(key)
-      return true
-    })
-  }
-
   const deduplicateProducts = (products) => {
     const seenSmiles = new Set()
     return products.filter((product) => {
@@ -259,10 +294,47 @@ const RDkit = () => {
     })
   }
 
+  const prepareAdmetGraphData = (reactionIndex) => {
+    if (!reactionResult || !reactionResult.reactionResults[reactionIndex]) return null
+
+    const reaction = reactionResult.reactionResults[reactionIndex]
+    const products = reaction.products
+
+    const propertiesToShow = ["Non-Toxic", "Soluble", "Bioavailable", "hERG Safe"]
+    const datasets = []
+
+    products.forEach((product, idx) => {
+      if (!product.admet_properties) return
+      const admetSections = product.admet_properties.find((section) => section.section === "ADMET")
+      if (!admetSections) return
+
+      const data = propertiesToShow.map((prop) => {
+        const property = admetSections.properties.find((p) => p.name === prop)
+        return property ? Number(property.prediction) : 0
+      })
+
+      datasets.push({
+        label: `Product ${idx + 1} (${product.smiles.slice(0, 10)}...)`,
+        data,
+        backgroundColor: `rgba(255, 99, 132, 0.2)`,
+        borderColor: `rgba(255, 99, 132, 1)`,
+        borderWidth: 2,
+        pointBackgroundColor: `rgba(255, 99, 132, 1)`,
+        pointBorderColor: '#fff',
+        pointHoverBackgroundColor: '#fff',
+        pointHoverBorderColor: `rgba(255, 99, 132, 1)`,
+      })
+    })
+
+    return {
+      labels: propertiesToShow,
+      datasets,
+    }
+  }
+
   return (
     <Box sx={{ minHeight: "100vh", bgcolor: "#f5f5f5", py: 4 }}>
       <Container maxWidth="xl">
-        {/* Header Section */}
         <Paper elevation={2} sx={{ p: 4, mb: 4, borderRadius: 1 }}>
           <Box sx={{ textAlign: "center", mb: 4 }}>
             <Typography variant="h4" sx={{ fontWeight: 700, color: "#2c3e50", mb: 1 }}>
@@ -810,6 +882,29 @@ const RDkit = () => {
                             {ligand.LigandSmile || "N/A"}
                           </Paper>
                         </Grid>
+                        {ligand.LigandSmile && ligand.LigandSmile !== "Not applicable" && smilesImages[ligand.LigandSmile] ? (
+                          <Grid item xs={12}>
+                            <Typography variant="body2" sx={{ fontWeight: 600, color: "#5d6d7e" }}>
+                              Structure:
+                            </Typography>
+                            <img
+                              src={`data:image/png;base64,${smilesImages[ligand.LigandSmile]}`}
+                              alt={`Structure of ${ligand.ligandName}`}
+                              style={{ maxWidth: "200px", marginTop: "8px" }}
+                            />
+                          </Grid>
+                        ) : (
+                          <Grid item xs={12}>
+                            <Typography variant="body2" sx={{ fontWeight: 600, color: "#5d6d7e" }}>
+                              Structure:
+                            </Typography>
+                            <Typography variant="caption" sx={{ color: "text.secondary" }}>
+                              {ligand.LigandSmile === "Not applicable"
+                                ? "Structure not applicable (Protein)"
+                                : "Unable to load structure image"}
+                            </Typography>
+                          </Grid>
+                        )}
                         <Grid item xs={12}>
                           <Typography variant="body2" sx={{ fontWeight: 600, color: "#5d6d7e" }}>
                             Functional Groups:
@@ -824,6 +919,44 @@ const RDkit = () => {
                           </Typography>
                           <Typography variant="body2">{ligand.LigandDiscription || "N/A"}</Typography>
                         </Grid>
+                        {ligand.LigandSmile !== "Not applicable" && reactionResult && reactionResult.reactants && (
+                          <Grid item xs={12}>
+                            <Typography variant="body2" sx={{ fontWeight: 600, color: "#5d6d7e" }}>
+                              ADMET Properties:
+                            </Typography>
+                            {(() => {
+                              const reactant = reactionResult.reactants.find((r) => r.smiles === ligand.LigandSmile)
+                              if (!reactant || !reactant.admet_properties || reactant.admet_properties.length === 0) {
+                                return <Typography variant="body2">Not available</Typography>
+                              }
+                              return reactant.admet_properties.map((section, secIdx) => (
+                                <Box key={secIdx} sx={{ mt: 2 }}>
+                                  <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>
+                                    {section.section}
+                                  </Typography>
+                                  <Table size="small">
+                                    <TableHead>
+                                      <TableRow>
+                                        <TableCell sx={{ fontWeight: 600 }}>Property</TableCell>
+                                        <TableCell sx={{ fontWeight: 600 }}>Prediction</TableCell>
+                                        <TableCell sx={{ fontWeight: 600 }}>Units</TableCell>
+                                      </TableRow>
+                                    </TableHead>
+                                    <TableBody>
+                                      {section.properties.map((prop, propIdx) => (
+                                        <TableRow key={propIdx}>
+                                          <TableCell>{prop.name}</TableCell>
+                                          <TableCell>{prop.prediction}</TableCell>
+                                          <TableCell>{prop.units || "-"}</TableCell>
+                                        </TableRow>
+                                      ))}
+                                    </TableBody>
+                                  </Table>
+                                </Box>
+                              ))
+                            })()}
+                          </Grid>
+                        )}
                       </Grid>
 
                       {ligand.LigandSmile === "Not applicable" && (
@@ -868,150 +1001,268 @@ const RDkit = () => {
                           </Typography>
                         </Alert>
                       ) : (
-                        deduplicateReactions(reactionResult.reactionResults).map((reaction, index) => (
-                          <Card key={index} variant="outlined" sx={{ mb: 3, borderRadius: 1 }}>
-                            <CardContent sx={{ p: 2 }}>
-                              <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
-                                <Typography variant="subtitle1" sx={{ fontWeight: 600, flex: 1 }}>
-                                  {reaction.reactionType}
-                                </Typography>
-                                <Tooltip title={`Confidence: ${(reaction.confidence * 100).toFixed(1)}%`}>
-                                  <Chip
-                                    label={`${(reaction.confidence * 100).toFixed(1)}% Confidence`}
-                                    size="small"
-                                    sx={{
-                                      bgcolor:
-                                        reaction.confidence > 0.7
-                                          ? "#e8f5e9"
-                                          : reaction.confidence > 0.4
-                                            ? "#fff3e0"
-                                            : "#ffebee",
-                                      color:
-                                        reaction.confidence > 0.7
-                                          ? "#2e7d32"
-                                          : reaction.confidence > 0.4
-                                            ? "#e65100"
-                                            : "#c62828",
-                                      fontWeight: 500,
-                                    }}
-                                  />
-                                </Tooltip>
-                                <IconButton size="small" onClick={() => handleToggle(`reaction-${index}`)}>
-                                  {expanded[`reaction-${index}`] ? <ExpandLess /> : <ExpandMore />}
-                                </IconButton>
-                              </Box>
-
-                              <Typography variant="body2" sx={{ mb: 2, color: "#5d6d7e" }}>
-                                {reaction.description}
-                              </Typography>
-
-                              <Box sx={{ mb: 2 }}>
-                                <Typography variant="body2" sx={{ fontWeight: 600, mb: 1, color: "#5d6d7e" }}>
-                                  Reactants:
-                                </Typography>
-                                <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
-                                  {reaction.reactants.map((reactant, idx) => (
+                        reactionResult.reactionResults.map((reaction, index) => {
+                          const mainProducts = deduplicateProducts(reaction.products.slice(0, 1))
+                          return (
+                            <Card key={index} variant="outlined" sx={{ mb: 3, borderRadius: 1 }}>
+                              <CardContent sx={{ p: 2 }}>
+                                <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
+                                  <Typography variant="subtitle1" sx={{ fontWeight: 600, flex: 1 }}>
+                                    {reaction.reactionType}
+                                  </Typography>
+                                  <Tooltip title={`Confidence: ${(reaction.confidence * 100).toFixed(1)}%`}>
                                     <Chip
-                                      key={idx}
-                                      label={reactant}
+                                      label={`${(reaction.confidence * 100).toFixed(1)}% Confidence`}
                                       size="small"
-                                      variant="outlined"
-                                      sx={{ fontFamily: "monospace" }}
+                                      sx={{
+                                        bgcolor:
+                                          reaction.confidence > 0.7
+                                            ? "#e8f5e9"
+                                            : reaction.confidence > 0.4
+                                              ? "#fff3e0"
+                                              : "#ffebee",
+                                        color:
+                                          reaction.confidence > 0.7
+                                            ? "#2e7d32"
+                                            : reaction.confidence > 0.4
+                                              ? "#e65100"
+                                              : "#c62828",
+                                        fontWeight: 500,
+                                      }}
                                     />
-                                  ))}
+                                  </Tooltip>
+                                  <IconButton size="small" onClick={() => handleToggle(`reaction-${index}`)}>
+                                    {expanded[`reaction-${index}`] ? <ExpandLess /> : <ExpandMore />}
+                                  </IconButton>
                                 </Box>
-                              </Box>
 
-                              <Collapse in={expanded[`reaction-${index}`]}>
-                                <Divider sx={{ my: 2 }} />
-                                <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 2 }}>
-                                  Reaction Products
+                                <Typography variant="body2" sx={{ mb: 2, color: "#5d6d7e" }}>
+                                  {reaction.description}
                                 </Typography>
-                                <Grid container spacing={2}>
-                                  {deduplicateProducts(reaction.products).map((product, prodIndex) => (
-                                    <Grid item xs={12} md={6} key={prodIndex}>
-                                      <Paper variant="outlined" sx={{ p: 2, borderRadius: 1, bgcolor: "#fafafa" }}>
-                                        <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 2 }}>
-                                          Product {prodIndex + 1}
-                                        </Typography>
-                                        <Grid container spacing={1}>
-                                          <Grid item xs={12}>
-                                            <Typography variant="caption" sx={{ fontWeight: 600, color: "#5d6d7e" }}>
-                                              SMILES:
+
+                                <Box sx={{ mb: 2 }}>
+                                  <Typography variant="body2" sx={{ fontWeight: 600, mb: 1, color: "#5d6d7e" }}>
+                                    Reactants:
+                                  </Typography>
+                                  <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
+                                    {reaction.reactants.map((reactant, idx) => (
+                                      <Box key={idx} sx={{ mb: 1 }}>
+                                        <Chip
+                                          label={reactant}
+                                          size="small"
+                                          variant="outlined"
+                                          sx={{ fontFamily: "monospace" }}
+                                        />
+                                        {smilesImages[reactant] ? (
+                                          <img
+                                            src={`data:image/png;base64,${smilesImages[reactant]}`}
+                                            alt={`Reactant ${idx + 1}`}
+                                            style={{ maxWidth: "150px", marginTop: "8px", marginLeft: "8px" }}
+                                          />
+                                        ) : (
+                                          <Typography variant="caption" sx={{ color: "text.secondary", ml: 1 }}>
+                                            Unable to load structure image
+                                          </Typography>
+                                        )}
+                                      </Box>
+                                    ))}
+                                  </Box>
+                                </Box>
+
+                                <Collapse in={expanded[`reaction-${index}`]}>
+                                  <Divider sx={{ my: 2 }} />
+                                  <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 2 }}>
+                                    Main Product
+                                  </Typography>
+                                  <Grid container spacing={2}>
+                                    {mainProducts.map((product, prodIndex) => (
+                                      <Grid item xs={12} md={6} key={prodIndex}>
+                                        <Paper variant="outlined" sx={{ p: 2, borderRadius: 1, bgcolor: "#fafafa" }}>
+                                          <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
+                                            <Typography variant="subtitle2" sx={{ fontWeight: 600, flex: 1 }}>
+                                              Product {prodIndex + 1}
                                             </Typography>
-                                            <Paper
-                                              variant="outlined"
-                                              sx={{
-                                                p: 1,
-                                                mt: 0.5,
-                                                bgcolor: "white",
-                                                fontFamily: "monospace",
-                                                fontSize: "0.8rem",
-                                                wordBreak: "break-all",
-                                              }}
-                                            >
-                                              {product.smiles}
-                                            </Paper>
-                                          </Grid>
-                                          <Grid item xs={6}>
-                                            <Typography variant="caption" sx={{ fontWeight: 600, color: "#5d6d7e" }}>
-                                              Molecular Weight:
-                                            </Typography>
-                                            <Typography variant="body2">
-                                              {product.molecular_weight.toFixed(2)} g/mol
-                                            </Typography>
-                                          </Grid>
-                                          <Grid item xs={6}>
-                                            <Typography variant="caption" sx={{ fontWeight: 600, color: "#5d6d7e" }}>
-                                              LogP:
-                                            </Typography>
-                                            <Typography variant="body2">{product.logP.toFixed(2)}</Typography>
-                                          </Grid>
-                                          <Grid item xs={6}>
-                                            <Typography variant="caption" sx={{ fontWeight: 600, color: "#5d6d7e" }}>
-                                              TPSA:
-                                            </Typography>
-                                            <Typography variant="body2">{product.tpsa.toFixed(2)} Ų</Typography>
-                                          </Grid>
-                                          <Grid item xs={6}>
-                                            <Typography variant="caption" sx={{ fontWeight: 600, color: "#5d6d7e" }}>
-                                              H-Donors/Acceptors:
-                                            </Typography>
-                                            <Typography variant="body2">
-                                              {product.num_h_donors}/{product.num_h_acceptors}
-                                            </Typography>
-                                          </Grid>
-                                          <Grid item xs={12}>
-                                            <Typography variant="caption" sx={{ fontWeight: 600, color: "#5d6d7e" }}>
-                                              Functional Groups:
-                                            </Typography>
-                                            <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5, mt: 0.5 }}>
-                                              {product.functional_groups.length > 0 ? (
-                                                product.functional_groups.map((group, groupIdx) => (
-                                                  <Chip
-                                                    key={groupIdx}
-                                                    label={group}
-                                                    size="small"
-                                                    variant="outlined"
-                                                    sx={{ fontSize: "0.7rem" }}
-                                                  />
-                                                ))
+                                          </Box>
+                                          <Grid container spacing={1}>
+                                            <Grid item xs={12}>
+                                              <Typography variant="caption" sx={{ fontWeight: 600, color: "#5d6d7e" }}>
+                                                SMILES:
+                                              </Typography>
+                                              <Paper
+                                                variant="outlined"
+                                                sx={{
+                                                  p: 1,
+                                                  mt: 0.5,
+                                                  bgcolor: "white",
+                                                  fontFamily: "monospace",
+                                                  fontSize: "0.8rem",
+                                                  wordBreak: "break-all",
+                                                }}
+                                              >
+                                                {product.smiles}
+                                              </Paper>
+                                            </Grid>
+                                            <Grid item xs={12}>
+                                              {smilesImages[product.smiles] ? (
+                                                <img
+                                                  src={`data:image/png;base64,${smilesImages[product.smiles]}`}
+                                                  alt={`Product ${prodIndex + 1}`}
+                                                  style={{ maxWidth: "200px", marginTop: "8px" }}
+                                                />
                                               ) : (
-                                                <Typography variant="body2" sx={{ color: "text.secondary" }}>
-                                                  None identified
+                                                <Typography variant="caption" sx={{ color: "text.secondary" }}>
+                                                  Unable to load structure image
                                                 </Typography>
                                               )}
-                                            </Box>
+                                            </Grid>
+                                            <Grid item xs={6}>
+                                              <Typography variant="caption" sx={{ fontWeight: 600, color: "#5d6d7e" }}>
+                                                Molecular Weight:
+                                              </Typography>
+                                              <Typography variant="body2">
+                                                {product.molecular_weight.toFixed(2)} g/mol
+                                              </Typography>
+                                            </Grid>
+                                            <Grid item xs={6}>
+                                              <Typography variant="caption" sx={{ fontWeight: 600, color: "#5d6d7e" }}>
+                                                LogP:
+                                              </Typography>
+                                              <Typography variant="body2">{product.logP.toFixed(2)}</Typography>
+                                            </Grid>
+                                            <Grid item xs={6}>
+                                              <Typography variant="caption" sx={{ fontWeight: 600, color: "#5d6d7e" }}>
+                                                TPSA:
+                                              </Typography>
+                                              <Typography variant="body2">{product.tpsa.toFixed(2)} Å²</Typography>
+                                            </Grid>
+                                            <Grid item xs={6}>
+                                              <Typography variant="caption" sx={{ fontWeight: 600, color: "#5d6d7e" }}>
+                                                H-Donors/Acceptors:
+                                              </Typography>
+                                              <Typography variant="body2">
+                                                {product.num_h_donors}/{product.num_h_acceptors}
+                                              </Typography>
+                                            </Grid>
+                                            <Grid item xs={12}>
+                                              <Typography variant="caption" sx={{ fontWeight: 600, color: "#5d6d7e" }}>
+                                                Functional Groups:
+                                              </Typography>
+                                              <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5, mt: 0.5 }}>
+                                                {product.functional_groups.length > 0 ? (
+                                                  product.functional_groups.map((group, groupIdx) => (
+                                                    <Chip
+                                                      key={groupIdx}
+                                                      label={group}
+                                                      size="small"
+                                                      variant="outlined"
+                                                      sx={{ fontSize: "0.7rem" }}
+                                                    />
+                                                  ))
+                                                ) : (
+                                                  <Typography variant="body2" sx={{ color: "text.secondary" }}>
+                                                    None identified
+                                                  </Typography>
+                                                )}
+                                              </Box>
+                                            </Grid>
+                                            {product.admet_properties && product.admet_properties.length > 0 && (
+                                              <Grid item xs={12}>
+                                                <Typography
+                                                  variant="caption"
+                                                  sx={{ fontWeight: 600, color: "#5d6d7e", mt: 2 }}
+                                                >
+                                                  ADMET Properties:
+                                                </Typography>
+                                                {product.admet_properties.map((section, secIdx) => (
+                                                  <Box key={secIdx} sx={{ mt: 2 }}>
+                                                    <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>
+                                                      {section.section}
+                                                    </Typography>
+                                                    <Table size="small">
+                                                      <TableHead>
+                                                        <TableRow>
+                                                          <TableCell sx={{ fontWeight: 600 }}>Property</TableCell>
+                                                          <TableCell sx={{ fontWeight: 600 }}>Prediction</TableCell>
+                                                          <TableCell sx={{ fontWeight: 600 }}>Units</TableCell>
+                                                        </TableRow>
+                                                      </TableHead>
+                                                      <TableBody>
+                                                        {section.properties.map((prop, propIdx) => (
+                                                          <TableRow key={propIdx}>
+                                                            <TableCell>{prop.name}</TableCell>
+                                                            <TableCell>{prop.prediction}</TableCell>
+                                                            <TableCell>{prop.units || "-"}</TableCell>
+                                                          </TableRow>
+                                                        ))}
+                                                      </TableBody>
+                                                    </Table>
+                                                  </Box>
+                                                ))}
+                                              </Grid>
+                                            )}
                                           </Grid>
-                                        </Grid>
-                                      </Paper>
-                                    </Grid>
-                                  ))}
-                                </Grid>
-                              </Collapse>
-                            </CardContent>
-                          </Card>
-                        ))
+                                        </Paper>
+                                      </Grid>
+                                    ))}
+                                  </Grid>
+                                  {/* ADMET Graph (Updated to Radar Chart) */}
+                                  <Box sx={{ mt: 4 }}>
+                                    <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 2 }}>
+                                      ADMET Properties Comparison
+                                    </Typography>
+                                    {prepareAdmetGraphData(index) ? (
+                                      <Radar
+                                        data={prepareAdmetGraphData(index)}
+                                        options={{
+                                          responsive: true,
+                                          plugins: {
+                                            legend: {
+                                              position: "top",
+                                            },
+                                            title: {
+                                              display: true,
+                                              text: "Blood-Brain Barrier Safe",
+                                            },
+                                            tooltip: {
+                                              callbacks: {
+                                                label: (tooltipItem) => {
+                                                  return `${tooltipItem.dataset.label}: ${tooltipItem.raw}`;
+                                                },
+                                              },
+                                            },
+                                          },
+                                          scales: {
+                                            r: {
+                                              beginAtZero: true,
+                                              min: 0,
+                                              max: 100,
+                                              ticks: {
+                                                stepSize: 25,
+                                              },
+                                              pointLabels: {
+                                                font: {
+                                                  size: 12,
+                                                },
+                                              },
+                                              grid: {
+                                                color: "rgba(0, 0, 0, 0.1)",
+                                              },
+                                            },
+                                          },
+                                        }}
+                                        height={100}
+                                      />
+                                    ) : (
+                                      <Typography variant="body2" sx={{ color: "text.secondary" }}>
+                                        No ADMET data available for comparison.
+                                      </Typography>
+                                    )}
+                                  </Box>
+                                </Collapse>
+                              </CardContent>
+                            </Card>
+                          )
+                        })
                       )}
                     </Grid>
 
