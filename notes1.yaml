@@ -1,7 +1,7 @@
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 from rdkit import Chem
-from rdkit.Chem import AllChem, Descriptors, MolStandardize, rdChemReactions
+from rdkit.Chem import AllChem, Descriptors, MolStandardize, rdChemReactions, Draw
 from rdkit import RDLogger
 import numpy as np
 import logging
@@ -14,6 +14,8 @@ import time
 from datetime import datetime
 from pydantic import BaseModel, Field, ValidationError
 from typing import List, Dict, Any, Union
+import base64
+from io import BytesIO
 from modules.reaction_data import reaction_smarts_map
 from modules.fun_grp_pattern import functional_group_patterns
 from modules.cal_rxn_com import calculate_reaction_compatibility
@@ -67,9 +69,19 @@ class Properties(BaseModel):
     has_stereochemistry: bool
     functional_groups: List[str]
 
+class ADMETProperty(BaseModel):
+    name: str
+    prediction: Union[str, float, int]
+    units: str = ""
+
+class ADMETSection(BaseModel):
+    section: str
+    properties: List[ADMETProperty]
+
 class Reactant(BaseModel):
     smiles: str
     properties: Properties
+    admet_properties: List[ADMETSection] = Field(default_factory=list)
 
 class Product(BaseModel):
     smiles: str
@@ -82,6 +94,7 @@ class Product(BaseModel):
     num_rotatable_bonds: int
     has_stereochemistry: bool
     functional_groups: List[str]
+    admet_properties: List[ADMETSection] = Field(default_factory=list)
 
 class ReactionResult(BaseModel):
     reactionType: str
@@ -110,7 +123,7 @@ class ReactionResponse(BaseModel):
     statistics: Statistics
     createdAt: datetime
     processedReactionTypes: Dict[str, List[str]]
-    product_smiles: List[str] = Field(default_factory=list)  # Added to store product SMILES
+    product_smiles: List[str] = Field(default_factory=list)
 
 def detect_functional_groups(mol):
     """Detect functional groups in a molecule."""
@@ -183,7 +196,7 @@ def standardize_molecule(mol):
     if not mol:
         return None
     try:
-        mol = Chem.reHs(mol)
+        mol = Chem.RemoveHs(mol)
         Chem.SanitizeMol(mol)
         standardizer = MolStandardize.Standardizer()
         mol = standardizer.standardize(mol)
@@ -226,6 +239,165 @@ def compute_product_properties(mol):
         logger.warning(f"Property computation failed: {str(e)}")
         return {'error': f'Property computation failed: {str(e)}', 'functional_groups': []}
 
+def compute_admet_properties(mol, reaction_type=None, reactant_groups=None, product_groups=None):
+    """Compute ADMET properties for a molecule, with reaction-specific adjustments."""
+    try:
+        Chem.SanitizeMol(mol)
+        # Basic physicochemical properties
+        mw = Descriptors.MolWt(mol)
+        logp = Descriptors.MolLogP(mol)
+        tpsa = Descriptors.TPSA(mol)
+        h_donors = Descriptors.NumHDonors(mol)
+        h_acceptors = Descriptors.NumHAcceptors(mol)
+        rot_bonds = Descriptors.NumRotatableBonds(mol)
+        arom_rings = Descriptors.NumAromaticRings(mol)
+        fsp3 = Descriptors.FractionCSP3(mol)
+        mol_refr = Descriptors.MolMR(mol)
+
+        # Reaction-specific adjustments
+        if reaction_type and reactant_groups and product_groups:
+            # AMES Mutagenicity (Non-Toxic) score: Lower score means more toxic
+            if arom_rings > 1:
+                ames_risk = "Yes"
+                non_toxic_score = 20  # High risk of mutagenicity
+            else:
+                ames_risk = "No"
+                non_toxic_score = 80  # Low risk
+            if "aromatic_addition" in reaction_type.lower() and arom_rings > 0:
+                ames_risk = "Yes"
+                non_toxic_score = 10  # Increased risk due to aromatic addition
+
+            # hERG Risk (hERG Safe) score: Lower score means higher risk
+            herg_risk = "Yes" if (logp > 3 and mw > 400) else "No"
+            herg_safe_score = 30 if herg_risk == "Yes" else 90
+            if "lipophilic_addition" in reaction_type.lower() and logp > 2:
+                herg_risk = "Yes"
+                herg_safe_score = 20  # Increased risk due to lipophilic addition
+
+            # CYP Inhibition (used to adjust Bioavailability score)
+            cyp3a4 = "Yes" if (mw > 400 and logp > 3) else "No"
+            bioavailable_score = 40 if cyp3a4 == "Yes" else 80  # Lower bioavailability if CYP3A4 inhibited
+            if "amide_formation" in reaction_type.lower() and "amide" in product_groups:
+                cyp3a4 = "Yes"
+                bioavailable_score = 30  # Amide formation may increase CYP3A4 inhibition
+        else:
+            # Default heuristics if no reaction context
+            ames_risk = "Yes" if arom_rings > 1 else "No"
+            non_toxic_score = 20 if ames_risk == "Yes" else 80
+
+            herg_risk = "Yes" if (logp > 3 and mw > 400) else "No"
+            herg_safe_score = 30 if herg_risk == "Yes" else 90
+
+            cyp3a4 = "Yes" if (mw > 400 and logp > 3) else "No"
+            bioavailable_score = 40 if cyp3a4 == "Yes" else 80
+
+        # Solubility score (based on LogS and TPSA)
+        log_s = -logp + 0.5  # Approximate LogS
+        soluble_score = 90 if log_s > -3 else 50 if log_s > -5 else 20  # Higher LogS means more soluble
+
+        # Bioavailability adjustment based on Lipinski rules
+        lipinski_violations = sum([
+            mw > 500,
+            logp > 5,
+            h_donors > 5,
+            h_acceptors > 10
+        ])
+        if lipinski_violations > 1:
+            bioavailable_score = max(10, bioavailable_score - (lipinski_violations * 20))
+
+        # Absorption (Heuristics)
+        gi_absorption = "High" if (tpsa < 140 and logp < 5) else "Low"
+        caco2 = "High" if (mw < 500 and tpsa < 100 and logp < 3) else "Low"
+
+        # Distribution (Heuristics)
+        ppb = "High" if logp > 3 else "Low"
+        vdss = "High" if logp > 3 and mw > 500 else "Low"
+        bbb = "Yes" if (mw < 500 and logp > 2 and logp < 5 and tpsa < 90 and h_donors < 3) else "No"
+
+        # Metabolism (Heuristics)
+        cyp2d6 = "Yes" if (logp > 2 and h_donors > 0) else "No"
+        cyp2c9 = "Yes" if (logp > 3 and arom_rings > 0) else "No"
+
+        # Excretion (Heuristics)
+        clearance = "Low" if (logp > 3 and mw > 500) else "High"
+        oct2 = "No"  # Simplified, assuming no strong basic groups
+
+        # Toxicity (Heuristics)
+        ld50 = "Moderate"  # Arbitrary
+        skin_sens = "No"  # Simplified, assuming no reactive groups
+
+        # Structure the ADMET properties into sections
+        admet_sections = [
+            {
+                "section": "Physicochemical",
+                "properties": [
+                    {"name": "Molecular Weight", "prediction": round(mw, 2), "units": "g/mol"},
+                    {"name": "LogP", "prediction": round(logp, 2), "units": "-"},
+                    {"name": "TPSA", "prediction": round(tpsa, 2), "units": "Å²"},
+                    {"name": "H-Bond Donors", "prediction": h_donors, "units": "-"},
+                    {"name": "H-Bond Acceptors", "prediction": h_acceptors, "units": "-"},
+                    {"name": "Rotatable Bonds", "prediction": rot_bonds, "units": "-"},
+                    {"name": "Aromatic Rings", "prediction": arom_rings, "units": "-"},
+                    {"name": "Fraction sp³ Carbons", "prediction": round(fsp3, 2), "units": "-"},
+                    {"name": "Molar Refractivity", "prediction": round(mol_refr, 2), "units": "-"}
+                ]
+            },
+            {
+                "section": "Absorption",
+                "properties": [
+                    {"name": "Lipinski Violations", "prediction": lipinski_violations, "units": "-"},
+                    {"name": "GI Absorption", "prediction": gi_absorption, "units": "-"},
+                    {"name": "Aqueous Solubility (LogS)", "prediction": round(log_s, 2), "units": "-"},
+                    {"name": "Caco-2 Permeability", "prediction": caco2, "units": "-"}
+                ]
+            },
+            {
+                "section": "Distribution",
+                "properties": [
+                    {"name": "Plasma Protein Binding", "prediction": ppb, "units": "-"},
+                    {"name": "Volume of Distribution", "prediction": vdss, "units": "-"},
+                    {"name": "BBB Permeability", "prediction": bbb, "units": "-"}
+                ]
+            },
+            {
+                "section": "Metabolism",
+                "properties": [
+                    {"name": "CYP3A4 Inhibition", "prediction": cyp3a4, "units": "-"},
+                    {"name": "CYP2D6 Inhibition", "prediction": cyp2d6, "units": "-"},
+                    {"name": "CYP2C9 Inhibition", "prediction": cyp2c9, "units": "-"}
+                ]
+            },
+            {
+                "section": "Excretion",
+                "properties": [
+                    {"name": "Total Clearance", "prediction": clearance, "units": "-"},
+                    {"name": "Renal OCT2 Substrate", "prediction": oct2, "units": "-"}
+                ]
+            },
+            {
+                "section": "Toxicity",
+                "properties": [
+                    {"name": "hERG Inhibition", "prediction": herg_risk, "units": "-"},
+                    {"name": "AMES Mutagenicity", "prediction": ames_risk, "units": "-"},
+                    {"name": "LD50 (Oral Rat)", "prediction": ld50, "units": "-"},
+                    {"name": "Skin Sensitization", "prediction": skin_sens, "units": "-"}
+                ]
+            },
+            # Add new ADMET section for radar chart
+            {
+                "section": "ADMET",
+                "properties": [
+                    {"name": "Non-Toxic", "prediction": non_toxic_score, "units": "%"},
+                    {"name": "Soluble", "prediction": soluble_score, "units": "%"},
+                    {"name": "Bioavailable", "prediction": bioavailable_score, "units": "%"},
+                    {"name": "hERG Safe", "prediction": herg_safe_score, "units": "%"}
+                ]
+            }
+        ]
+        return admet_sections
+    except Exception as e:
+        logger.error(f"ADMET computation failed: {str(e)}")
+        raise
 def predict_reaction_with_rxn(reactant1_smiles, reactant2_smiles):
     """Predict reaction using RXN4Chemistry."""
     if not rxn:
@@ -235,8 +407,6 @@ def predict_reaction_with_rxn(reactant1_smiles, reactant2_smiles):
         reactants = f"{reactant1_smiles}.{reactant2_smiles}>>"
         logger.info(f"Predicting reaction for: {reactants}")
         response = rxn.predict_reaction(reactants)
-        # logger.info(f"Attempting RDKit reaction:  (compatibility: {compatibility}, priority: {priority})")
-        response: ({response})
         if 'prediction_id' not in response:
             logger.error("No prediction_id in RXN response")
             return None, 0.0
@@ -401,10 +571,11 @@ def deduplicate_reaction_results(reaction_results):
 
 @app.route('/api/react', methods=['GET'])
 def handle_reaction():
-    """Handle reaction prediction and store results in MongoDB."""
+    """Handle reaction prediction, compute ADMET properties, and store results in MongoDB."""
     try:
         smiles1 = request.args.get('smiles1')
         smiles2 = request.args.get('smiles2')
+        include_admet = request.args.get('include_admet', 'true').lower() == 'true'
         ligand_smiles = []
 
         if smiles1 and smiles2:
@@ -479,6 +650,14 @@ def handle_reaction():
                 groups1 = detect_functional_groups(mol1)
                 groups2 = detect_functional_groups(mol2)
                 logger.info(f"Processing {smiles1} (groups: {groups1}) + {smiles2} (groups: {groups2})")
+
+                # Compute ADMET for reactants if requested
+                reactant1_admet = []
+                reactant2_admet = []
+                if include_admet:
+                    reactant1_admet = compute_admet_properties(mol1)
+                    reactant2_admet = compute_admet_properties(mol2)
+
                 product_smiles, confidence = None, 0
                 reaction_type = 'RXN4Chemistry_Prediction'
                 if not has_reaction_been_processed([smiles1, smiles2], reaction_type):
@@ -529,6 +708,17 @@ def handle_reaction():
                                 Chem.SanitizeMol(mol)
                                 props = compute_product_properties(mol)
                                 if 'error' not in props:
+                                    # Compute ADMET for products if requested
+                                    admet_props = []
+                                    if include_admet:
+                                        product_groups = detect_functional_groups(mol)
+                                        admet_props = compute_admet_properties(
+                                            mol,
+                                            reaction_type=reaction_type,
+                                            reactant_groups=[groups1, groups2],
+                                            product_groups=product_groups
+                                        )
+                                    props['admet_properties'] = admet_props
                                     product_info.append(props)
                                 else:
                                     logger.warning(f"Product property computation failed: {props['error']}")
@@ -593,7 +783,14 @@ def handle_reaction():
                             smiles_canonical = props['smiles']
                             if smiles_canonical not in seen_reactants:
                                 seen_reactants.add(smiles_canonical)
-                                reactant_props.append({'smiles': smiles, 'properties': props})
+                                admet_props = []
+                                if include_admet:
+                                    admet_props = compute_admet_properties(mol)
+                                reactant_props.append({
+                                    'smiles': smiles,
+                                    'properties': props,
+                                    'admet_properties': admet_props
+                                })
                 except Exception as e:
                     logger.warning(f"Failed to compute properties for {smiles}: {str(e)}")
         mw_stats = {
@@ -609,7 +806,7 @@ def handle_reaction():
             'statistics': mw_stats,
             'createdAt': datetime.utcnow(),
             'processedReactionTypes': processed_reaction_types,
-            'product_smiles': [result['productSmiles'] for result in all_reaction_results if result['productSmiles']]  # Store product SMILES
+            'product_smiles': [result['productSmiles'] for result in all_reaction_results if result['productSmiles']]
         }
         try:
             validated_response = ReactionResponse(**response)
@@ -628,6 +825,43 @@ def handle_reaction():
         logger.error(f"Server error: {str(e)}")
         traceback.print_exc()
         return jsonify({'error': f'Server error: {str(e)}'}), 500
+    
+
+@app.route('/api/smiles_to_image', methods=['GET'])
+def smiles_to_image():
+    """Generate an image for a given SMILES string and return it as base64."""
+    try:
+        smiles = request.args.get('smiles')
+        if not smiles:
+            logger.error("No SMILES string provided")
+            return jsonify({'error': 'No SMILES string provided'}), 400
+
+        # Validate and parse the SMILES string
+        mol = Chem.MolFromSmiles(smiles, sanitize=False)
+        if not mol:
+            logger.error(f"Invalid SMILES string: {smiles}")
+            return jsonify({'error': 'Invalid SMILES string'}), 400
+
+        # Sanitize and standardize the molecule
+        mol = standardize_molecule(mol)
+        if not mol:
+            logger.error(f"Failed to standardize molecule for SMILES: {smiles}")
+            return jsonify({'error': 'Failed to standardize molecule'}), 400
+
+        Chem.SanitizeMol(mol)
+
+        # Generate the image
+        img = Draw.MolToImage(mol, size=(300, 300))  # Adjust size as needed
+        buffered = BytesIO()
+        img.save(buffered, format="PNG")
+        img_str = base64.b64encode(buffered.getvalue()).decode('utf-8')
+
+        logger.info(f"Successfully generated image for SMILES: {smiles}")
+        return jsonify({'image': img_str})
+
+    except Exception as e:
+        logger.error(f"Error generating image for SMILES: {smiles} - {str(e)}")
+        return jsonify({'error': f'Error generating image: {str(e)}'}), 500
 
 @app.route('/api/health', methods=['GET'])
 def health_check():

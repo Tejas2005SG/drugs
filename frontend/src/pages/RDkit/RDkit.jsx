@@ -27,6 +27,10 @@ import {
   TableCell,
   TableHead,
   TableRow,
+  TableContainer,
+  Select,
+  FormControl,
+  InputLabel,
 } from "@mui/material"
 import {
   ExpandMore,
@@ -35,56 +39,137 @@ import {
   CheckCircle,
   LocalHospital,
   Biotech,
-  Psychology,
   Warning,
   Info,
   Visibility,
-  RestartAlt,
 } from "@mui/icons-material"
 import axios from "axios"
+import {
+  Chart as ChartJS,
+  RadialLinearScale,
+  PointElement,
+  LineElement,
+  Filler,
+  Tooltip as ChartTooltip,
+  Legend,
+} from "chart.js"
 import { Radar } from "react-chartjs-2"
-import Chart from "chart.js/auto"
+import toast, { Toaster } from "react-hot-toast"
 
-const timelineSteps = {
-  predict: [
-    "Fetching Symptoms",
-    "Predicting Diseases",
-    "Identifying Target Proteins",
-    "Retrieving Ligands",
-    "Finalizing Analysis",
-  ],
-  react: [
-    "Fetching Ligands from Database",
-    "Detecting Functional Groups",
-    "Validating Reactants",
-    "Running Chemical Reactions",
-    "Computing ADMET Properties",
-    "Finalizing Reaction Outputs",
-  ],
-}
+// Register Chart.js components
+ChartJS.register(RadialLinearScale, PointElement, LineElement, Filler, ChartTooltip, Legend)
 
-const loadingMessages = {
-  predict: [
-    "Processing your symptoms to identify potential diseases...",
-    "Analyzing symptom patterns to predict diseases...",
-    "Identifying target proteins for therapeutic intervention...",
-    "Retrieving ligand structures from the database...",
-    "Finalizing disease and target analysis for reaction processing...",
-  ],
-  react: [
-    "Fetching ligand SMILES from MongoDB...",
-    "Analyzing ligand structures for functional groups...",
-    "Validating reactants for chemical compatibility...",
-    "Simulating reactions with RDChiral and RDKit...",
-    "Computing ADMET properties for reactants and products...",
-    "Generating and scoring reaction products...",
-  ],
+const timelineSteps = [
+  "Fetching Symptoms",
+  "Predicting Diseases",
+  "Analyzing Disease Patterns",
+  "Identifying Target Proteins",
+  "Retrieving Ligands",
+  "Fetching Ligands from Database",
+  "Detecting Functional Groups",
+  "Validating Reactants",
+  "Running Chemical Reactions",
+  "Computing ADMET Properties",
+  "Finalizing Analysis",
+]
+
+const loadingMessages = [
+  "Processing your symptoms to identify potential diseases...",
+  "Analyzing symptom patterns to predict diseases...",
+  "Performing detailed disease analysis...",
+  "Identifying target proteins for therapeutic intervention...",
+  "Retrieving ligand structures from the database...",
+  "Fetching ligand SMILES from MongoDB...",
+  "Analyzing ligand structures for functional groups...",
+  "Validating reactants for chemical compatibility...",
+  "Simulating reactions with RDChiral and RDKit...",
+  "Computing ADMET properties for reactants and products...",
+  "Generating and scoring reaction products...",
+]
+
+
+
+const toastManager = {
+  activeToasts: new Set(),
+
+  show: (message, options = {}) => {
+    const toastId = options.id || `general-${Date.now()}-${message.slice(0, 20)}`
+    if (!toastManager.activeToasts.has(toastId)) {
+      toastManager.activeToasts.add(toastId)
+      const toastPromise = toast(message, {
+        ...options,
+        id: toastId,
+      })
+      
+      // Remove from active set after duration
+      setTimeout(() => {
+        toastManager.activeToasts.delete(toastId)
+      }, options.duration || 4000)
+      
+      return toastPromise
+    }
+  },
+
+  success: (message, options = {}) => {
+    const toastId = options.id || `success-${Date.now()}-${message.slice(0, 20)}`
+    if (!toastManager.activeToasts.has(toastId)) {
+      toastManager.activeToasts.add(toastId)
+      const toastPromise = toast.success(message, {
+        ...options,
+        id: toastId,
+      })
+      
+      setTimeout(() => {
+        toastManager.activeToasts.delete(toastId)
+      }, options.duration || 4000)
+      
+      return toastPromise
+    }
+  },
+
+  error: (message, options = {}) => {
+    const toastId = options.id || `error-${Date.now()}-${message.slice(0, 20)}`
+    if (!toastManager.activeToasts.has(toastId)) {
+      toastManager.activeToasts.add(toastId)
+      const toastPromise = toast.error(message, {
+        ...options,
+        id: toastId,
+      })
+      
+      setTimeout(() => {
+        toastManager.activeToasts.delete(toastId)
+      }, options.duration || 4000)
+      
+      return toastPromise
+    }
+  },
+
+  warn: (message, options = {}) => {
+    const toastId = options.id || `warn-${Date.now()}-${message.slice(0, 20)}`
+    if (!toastManager.activeToasts.has(toastId)) {
+      toastManager.activeToasts.add(toastId)
+      const toastPromise = toast(message, {
+        ...options,
+        id: toastId,
+        style: {
+          background: "#fff3e0",
+          color: "#e65100",
+          border: "1px solid #fb8c00",
+        },
+      })
+      
+      setTimeout(() => {
+        toastManager.activeToasts.delete(toastId)
+      }, options.duration || 4000)
+      
+      return toastPromise
+    }
+  },
 }
 
 const RDkit = () => {
   const [symptoms, setSymptoms] = useState("")
   const [loading, setLoading] = useState(false)
-  const [reactionLoading, setReactionLoading] = useState(false)
   const [error, setError] = useState("")
   const [result, setResult] = useState(null)
   const [reactionResult, setReactionResult] = useState(null)
@@ -94,15 +179,29 @@ const RDkit = () => {
   const [reactionsLoading, setReactionsLoading] = useState(false)
   const [anchorEl, setAnchorEl] = useState(null)
   const [smilesImages, setSmilesImages] = useState({})
+  const [retryAttempts, setRetryAttempts] = useState({ disease: 0, protein: 0, reaction: 0 })
+  const [maxRetries] = useState(3)
+  const [selectedLigand, setSelectedLigand] = useState("")
+
+  useEffect(() => {
+  return () => {
+    // Clear all active toasts on unmount
+    toastManager.activeToasts.clear()
+    toast.dismiss()
+  }
+}, [])
 
   useEffect(() => {
     const fetchAvailableReactions = async () => {
       setReactionsLoading(true)
       try {
-        const response = await axios.get("http://127.0.0.1:5001/api/reactions")
-        setAvailableReactions(response.data.reactions)
+        const response = await axios.get("http://127.0.0.1:5001/api/reactions", { timeout: 30000 })
+        setAvailableReactions(response.data.reactions || [])
+        toastManager.success("Available reactions fetched successfully!", { id: "fetch-reactions" })
       } catch (err) {
+        console.error("Error fetching available reactions:", err.message)
         setError(err.response?.data?.error || "Error fetching available reactions.")
+        toastManager.error("Failed to fetch available reactions.", { id: "fetch-reactions-error" })
       } finally {
         setReactionsLoading(false)
       }
@@ -112,12 +211,11 @@ const RDkit = () => {
   }, [])
 
   useEffect(() => {
-    if (!loading && !reactionLoading) return
+    if (!loading) return
 
-    const steps = loading ? timelineSteps.predict : timelineSteps.react
     const interval = setInterval(() => {
       setCurrentStep((prev) => {
-        if (prev < steps.length - 1) {
+        if (prev < timelineSteps.length - 1) {
           return prev + 1
         }
         return prev
@@ -125,18 +223,17 @@ const RDkit = () => {
     }, 2000)
 
     return () => clearInterval(interval)
-  }, [loading, reactionLoading])
+  }, [loading])
 
   useEffect(() => {
-    if (!loading && !reactionLoading) {
+    if (!loading) {
       if (error) {
         setCurrentStep(0)
       } else if (currentStep > 0) {
-        const steps = loading ? timelineSteps.predict : timelineSteps.react
-        setCurrentStep(steps.length - 1)
+        setCurrentStep(timelineSteps.length - 1)
       }
     }
-  }, [loading, reactionLoading, error, currentStep])
+  }, [loading, error, currentStep])
 
   useEffect(() => {
     const fetchSmilesImages = async () => {
@@ -162,7 +259,10 @@ const RDkit = () => {
       for (const smiles of allSmiles) {
         if (!newImages[smiles]) {
           try {
-            const response = await axios.get(`http://127.0.0.1:5001/api/smiles_to_image?smiles=${encodeURIComponent(smiles)}`)
+            const response = await axios.get(
+              `http://127.0.0.1:5001/api/smiles_to_image?smiles=${encodeURIComponent(smiles)}`,
+              { timeout: 15000 },
+            )
             newImages[smiles] = response.data.image
           } catch (err) {
             console.warn(`Failed to fetch image for SMILES: ${smiles} - ${err.message}`)
@@ -176,12 +276,42 @@ const RDkit = () => {
     fetchSmilesImages()
   }, [reactionResult])
 
+  const validateSymptoms = (symptomList) => {
+    const hasCommas = symptoms.trim().includes(",")
+    if (!hasCommas && symptomList.length > 1) {
+      return { valid: false, message: "Symptoms must be comma-separated (e.g., fever, cough, fatigue)." }
+    }
+    return { valid: true }
+  }
+
+  const axiosWithRetry = async (config, type, retriesLeft = maxRetries) => {
+    try {
+      const response = await axios(config)
+      setRetryAttempts((prev) => ({ ...prev, [type]: 0 }))
+      return response
+    } catch (err) {
+      if (retriesLeft <= 1 || !err.message.includes("timeout")) {
+        throw err
+      }
+
+      setRetryAttempts((prev) => ({ ...prev, [type]: maxRetries - retriesLeft + 1 }))
+      toastManager.warn(`Retrying ${type} request... Attempt ${maxRetries - retriesLeft + 1} of ${maxRetries}`, {
+        id: `retry-${type}`,
+      })
+      await new Promise((resolve) => setTimeout(resolve, 2000))
+      return axiosWithRetry(config, type, retriesLeft - 1)
+    }
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError("")
     setResult(null)
+    setReactionResult(null)
     setLoading(true)
     setCurrentStep(0)
+    setRetryAttempts({ disease: 0, protein: 0, reaction: 0 })
+    setSelectedLigand("")
 
     try {
       const symptomsList = symptoms
@@ -191,55 +321,112 @@ const RDkit = () => {
 
       if (symptomsList.length === 0) {
         setError("Please enter at least one symptom.")
+        toastManager.error("Please enter at least one symptom.", { id: "submit-error" })
         setLoading(false)
         return
       }
 
-      const diseaseResponse = await axios.post(
-        "http://localhost:5000/api/newdrug/predictDisease",
-        { symptoms: symptomsList },
-        {
-          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-        },
-      )
+      const validationResult = validateSymptoms(symptomsList)
+      if (!validationResult.valid) {
+        setError(validationResult.message)
+        toastManager.error(validationResult.message, { id: "submit-error" })
+        setLoading(false)
+        return
+      }
 
-      const proteinResponse = await axios.post(
-        "http://localhost:5000/api/newdrug/predictTargetProtein",
-        {},
-        {
-          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-        },
-      )
+      toastManager.show("This process may take up to 30 seconds per step due to complex computations.", {
+        id: "process-info",
+      })
+
+      // Step 1: Predict Disease
+      let diseaseResponse
+      try {
+        diseaseResponse = await axiosWithRetry(
+          {
+            method: "post",
+            url: "http://localhost:5000/api/newdrug/predictDisease",
+            data: { symptoms: symptomsList },
+            headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+            timeout: 60000,
+          },
+          "disease",
+        )
+      } catch (err) {
+        console.error("Disease Prediction Error:", err.message)
+        throw new Error("Failed to predict disease: " + (err.response?.data?.error || err.message))
+      }
+
+      const predictedDiseases = diseaseResponse.data?.predictedDiseases || []
+      if (predictedDiseases.length > 0 && predictedDiseases[0].DiseaseMatchness === "0%") {
+        setResult({
+          disease: { predictedDiseases: [{ diseaseName: "No Match", DiseaseMatchness: "0%" }], DiseaseAnalysis: {} },
+          proteins: { TargetProteins: [], TargetLigands: [] },
+        })
+        setLoading(false)
+        return
+      }
+
+      if (predictedDiseases.length > 0 && predictedDiseases[0].DiseaseMatchness === "100%") {
+        setResult({
+          disease: diseaseResponse.data || { predictedDiseases: [], DiseaseAnalysis: {} },
+          proteins: { TargetProteins: [], TargetLigands: [] },
+        })
+        setLoading(false)
+        return
+      }
+
+      // Step 2: Predict Target Proteins
+      let proteinResponse
+      try {
+        proteinResponse = await axiosWithRetry(
+          {
+            method: "post",
+            url: "http://localhost:5000/api/newdrug/predictTargetProtein",
+            data: {},
+            headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+            timeout: 60000,
+          },
+          "protein",
+        )
+      } catch (err) {
+        console.error("Protein Prediction Error:", err.message)
+        if (err.message.includes("timeout")) {
+          throw new Error(
+            "Protein prediction is taking longer than expected. Please check if the server is running and try again.",
+          )
+        }
+        throw new Error("Failed to predict target proteins: " + (err.response?.data?.error || err.message))
+      }
 
       setResult({
-        disease: diseaseResponse.data,
-        proteins: proteinResponse.data,
+        disease: diseaseResponse.data || { predictedDiseases: [], DiseaseAnalysis: {} },
+        proteins: proteinResponse.data || { TargetProteins: [], TargetLigands: [] },
       })
+
+      // Step 3: Run Reactions
+      let reactionResponse
+      try {
+        reactionResponse = await axiosWithRetry(
+          {
+            method: "get",
+            url: "http://127.0.0.1:5001/api/react?include_admet=true",
+            timeout: 30000,
+          },
+          "reaction",
+        )
+      } catch (err) {
+        console.error("Reaction Error:", err.message)
+        throw new Error("Failed to run reactions: " + (err.response?.data?.error || err.message))
+      }
+
+      setReactionResult(reactionResponse.data || { reactionResults: [], failedReactions: [], statistics: {} })
+      toastManager.success("Analysis and reactions completed successfully!", { id: "submit-success" })
     } catch (err) {
-      setError(err.response?.data?.error || "Error processing disease/protein prediction.")
-      setLoading(false)
-      setCurrentStep(0)
+      console.error("Submission Error:", err.message)
+      setError(err.message || "Error processing analysis. Please try again or check the backend server.")
+      toastManager.error(err.message || "Error processing analysis.", { id: "submit-error" })
     } finally {
       setLoading(false)
-    }
-  }
-
-  const handleRunReactions = async () => {
-    setReactionLoading(true)
-    setError("")
-    setReactionResult(null)
-    setCurrentStep(0)
-    setSmilesImages({})
-
-    try {
-      const reactionResponse = await axios.get("http://127.0.0.1:5001/api/react?include_admet=true")
-      setReactionResult(reactionResponse.data)
-    } catch (err) {
-      setError(err.response?.data?.error || "Error running reactions.")
-      setReactionLoading(false)
-      setCurrentStep(0)
-    } finally {
-      setReactionLoading(false)
     }
   }
 
@@ -249,11 +436,13 @@ const RDkit = () => {
     setResult(null)
     setReactionResult(null)
     setLoading(false)
-    setReactionLoading(false)
     setCurrentStep(0)
     setExpanded({})
     setAnchorEl(null)
     setSmilesImages({})
+    setRetryAttempts({ disease: 0, protein: 0, reaction: 0 })
+    setSelectedLigand("")
+    toastManager.success("Form reset successfully!", { id: "reset-success" })
   }
 
   const handleToggle = (key) => {
@@ -320,8 +509,8 @@ const RDkit = () => {
         borderColor: `rgba(255, 99, 132, 1)`,
         borderWidth: 2,
         pointBackgroundColor: `rgba(255, 99, 132, 1)`,
-        pointBorderColor: '#fff',
-        pointHoverBackgroundColor: '#fff',
+        pointBorderColor: "#fff",
+        pointHoverBackgroundColor: "#fff",
         pointHoverBorderColor: `rgba(255, 99, 132, 1)`,
       })
     })
@@ -332,8 +521,27 @@ const RDkit = () => {
     }
   }
 
+  const handleLigandChange = (event) => {
+    setSelectedLigand(event.target.value)
+  }
+
+  const getSelectedLigandData = () => {
+    if (!result?.proteins?.TargetLigands || !selectedLigand) return null
+    return result.proteins.TargetLigands.find((ligand, index) => index.toString() === selectedLigand)
+  }
+
   return (
     <Box sx={{ minHeight: "100vh", bgcolor: "#f5f5f5", py: 4 }}>
+      <Toaster
+        position="top-right"
+        toastOptions={{
+          duration: 4000,
+          style: {
+            background: "#fff",
+            color: "#333",
+          },
+        }}
+      />
       <Container maxWidth="xl">
         <Paper elevation={2} sx={{ p: 4, mb: 4, borderRadius: 1 }}>
           <Box sx={{ textAlign: "center", mb: 4 }}>
@@ -346,7 +554,6 @@ const RDkit = () => {
             </Typography>
           </Box>
 
-          {/* Input Form */}
           <Card variant="outlined" sx={{ mb: 4, borderRadius: 1 }}>
             <CardContent sx={{ p: 3 }}>
               <Box component="form" onSubmit={handleSubmit}>
@@ -357,7 +564,7 @@ const RDkit = () => {
                       label="Enter Symptoms"
                       value={symptoms}
                       onChange={(e) => setSymptoms(e.target.value)}
-                      placeholder="e.g., fever, cough, fatigue, headache"
+                      placeholder="e.g., fever, cough, fatigue"
                       variant="outlined"
                       InputProps={{
                         startAdornment: <LocalHospital sx={{ mr: 1, color: "text.secondary" }} />,
@@ -370,8 +577,8 @@ const RDkit = () => {
                         type="submit"
                         variant="contained"
                         size="large"
-                        disabled={loading || reactionLoading}
-                        startIcon={loading ? <CircularProgress size={20} /> : <Psychology />}
+                        disabled={loading}
+                        startIcon={loading ? <CircularProgress size={20} /> : <Biotech />}
                         sx={{
                           bgcolor: "#2c3e50",
                           "&:hover": {
@@ -380,35 +587,16 @@ const RDkit = () => {
                           textTransform: "none",
                         }}
                       >
-                        {loading ? "Analyzing..." : "Predict & Analyze"}
+                        Predict New Drug
                       </Button>
-                      {result && (
-                        <Button
-                          variant="contained"
-                          size="large"
-                          onClick={handleRunReactions}
-                          disabled={loading || reactionLoading}
-                          startIcon={reactionLoading ? <CircularProgress size={20} /> : <Biotech />}
-                          sx={{
-                            bgcolor: "#34495e",
-                            "&:hover": {
-                              bgcolor: "#2c3e50",
-                            },
-                            textTransform: "none",
-                          }}
-                        >
-                          {reactionLoading ? "Processing..." : "Run Reactions"}
-                        </Button>
-                      )}
                       <Button
                         variant="outlined"
                         size="large"
                         onClick={handleReset}
-                        disabled={loading || reactionLoading}
-                        startIcon={<RestartAlt />}
+                        disabled={loading}
                         sx={{
-                          color: "#2c3e50",
                           borderColor: "#2c3e50",
+                          color: "#2c3e50",
                           "&:hover": {
                             borderColor: "#1a252f",
                             bgcolor: "rgba(44, 62, 80, 0.04)",
@@ -425,8 +613,7 @@ const RDkit = () => {
             </CardContent>
           </Card>
 
-          {/* Processing Timeline */}
-          {(loading || reactionLoading) && (
+          {loading && (
             <Card variant="outlined" sx={{ mb: 4, borderRadius: 1 }}>
               <CardHeader
                 title={
@@ -443,7 +630,7 @@ const RDkit = () => {
               <CardContent sx={{ pt: 0 }}>
                 <LinearProgress
                   variant="determinate"
-                  value={(currentStep / (loading ? timelineSteps.predict : timelineSteps.react).length) * 100}
+                  value={(currentStep / timelineSteps.length) * 100}
                   sx={{
                     mb: 4,
                     height: 6,
@@ -454,7 +641,7 @@ const RDkit = () => {
                 <Grid container spacing={4}>
                   <Grid item xs={12} lg={7}>
                     <Box sx={{ position: "relative" }}>
-                      {(loading ? timelineSteps.predict : timelineSteps.react).map((step, index) => (
+                      {timelineSteps.map((step, index) => (
                         <Box key={index} sx={{ display: "flex", alignItems: "center", mb: 3, position: "relative" }}>
                           <Box
                             sx={{
@@ -491,8 +678,21 @@ const RDkit = () => {
                             >
                               {step}
                             </Typography>
+                            {index === currentStep &&
+                              (retryAttempts.disease > 0 ||
+                                retryAttempts.protein > 0 ||
+                                retryAttempts.reaction > 0) && (
+                                <Typography variant="caption" sx={{ color: "#e65100", mt: 0.5 }}>
+                                  {retryAttempts.disease > 0 &&
+                                    `Retrying Disease Prediction (Attempt ${retryAttempts.disease}/${maxRetries})...`}
+                                  {retryAttempts.protein > 0 &&
+                                    `Retrying Protein Prediction (Attempt ${retryAttempts.protein}/${maxRetries})...`}
+                                  {retryAttempts.reaction > 0 &&
+                                    `Retrying Reaction (Attempt ${retryAttempts.reaction}/${maxRetries})...`}
+                                </Typography>
+                              )}
                           </Box>
-                          {index < (loading ? timelineSteps.predict : timelineSteps.react).length - 1 && (
+                          {index < timelineSteps.length - 1 && (
                             <Box
                               sx={{
                                 position: "absolute",
@@ -513,12 +713,45 @@ const RDkit = () => {
                   <Grid item xs={12} lg={5}>
                     <Card variant="outlined" sx={{ height: "100%", display: "flex", alignItems: "center" }}>
                       <CardContent sx={{ textAlign: "center", width: "100%" }}>
-                        <Science sx={{ fontSize: 40, color: "#2c3e50", mb: 2 }} />
+                        <Box
+                          sx={{
+                            position: "relative",
+                            height: "100px",
+                            width: "100px",
+                            mx: "auto",
+                            mb: 2,
+                            animation: "pulse 2s infinite",
+                            "@keyframes pulse": {
+                              "0%": { transform: "scale(1)" },
+                              "50%": { transform: "scale(1.1)" },
+                              "100%": { transform: "scale(1)" },
+                            },
+                          }}
+                        >
+                          <Science sx={{ fontSize: 60, color: "#2c3e50" }} />
+                          <Box
+                            sx={{
+                              position: "absolute",
+                              top: 0,
+                              left: 0,
+                              right: 0,
+                              bottom: 0,
+                              borderRadius: "50%",
+                              border: "2px solid #2c3e50",
+                              opacity: 0.3,
+                              animation: "wave 3s infinite",
+                              "@keyframes wave": {
+                                "0%": { transform: "scale(0)", opacity: 0.5 },
+                                "100%": { transform: "scale(1.5)", opacity: 0 },
+                              },
+                            }}
+                          />
+                        </Box>
                         <Typography variant="subtitle1" sx={{ color: "#2c3e50", fontWeight: 600, mb: 1 }}>
                           Current Process
                         </Typography>
                         <Typography variant="body2" sx={{ color: "#5d6d7e" }}>
-                          {loading ? loadingMessages.predict[currentStep] : loadingMessages.react[currentStep]}
+                          {loadingMessages[currentStep]}
                         </Typography>
                       </CardContent>
                     </Card>
@@ -528,7 +761,6 @@ const RDkit = () => {
             </Card>
           )}
 
-          {/* Error Alert */}
           {error && (
             <Alert
               severity="error"
@@ -547,7 +779,6 @@ const RDkit = () => {
             </Alert>
           )}
 
-          {/* Available Reactions Section */}
           <Card variant="outlined" sx={{ mb: 4, borderRadius: 1 }}>
             <CardHeader
               title={
@@ -646,333 +877,508 @@ const RDkit = () => {
           </Card>
         </Paper>
 
-        {/* Results Section - Vertical Layout */}
-        {result && (
+        {(result || reactionResult) && !loading && (
           <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
-            {/* Disease Prediction Results */}
-            <Paper elevation={2} sx={{ borderRadius: 1 }}>
-              <CardHeader
-                title={
-                  <Typography variant="h6" sx={{ fontWeight: 600, color: "#2c3e50" }}>
-                    Disease Prediction Results
-                  </Typography>
-                }
-                subheader={
-                  <Typography variant="body2" sx={{ color: "text.secondary", mt: 0.5 }}>
-                    AI-powered disease identification and analysis
-                  </Typography>
-                }
-              />
-              <CardContent>
-                <Box sx={{ mb: 4 }}>
-                  <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 2, color: "#2c3e50" }}>
-                    Predicted Diseases
-                  </Typography>
-                  {result.disease.predictedDiseases.map((disease, index) => (
-                    <Card key={index} variant="outlined" sx={{ mb: 2, borderRadius: 1 }}>
-                      <CardContent sx={{ p: 2 }}>
-                        <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
-                          <Typography variant="subtitle1" sx={{ fontWeight: 600, flex: 1 }}>
-                            {disease.diseaseName || "Unknown Disease"}
-                          </Typography>
-                          <Chip
-                            label={`Match: ${disease.DiseaseMatchness || "N/A"}`}
-                            size="small"
-                            sx={{
-                              bgcolor: "#e8f5e9",
-                              color: "#2e7d32",
-                              fontWeight: 500,
-                            }}
-                          />
-                        </Box>
-                        {disease.diseaseCautions && disease.diseaseCautions.length > 0 && (
-                          <Box>
-                            <Typography variant="body2" sx={{ fontWeight: 600, mb: 1, color: "#5d6d7e" }}>
-                              Cautions:
-                            </Typography>
-                            <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
-                              {disease.diseaseCautions.map((caution, idx) => (
-                                <Chip
-                                  key={idx}
-                                  label={caution}
-                                  size="small"
-                                  variant="outlined"
-                                  sx={{ borderColor: "#d32f2f", color: "#d32f2f" }}
-                                />
-                              ))}
+            {result?.disease && (
+              <Paper elevation={2} sx={{ borderRadius: 1 }}>
+                <CardHeader
+                  title={
+                    <Typography variant="h6" sx={{ fontWeight: 600, color: "#2c3e50" }}>
+                      Disease Prediction Results
+                    </Typography>
+                  }
+                  subheader={
+                    <Typography variant="body2" sx={{ color: "text.secondary", mt: 0.5 }}>
+                      AI-powered disease identification and analysis
+                    </Typography>
+                  }
+                />
+                <CardContent>
+                  <Box sx={{ mb: 4 }}>
+                    <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 2, color: "#2c3e50" }}>
+                      Predicted Diseases
+                    </Typography>
+                    {result.disease.predictedDiseases?.length > 0 ? (
+                      result.disease.predictedDiseases.map((disease, index) => (
+                        <Card key={index} variant="outlined" sx={{ mb: 2, borderRadius: 1 }}>
+                          <CardContent sx={{ p: 2 }}>
+                            <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
+                              <Typography variant="subtitle1" sx={{ fontWeight: 600, flex: 1 }}>
+                                {disease.diseaseName || "Unknown Disease"}
+                              </Typography>
+                              <Chip
+                                label={`Match: ${disease.DiseaseMatchness || "N/A"}`}
+                                size="small"
+                                sx={{
+                                  bgcolor: "#e8f5e9",
+                                  color: "#2e7d32",
+                                  fontWeight: 500,
+                                }}
+                              />
                             </Box>
-                          </Box>
-                        )}
-                      </CardContent>
-                    </Card>
-                  ))}
-                </Box>
-
-                <Divider sx={{ my: 3 }} />
-
-                <Box>
-                  <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 2, color: "#2c3e50" }}>
-                    Detailed Disease Analysis
-                  </Typography>
-                  {Object.entries(result.disease.DiseaseAnalysis || {}).map(([key, items]) => (
-                    <Card key={key} variant="outlined" sx={{ mb: 2, borderRadius: 1 }}>
-                      <CardContent sx={{ p: 2 }}>
-                        <Box
-                          sx={{ display: "flex", alignItems: "center", cursor: "pointer" }}
-                          onClick={() => handleToggle(key)}
-                        >
-                          <Typography
-                            variant="subtitle1"
-                            sx={{ fontWeight: 600, flex: 1, textTransform: "capitalize" }}
-                          >
-                            {key.replace(/([A-Z])/g, " $1").trim()}
-                          </Typography>
-                          <Chip label={items.length} size="small" sx={{ mr: 1, bgcolor: "#e0e0e0" }} />
-                          <IconButton size="small">{expanded[key] ? <ExpandLess /> : <ExpandMore />}</IconButton>
-                        </Box>
-                        <Collapse in={expanded[key]}>
-                          <Box sx={{ mt: 2 }}>
-                            {items.map((item, idx) => (
-                              <Paper key={idx} variant="outlined" sx={{ p: 2, mb: 2, bgcolor: "#fafafa" }}>
-                                <Typography variant="body2" sx={{ fontWeight: 500, mb: 1 }}>
-                                  {item.summary || "No summary available"}
+                            {disease.diseaseCautions && disease.diseaseCautions.length > 0 && (
+                              <Box>
+                                <Typography variant="body2" sx={{ fontWeight: 600, mb: 1, color: "#5d6d7e" }}>
+                                  Cautions:
                                 </Typography>
-                                <Box sx={{ display: "flex", alignItems: "center", gap: 2, mt: 1 }}>
-                                  <Chip label={`Source: ${item.source || "N/A"}`} size="small" variant="outlined" />
-                                  {item.url && (
-                                    <Button
+                                <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
+                                  {disease.diseaseCautions.map((caution, idx) => (
+                                    <Chip
+                                      key={idx}
+                                      label={caution}
                                       size="small"
-                                      href={item.url}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      sx={{ textTransform: "none", color: "#2c3e50" }}
-                                    >
-                                      View Source
-                                    </Button>
-                                  )}
+                                      variant="outlined"
+                                      sx={{ borderColor: "#d32f2f", color: "#d32f2f" }}
+                                    />
+                                  ))}
                                 </Box>
-                              </Paper>
-                            ))}
-                          </Box>
-                        </Collapse>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </Box>
-              </CardContent>
-            </Paper>
-
-            {/* Target Proteins */}
-            <Paper elevation={2} sx={{ borderRadius: 1 }}>
-              <CardHeader
-                title={
-                  <Typography variant="h6" sx={{ fontWeight: 600, color: "#2c3e50" }}>
-                    Target Proteins
-                  </Typography>
-                }
-                subheader={
-                  <Typography variant="body2" sx={{ color: "text.secondary", mt: 0.5 }}>
-                    Identified protein targets for therapeutic intervention
-                  </Typography>
-                }
-              />
-              <CardContent>
-                {result.proteins.TargetProteins.map((protein, index) => (
-                  <Card key={index} variant="outlined" sx={{ mb: 2, borderRadius: 1 }}>
-                    <CardContent sx={{ p: 2 }}>
-                      <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 2 }}>
-                        {protein.proteinName || "Unknown Protein"}
+                              </Box>
+                            )}
+                          </CardContent>
+                        </Card>
+                      ))
+                    ) : (
+                      <Typography variant="body2" sx={{ color: "text.secondary" }}>
+                        No diseases predicted. Please try different symptoms.
                       </Typography>
-                      <Grid container spacing={2}>
-                        <Grid item xs={12} sm={6}>
-                          <Typography variant="body2" sx={{ fontWeight: 600, color: "#5d6d7e" }}>
-                            Function:
-                          </Typography>
-                          <Typography variant="body2" sx={{ mb: 1 }}>
-                            {protein.proteinFunction || "N/A"}
-                          </Typography>
-                        </Grid>
-                        <Grid item xs={12} sm={6}>
-                          <Typography variant="body2" sx={{ fontWeight: 600, color: "#5d6d7e" }}>
-                            UniProt ID:
-                          </Typography>
-                          <Chip label={protein.proteinUniport || "N/A"} size="small" sx={{ fontFamily: "monospace" }} />
-                        </Grid>
-                        <Grid item xs={12}>
-                          <Typography variant="body2" sx={{ fontWeight: 600, color: "#5d6d7e" }}>
-                            Description:
-                          </Typography>
-                          <Typography variant="body2" sx={{ mb: 1 }}>
-                            {protein.ProtienDiscription || "N/A"}
-                          </Typography>
-                        </Grid>
-                        <Grid item xs={12}>
-                          <Typography variant="body2" sx={{ fontWeight: 600, color: "#5d6d7e" }}>
-                            Detailed Information:
-                          </Typography>
-                          <Typography variant="body2">{protein.proteinDetailedDiscription || "N/A"}</Typography>
-                        </Grid>
-                      </Grid>
-                    </CardContent>
-                  </Card>
-                ))}
-              </CardContent>
-            </Paper>
+                    )}
+                  </Box>
 
-            {/* Target Ligands */}
-            <Paper elevation={2} sx={{ borderRadius: 1 }}>
-              <CardHeader
-                title={
-                  <Typography variant="h6" sx={{ fontWeight: 600, color: "#2c3e50" }}>
-                    Target Ligands
-                  </Typography>
-                }
-                subheader={
-                  <Typography variant="body2" sx={{ color: "text.secondary", mt: 0.5 }}>
-                    Therapeutic compounds and molecular ligands
-                  </Typography>
-                }
-              />
-              <CardContent>
-                {result.proteins.TargetLigands.map((ligand, index) => (
-                  <Card key={index} variant="outlined" sx={{ mb: 2, borderRadius: 1 }}>
-                    <CardContent sx={{ p: 2 }}>
-                      <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
-                        <Typography variant="subtitle1" sx={{ fontWeight: 600, flex: 1 }}>
-                          {ligand.ligandName || "Unknown Ligand"}
+                  {result.disease.predictedDiseases[0]?.DiseaseMatchness !== "0%" && (
+                    <>
+                      <Divider sx={{ my: 3 }} />
+                      <Box>
+                        <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 2, color: "#2c3e50" }}>
+                          Detailed Disease Analysis
                         </Typography>
-                        {ligand.LigandSmile === "Not applicable" && (
-                          <Chip label="Protein" size="small" sx={{ bgcolor: "#fff3e0", color: "#e65100" }} />
+                        {result.disease.predictedDiseases[0]?.DiseaseMatchness === "0%" ? (
+                          <Typography variant="body2" sx={{ color: "text.secondary" }}>
+                            No such disease is present in the history with all these symptoms.
+                          </Typography>
+                        ) : Object.entries(result.disease.DiseaseAnalysis || {}).length > 0 ? (
+                          Object.entries(result.disease.DiseaseAnalysis).map(([key, items]) => (
+                            <Card key={key} variant="outlined" sx={{ mb: 2, borderRadius: 1 }}>
+                              <CardContent sx={{ p: 2 }}>
+                                <Box
+                                  sx={{ display: "flex", alignItems: "center", cursor: "pointer" }}
+                                  onClick={() => handleToggle(key)}
+                                >
+                                  <Typography
+                                    variant="subtitle1"
+                                    sx={{ fontWeight: 600, flex: 1, textTransform: "capitalize" }}
+                                  >
+                                    {key.replace(/([A-Z])/g, " $1").trim()}
+                                  </Typography>
+                                  <Chip label={items.length} size="small" sx={{ mr: 1, bgcolor: "#e0e0e0" }} />
+                                  <IconButton size="small">
+                                    {expanded[key] ? <ExpandLess /> : <ExpandMore />}
+                                  </IconButton>
+                                </Box>
+                                <Collapse in={expanded[key]}>
+                                  <Box sx={{ mt: 2 }}>
+                                    {items.map((item, idx) => (
+                                      <Paper key={idx} variant="outlined" sx={{ p: 2, mb: 2, bgcolor: "#fafafa" }}>
+                                        <Typography variant="body2" sx={{ fontWeight: 500, mb: 1 }}>
+                                          {item.summary || "No summary available"}
+                                        </Typography>
+                                        <Box sx={{ display: "flex", alignItems: "center", gap: 2, mt: 1 }}>
+                                          <Chip
+                                            label={`Source: ${item.source || "N/A"}`}
+                                            size="small"
+                                            variant="outlined"
+                                          />
+                                          {item.url && (
+                                            <Button
+                                              size="small"
+                                              href={item.url}
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              sx={{ textTransform: "none", color: "#2c3e50" }}
+                                            >
+                                              View Source
+                                            </Button>
+                                          )}
+                                        </Box>
+                                      </Paper>
+                                    ))}
+                                  </Box>
+                                </Collapse>
+                              </CardContent>
+                            </Card>
+                          ))
+                        ) : (
+                          <Typography variant="body2" sx={{ color: "text.secondary" }}>
+                            No detailed analysis available.
+                          </Typography>
                         )}
                       </Box>
+                    </>
+                  )}
+                </CardContent>
+              </Paper>
+            )}
 
-                      <Grid container spacing={2}>
-                        <Grid item xs={12} sm={6}>
-                          <Typography variant="body2" sx={{ fontWeight: 600, color: "#5d6d7e" }}>
-                            Function:
+            {result?.proteins?.TargetProteins && result.disease.predictedDiseases[0]?.DiseaseMatchness !== "100%" && (
+              <Paper elevation={2} sx={{ borderRadius: 1 }}>
+                <CardHeader
+                  title={
+                    <Typography variant="h6" sx={{ fontWeight: 600, color: "#2c3e50" }}>
+                      Target Proteins
+                    </Typography>
+                  }
+                  subheader={
+                    <Typography variant="body2" sx={{ color: "text.secondary", mt: 0.5 }}>
+                      Identified protein targets for therapeutic intervention
+                    </Typography>
+                  }
+                />
+                <CardContent>
+                  {result.proteins.TargetProteins.length > 0 ? (
+                    result.proteins.TargetProteins.map((protein, index) => (
+                      <Card key={index} variant="outlined" sx={{ mb: 2, borderRadius: 1 }}>
+                        <CardContent sx={{ p: 2 }}>
+                          <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 2 }}>
+                            {protein.proteinName || "Unknown Protein"}
                           </Typography>
-                          <Typography variant="body2" sx={{ mb: 1 }}>
-                            {ligand.ligandFunction || "N/A"}
-                          </Typography>
-                        </Grid>
-                        <Grid item xs={12} sm={6}>
-                          <Typography variant="body2" sx={{ fontWeight: 600, color: "#5d6d7e" }}>
-                            DrugBank ID:
-                          </Typography>
-                          <Chip
-                            label={ligand.ligandDrugBankID || "N/A"}
-                            size="small"
-                            sx={{ fontFamily: "monospace" }}
-                          />
-                        </Grid>
-                        <Grid item xs={12}>
-                          <Typography variant="body2" sx={{ fontWeight: 600, color: "#5d6d7e" }}>
-                            SMILES:
-                          </Typography>
-                          <Paper
-                            variant="outlined"
-                            sx={{
-                              p: 1,
-                              bgcolor: "#fafafa",
-                              fontFamily: "monospace",
-                              fontSize: "0.85rem",
-                              wordBreak: "break-all",
-                            }}
-                          >
-                            {ligand.LigandSmile || "N/A"}
-                          </Paper>
-                        </Grid>
-                        {ligand.LigandSmile && ligand.LigandSmile !== "Not applicable" && smilesImages[ligand.LigandSmile] ? (
-                          <Grid item xs={12}>
-                            <Typography variant="body2" sx={{ fontWeight: 600, color: "#5d6d7e" }}>
-                              Structure:
-                            </Typography>
-                            <img
-                              src={`data:image/png;base64,${smilesImages[ligand.LigandSmile]}`}
-                              alt={`Structure of ${ligand.ligandName}`}
-                              style={{ maxWidth: "200px", marginTop: "8px" }}
-                            />
+                          <Grid container spacing={2}>
+                            <Grid item xs={12} sm={6}>
+                              <Typography variant="body2" sx={{ fontWeight: 600, color: "#5d6d7e" }}>
+                                Function:
+                              </Typography>
+                              <Typography variant="body2" sx={{ mb: 1 }}>
+                                {protein.proteinFunction || "N/A"}
+                              </Typography>
+                            </Grid>
+                            <Grid item xs={12} sm={6}>
+                              <Typography variant="body2" sx={{ fontWeight: 600, color: "#5d6d7e" }}>
+                                UniProt ID:
+                              </Typography>
+                              <Chip
+                                label={protein.proteinUniport || "N/A"}
+                                size="small"
+                                sx={{ fontFamily: "monospace" }}
+                              />
+                            </Grid>
+                            <Grid item xs={12}>
+                              <Typography variant="body2" sx={{ fontWeight: 600, color: "#5d6d7e" }}>
+                                Description:
+                              </Typography>
+                              <Typography variant="body2" sx={{ mb: 1 }}>
+                                {protein.ProtienDiscription || "N/A"}
+                              </Typography>
+                            </Grid>
+                            <Grid item xs={12}>
+                              <Typography variant="body2" sx={{ fontWeight: 600, color: "#5d6d7e" }}>
+                                Detailed Information:
+                              </Typography>
+                              <Typography variant="body2">{protein.proteinDetailedDiscription || "N/A"}</Typography>
+                            </Grid>
                           </Grid>
-                        ) : (
-                          <Grid item xs={12}>
-                            <Typography variant="body2" sx={{ fontWeight: 600, color: "#5d6d7e" }}>
-                              Structure:
-                            </Typography>
-                            <Typography variant="caption" sx={{ color: "text.secondary" }}>
-                              {ligand.LigandSmile === "Not applicable"
-                                ? "Structure not applicable (Protein)"
-                                : "Unable to load structure image"}
-                            </Typography>
-                          </Grid>
-                        )}
-                        <Grid item xs={12}>
-                          <Typography variant="body2" sx={{ fontWeight: 600, color: "#5d6d7e" }}>
-                            Functional Groups:
-                          </Typography>
-                          <Typography variant="body2" sx={{ mb: 1 }}>
-                            {getFunctionalGroups(ligand.LigandSmile)}
-                          </Typography>
-                        </Grid>
-                        <Grid item xs={12}>
-                          <Typography variant="body2" sx={{ fontWeight: 600, color: "#5d6d7e" }}>
-                            Description:
-                          </Typography>
-                          <Typography variant="body2">{ligand.LigandDiscription || "N/A"}</Typography>
-                        </Grid>
-                        {ligand.LigandSmile !== "Not applicable" && reactionResult && reactionResult.reactants && (
-                          <Grid item xs={12}>
-                            <Typography variant="body2" sx={{ fontWeight: 600, color: "#5d6d7e" }}>
-                              ADMET Properties:
-                            </Typography>
+                        </CardContent>
+                      </Card>
+                    ))
+                  ) : (
+                    <Typography variant="body2" sx={{ color: "text.secondary" }}>
+                      No target proteins identified.
+                    </Typography>
+                  )}
+                </CardContent>
+              </Paper>
+            )}
+
+            {result?.proteins?.TargetLigands && result.disease.predictedDiseases[0]?.DiseaseMatchness !== "100%" && (
+              <Paper elevation={2} sx={{ borderRadius: 1 }}>
+                <CardHeader
+                  title={
+                    <Typography variant="h6" sx={{ fontWeight: 600, color: "#2c3e50" }}>
+                      Target Ligands
+                    </Typography>
+                  }
+                  subheader={
+                    <Typography variant="body2" sx={{ color: "text.secondary", mt: 0.5 }}>
+                      Therapeutic compounds and molecular ligands
+                    </Typography>
+                  }
+                />
+                <CardContent>
+                  {result.proteins.TargetLigands.length > 0 ? (
+                    <Box>
+                      <FormControl fullWidth sx={{ mb: 3 }}>
+                        <InputLabel id="ligand-select-label">Select a Target Ligand</InputLabel>
+                        <Select
+                          labelId="ligand-select-label"
+                          id="ligand-select"
+                          value={selectedLigand}
+                          label="Select a Target Ligand"
+                          onChange={handleLigandChange}
+                        >
+                          {result.proteins.TargetLigands.map((ligand, index) => (
+                            <MenuItem key={index} value={index.toString()}>
+                              <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+                                <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                                  {ligand.ligandName || `Ligand ${index + 1}`}
+                                </Typography>
+                                {ligand.LigandSmile === "Not applicable" && (
+                                  <Chip label="Protein" size="small" sx={{ bgcolor: "#fff3e0", color: "#e65100" }} />
+                                )}
+                              </Box>
+                            </MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+
+                      {selectedLigand && getSelectedLigandData() && (
+                        <Card variant="outlined" sx={{ borderRadius: 1 }}>
+                          <CardContent sx={{ p: 3 }}>
                             {(() => {
-                              const reactant = reactionResult.reactants.find((r) => r.smiles === ligand.LigandSmile)
-                              if (!reactant || !reactant.admet_properties || reactant.admet_properties.length === 0) {
-                                return <Typography variant="body2">Not available</Typography>
-                              }
-                              return reactant.admet_properties.map((section, secIdx) => (
-                                <Box key={secIdx} sx={{ mt: 2 }}>
-                                  <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>
-                                    {section.section}
-                                  </Typography>
-                                  <Table size="small">
-                                    <TableHead>
-                                      <TableRow>
-                                        <TableCell sx={{ fontWeight: 600 }}>Property</TableCell>
-                                        <TableCell sx={{ fontWeight: 600 }}>Prediction</TableCell>
-                                        <TableCell sx={{ fontWeight: 600 }}>Units</TableCell>
-                                      </TableRow>
-                                    </TableHead>
-                                    <TableBody>
-                                      {section.properties.map((prop, propIdx) => (
-                                        <TableRow key={propIdx}>
-                                          <TableCell>{prop.name}</TableCell>
-                                          <TableCell>{prop.prediction}</TableCell>
-                                          <TableCell>{prop.units || "-"}</TableCell>
-                                        </TableRow>
-                                      ))}
-                                    </TableBody>
-                                  </Table>
-                                </Box>
-                              ))
-                            })()}
-                          </Grid>
-                        )}
-                      </Grid>
+                              const ligand = getSelectedLigandData()
+                              return (
+                                <>
+                                  <Box sx={{ display: "flex", alignItems: "center", mb: 3 }}>
+                                    <Typography variant="h6" sx={{ fontWeight: 600, flex: 1 }}>
+                                      {ligand.ligandName || "Unknown Ligand"}
+                                    </Typography>
+                                    {ligand.LigandSmile === "Not applicable" && (
+                                      <Chip
+                                        label="Protein"
+                                        size="small"
+                                        sx={{ bgcolor: "#fff3e0", color: "#e65100" }}
+                                      />
+                                    )}
+                                  </Box>
 
-                      {ligand.LigandSmile === "Not applicable" && (
-                        <Alert severity="warning" sx={{ mt: 2 }} icon={<Warning />}>
+                                  <Grid container spacing={3}>
+                                    <Grid item xs={12} md={6}>
+                                      <Typography variant="body2" sx={{ fontWeight: 600, color: "#5d6d7e", mb: 1 }}>
+                                        Function:
+                                      </Typography>
+                                      <Typography variant="body2" sx={{ mb: 2 }}>
+                                        {ligand.ligandFunction || "N/A"}
+                                      </Typography>
+                                    </Grid>
+                                    <Grid item xs={12} md={6}>
+                                      <Typography variant="body2" sx={{ fontWeight: 600, color: "#5d6d7e", mb: 1 }}>
+                                        DrugBank ID:
+                                      </Typography>
+                                      <Chip
+                                        label={ligand.ligandDrugBankID || "N/A"}
+                                        size="small"
+                                        sx={{ fontFamily: "monospace", mb: 2 }}
+                                      />
+                                    </Grid>
+                                    <Grid item xs={12}>
+                                      <Typography variant="body2" sx={{ fontWeight: 600, color: "#5d6d7e", mb: 1 }}>
+                                        SMILES:
+                                      </Typography>
+                                      <Paper
+                                        variant="outlined"
+                                        sx={{
+                                          p: 2,
+                                          bgcolor: "#fafafa",
+                                          fontFamily: "monospace",
+                                          fontSize: "0.9rem",
+                                          wordBreak: "break-all",
+                                          mb: 2,
+                                        }}
+                                      >
+                                        {ligand.LigandSmile || "N/A"}
+                                      </Paper>
+                                    </Grid>
+                                    {ligand.LigandSmile &&
+                                    ligand.LigandSmile !== "Not applicable" &&
+                                    smilesImages[ligand.LigandSmile] ? (
+                                      <Grid item xs={12}>
+                                        <Typography variant="body2" sx={{ fontWeight: 600, color: "#5d6d7e", mb: 1 }}>
+                                          Structure:
+                                        </Typography>
+                                        <Box sx={{ display: "flex", justifyContent: "center", mb: 2 }}>
+                                          <img
+                                            src={`data:image/png;base64,${smilesImages[ligand.LigandSmile]}`}
+                                            alt={`Structure of ${ligand.ligandName}`}
+                                            style={{ maxWidth: "300px", height: "auto" }}
+                                          />
+                                        </Box>
+                                      </Grid>
+                                    ) : (
+                                      <Grid item xs={12}>
+                                        <Typography variant="body2" sx={{ fontWeight: 600, color: "#5d6d7e", mb: 1 }}>
+                                          Structure:
+                                        </Typography>
+                                        <Typography variant="body2" sx={{ color: "text.secondary", mb: 2 }}>
+                                          {ligand.LigandSmile === "Not applicable"
+                                            ? "Structure not applicable (Protein)"
+                                            : "Unable to load structure image"}
+                                        </Typography>
+                                      </Grid>
+                                    )}
+                                    <Grid item xs={12}>
+                                      <Typography variant="body2" sx={{ fontWeight: 600, color: "#5d6d7e", mb: 1 }}>
+                                        Functional Groups:
+                                      </Typography>
+                                      <Typography variant="body2" sx={{ mb: 2 }}>
+                                        {getFunctionalGroups(ligand.LigandSmile)}
+                                      </Typography>
+                                    </Grid>
+                                    <Grid item xs={12}>
+                                      <Typography variant="body2" sx={{ fontWeight: 600, color: "#5d6d7e", mb: 1 }}>
+                                        Description:
+                                      </Typography>
+                                      <Typography variant="body2" sx={{ mb: 2 }}>
+                                        {ligand.LigandDiscription || "N/A"}
+                                      </Typography>
+                                    </Grid>
+                                    {ligand.LigandSmile !== "Not applicable" &&
+                                      reactionResult &&
+                                      reactionResult.reactants && (
+                                        <Grid item xs={12}>
+                                          <Typography variant="body2" sx={{ fontWeight: 600, color: "#5d6d7e", mb: 2 }}>
+                                            ADMET Properties:
+                                          </Typography>
+                                          {(() => {
+                                            const reactant = reactionResult.reactants.find(
+                                              (r) => r.smiles === ligand.LigandSmile,
+                                            )
+                                            if (
+                                              !reactant ||
+                                              !reactant.admet_properties ||
+                                              reactant.admet_properties.length === 0
+                                            ) {
+                                              return <Typography variant="body2">Not available</Typography>
+                                            }
+                                            return reactant.admet_properties.map((section, secIdx) => (
+                                              <Box key={secIdx} sx={{ mb: 3 }}>
+                                                <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 2 }}>
+                                                  {section.section}
+                                                </Typography>
+                                                <TableContainer
+                                                  component={Paper}
+                                                  sx={{
+                                                    boxShadow: "0 4px 12px rgba(0,0,0,0.05)",
+                                                    borderRadius: 2,
+                                                    overflow: "hidden",
+                                                  }}
+                                                >
+                                                  <Table size="small">
+                                                    <TableHead>
+                                                      <TableRow sx={{ bgcolor: "#2c3e50" }}>
+                                                        <TableCell
+                                                          sx={{
+                                                            fontWeight: 600,
+                                                            color: "white",
+                                                            py: 1.5,
+                                                            px: 2,
+                                                            borderBottom: "none",
+                                                          }}
+                                                        >
+                                                          Property
+                                                        </TableCell>
+                                                        <TableCell
+                                                          sx={{
+                                                            fontWeight: 600,
+                                                            color: "white",
+                                                            py: 1.5,
+                                                            px: 2,
+                                                            borderBottom: "none",
+                                                          }}
+                                                        >
+                                                          Prediction
+                                                        </TableCell>
+                                                        <TableCell
+                                                          sx={{
+                                                            fontWeight: 600,
+                                                            color: "white",
+                                                            py: 1.5,
+                                                            px: 2,
+                                                            borderBottom: "none",
+                                                          }}
+                                                        >
+                                                          Units
+                                                        </TableCell>
+                                                      </TableRow>
+                                                    </TableHead>
+                                                    <TableBody>
+                                                      {section.properties.map((prop, propIdx) => (
+                                                        <TableRow
+                                                          key={propIdx}
+                                                          sx={{
+                                                            "&:nth-of-type(odd)": { bgcolor: "#f9fafb" },
+                                                            "&:hover": { bgcolor: "#f1f5f9" },
+                                                            transition: "background-color 0.3s ease",
+                                                          }}
+                                                        >
+                                                          <TableCell
+                                                            sx={{
+                                                              py: 1.5,
+                                                              px: 2,
+                                                              borderBottom: "1px solid #e5e7eb",
+                                                              color: "#374151",
+                                                            }}
+                                                          >
+                                                            {prop.name}
+                                                          </TableCell>
+                                                          <TableCell
+                                                            sx={{
+                                                              py: 1.5,
+                                                              px: 2,
+                                                              borderBottom: "1px solid #e5e7eb",
+                                                              color: "#374151",
+                                                            }}
+                                                          >
+                                                            {prop.prediction}
+                                                          </TableCell>
+                                                          <TableCell
+                                                            sx={{
+                                                              py: 1.5,
+                                                              px: 2,
+                                                              borderBottom: "1px solid #e5e7eb",
+                                                              color: "#374151",
+                                                            }}
+                                                          >
+                                                            {prop.units || "-"}
+                                                          </TableCell>
+                                                        </TableRow>
+                                                      ))}
+                                                    </TableBody>
+                                                  </Table>
+                                                </TableContainer>
+                                              </Box>
+                                            ))
+                                          })()}
+                                        </Grid>
+                                      )}
+                                  </Grid>
+
+                                  {ligand.LigandSmile === "Not applicable" && (
+                                    <Alert severity="warning" sx={{ mt: 2 }} icon={<Warning />}>
+                                      <Typography variant="body2">
+                                        This ligand is a protein and cannot be processed for chemical reactions.
+                                      </Typography>
+                                    </Alert>
+                                  )}
+                                </>
+                              )
+                            })()}
+                          </CardContent>
+                        </Card>
+                      )}
+
+                      {!selectedLigand && (
+                        <Alert severity="info" icon={<Info />}>
                           <Typography variant="body2">
-                            This ligand is a protein and cannot be processed for chemical reactions.
+                            Please select a ligand from the dropdown above to view its detailed information.
                           </Typography>
                         </Alert>
                       )}
-                    </CardContent>
-                  </Card>
-                ))}
-              </CardContent>
-            </Paper>
+                    </Box>
+                  ) : (
+                    <Typography variant="body2" sx={{ color: "text.secondary" }}>
+                      No target ligands identified.
+                    </Typography>
+                  )}
+                </CardContent>
+              </Paper>
+            )}
 
-            {/* Chemical Reaction Results */}
             {reactionResult && (
               <Paper elevation={2} sx={{ borderRadius: 1 }}>
                 <CardHeader
@@ -989,8 +1395,7 @@ const RDkit = () => {
                 />
                 <CardContent>
                   <Grid container spacing={3}>
-                    {/* Successful Reactions */}
-                    <Grid item xs={12} lg={8}>
+                    <Grid item xs={12}>
                       <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 2, color: "#2c3e50" }}>
                         Successful Reactions
                       </Typography>
@@ -1008,7 +1413,7 @@ const RDkit = () => {
                               <CardContent sx={{ p: 2 }}>
                                 <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
                                   <Typography variant="subtitle1" sx={{ fontWeight: 600, flex: 1 }}>
-                                    {reaction.reactionType}
+                                    {reaction.reactionType || "Unknown Reaction"}
                                   </Typography>
                                   <Tooltip title={`Confidence: ${(reaction.confidence * 100).toFixed(1)}%`}>
                                     <Chip
@@ -1037,7 +1442,7 @@ const RDkit = () => {
                                 </Box>
 
                                 <Typography variant="body2" sx={{ mb: 2, color: "#5d6d7e" }}>
-                                  {reaction.description}
+                                  {reaction.description || "No description available"}
                                 </Typography>
 
                                 <Box sx={{ mb: 2 }}>
@@ -1076,15 +1481,15 @@ const RDkit = () => {
                                   </Typography>
                                   <Grid container spacing={2}>
                                     {mainProducts.map((product, prodIndex) => (
-                                      <Grid item xs={12} md={6} key={prodIndex}>
+                                      <Grid item xs={12} key={prodIndex}>
                                         <Paper variant="outlined" sx={{ p: 2, borderRadius: 1, bgcolor: "#fafafa" }}>
                                           <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
                                             <Typography variant="subtitle2" sx={{ fontWeight: 600, flex: 1 }}>
                                               Product {prodIndex + 1}
                                             </Typography>
                                           </Box>
-                                          <Grid container spacing={1}>
-                                            <Grid item xs={12}>
+                                          <Grid container spacing={2}>
+                                            <Grid item xs={12} md={6}>
                                               <Typography variant="caption" sx={{ fontWeight: 600, color: "#5d6d7e" }}>
                                                 SMILES:
                                               </Typography>
@@ -1099,48 +1504,54 @@ const RDkit = () => {
                                                   wordBreak: "break-all",
                                                 }}
                                               >
-                                                {product.smiles}
+                                                {product.smiles || "N/A"}
                                               </Paper>
                                             </Grid>
-                                            <Grid item xs={12}>
+                                            <Grid item xs={12} md={6}>
                                               {smilesImages[product.smiles] ? (
-                                                <img
-                                                  src={`data:image/png;base64,${smilesImages[product.smiles]}`}
-                                                  alt={`Product ${prodIndex + 1}`}
-                                                  style={{ maxWidth: "200px", marginTop: "8px" }}
-                                                />
+                                                <Box sx={{ display: "flex", justifyContent: "center" }}>
+                                                  <img
+                                                    src={`data:image/png;base64,${smilesImages[product.smiles]}`}
+                                                    alt={`Product ${prodIndex + 1}`}
+                                                    style={{ maxWidth: "100%", height: "auto", maxHeight: "200px" }}
+                                                  />
+                                                </Box>
                                               ) : (
                                                 <Typography variant="caption" sx={{ color: "text.secondary" }}>
                                                   Unable to load structure image
                                                 </Typography>
                                               )}
                                             </Grid>
-                                            <Grid item xs={6}>
+                                            <Grid item xs={6} md={3}>
                                               <Typography variant="caption" sx={{ fontWeight: 600, color: "#5d6d7e" }}>
                                                 Molecular Weight:
                                               </Typography>
                                               <Typography variant="body2">
-                                                {product.molecular_weight.toFixed(2)} g/mol
+                                                {product.molecular_weight?.toFixed(2) || "N/A"} g/mol
                                               </Typography>
                                             </Grid>
-                                            <Grid item xs={6}>
+                                            <Grid item xs={6} md={3}>
                                               <Typography variant="caption" sx={{ fontWeight: 600, color: "#5d6d7e" }}>
                                                 LogP:
                                               </Typography>
-                                              <Typography variant="body2">{product.logP.toFixed(2)}</Typography>
+                                              <Typography variant="body2">
+                                                {product.logP?.toFixed(2) || "N/A"}
+                                              </Typography>
                                             </Grid>
-                                            <Grid item xs={6}>
+                                            <Grid item xs={6} md={3}>
                                               <Typography variant="caption" sx={{ fontWeight: 600, color: "#5d6d7e" }}>
                                                 TPSA:
                                               </Typography>
-                                              <Typography variant="body2">{product.tpsa.toFixed(2)} Å²</Typography>
+                                              <Typography variant="body2">
+                                                {product.tpsa?.toFixed(2) || "N/A"} Å²
+                                              </Typography>
                                             </Grid>
-                                            <Grid item xs={6}>
+                                            <Grid item xs={6} md={3}>
                                               <Typography variant="caption" sx={{ fontWeight: 600, color: "#5d6d7e" }}>
                                                 H-Donors/Acceptors:
                                               </Typography>
                                               <Typography variant="body2">
-                                                {product.num_h_donors}/{product.num_h_acceptors}
+                                                {product.num_h_donors || 0}/{product.num_h_acceptors || 0}
                                               </Typography>
                                             </Grid>
                                             <Grid item xs={12}>
@@ -1148,7 +1559,7 @@ const RDkit = () => {
                                                 Functional Groups:
                                               </Typography>
                                               <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5, mt: 0.5 }}>
-                                                {product.functional_groups.length > 0 ? (
+                                                {product.functional_groups?.length > 0 ? (
                                                   product.functional_groups.map((group, groupIdx) => (
                                                     <Chip
                                                       key={groupIdx}
@@ -1178,24 +1589,97 @@ const RDkit = () => {
                                                     <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>
                                                       {section.section}
                                                     </Typography>
-                                                    <Table size="small">
-                                                      <TableHead>
-                                                        <TableRow>
-                                                          <TableCell sx={{ fontWeight: 600 }}>Property</TableCell>
-                                                          <TableCell sx={{ fontWeight: 600 }}>Prediction</TableCell>
-                                                          <TableCell sx={{ fontWeight: 600 }}>Units</TableCell>
-                                                        </TableRow>
-                                                      </TableHead>
-                                                      <TableBody>
-                                                        {section.properties.map((prop, propIdx) => (
-                                                          <TableRow key={propIdx}>
-                                                            <TableCell>{prop.name}</TableCell>
-                                                            <TableCell>{prop.prediction}</TableCell>
-                                                            <TableCell>{prop.units || "-"}</TableCell>
+                                                    <TableContainer
+                                                      component={Paper}
+                                                      sx={{
+                                                        boxShadow: "0 4px 12px rgba(0,0,0,0.05)",
+                                                        borderRadius: 2,
+                                                        overflow: "hidden",
+                                                      }}
+                                                    >
+                                                      <Table size="small">
+                                                        <TableHead>
+                                                          <TableRow sx={{ bgcolor: "#2c3e50" }}>
+                                                            <TableCell
+                                                              sx={{
+                                                                fontWeight: 600,
+                                                                color: "white",
+                                                                py: 1.5,
+                                                                px: 2,
+                                                                borderBottom: "none",
+                                                              }}
+                                                            >
+                                                              Property
+                                                            </TableCell>
+                                                            <TableCell
+                                                              sx={{
+                                                                fontWeight: 600,
+                                                                color: "white",
+                                                                py: 1.5,
+                                                                px: 2,
+                                                                borderBottom: "none",
+                                                              }}
+                                                            >
+                                                              Prediction
+                                                            </TableCell>
+                                                            <TableCell
+                                                              sx={{
+                                                                fontWeight: 600,
+                                                                color: "white",
+                                                                py: 1.5,
+                                                                px: 2,
+                                                                borderBottom: "none",
+                                                              }}
+                                                            >
+                                                              Units
+                                                            </TableCell>
                                                           </TableRow>
-                                                        ))}
-                                                      </TableBody>
-                                                    </Table>
+                                                        </TableHead>
+                                                        <TableBody>
+                                                          {section.properties.map((prop, propIdx) => (
+                                                            <TableRow
+                                                              key={propIdx}
+                                                              sx={{
+                                                                "&:nth-of-type(odd)": { bgcolor: "#f9fafb" },
+                                                                "&:hover": { bgcolor: "#f1f5f9" },
+                                                                transition: "background-color 0.3s ease",
+                                                              }}
+                                                            >
+                                                              <TableCell
+                                                                sx={{
+                                                                  py: 1.5,
+                                                                  px: 2,
+                                                                  borderBottom: "1px solid #e5e7eb",
+                                                                  color: "#374151",
+                                                                }}
+                                                              >
+                                                                {prop.name}
+                                                              </TableCell>
+                                                              <TableCell
+                                                                sx={{
+                                                                  py: 1.5,
+                                                                  px: 2,
+                                                                  borderBottom: "1px solid #e5e7eb",
+                                                                  color: "#374151",
+                                                                }}
+                                                              >
+                                                                {prop.prediction}
+                                                              </TableCell>
+                                                              <TableCell
+                                                                sx={{
+                                                                  py: 1.5,
+                                                                  px: 2,
+                                                                  borderBottom: "1px solid #e5e7eb",
+                                                                  color: "#374151",
+                                                                }}
+                                                              >
+                                                                {prop.units || "-"}
+                                                              </TableCell>
+                                                            </TableRow>
+                                                          ))}
+                                                        </TableBody>
+                                                      </Table>
+                                                    </TableContainer>
                                                   </Box>
                                                 ))}
                                               </Grid>
@@ -1205,53 +1689,55 @@ const RDkit = () => {
                                       </Grid>
                                     ))}
                                   </Grid>
-                                  {/* ADMET Graph (Updated to Radar Chart) */}
                                   <Box sx={{ mt: 4 }}>
                                     <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 2 }}>
                                       ADMET Properties Comparison
                                     </Typography>
                                     {prepareAdmetGraphData(index) ? (
-                                      <Radar
-                                        data={prepareAdmetGraphData(index)}
-                                        options={{
-                                          responsive: true,
-                                          plugins: {
-                                            legend: {
-                                              position: "top",
-                                            },
-                                            title: {
-                                              display: true,
-                                              text: "Blood-Brain Barrier Safe",
-                                            },
-                                            tooltip: {
-                                              callbacks: {
-                                                label: (tooltipItem) => {
-                                                  return `${tooltipItem.dataset.label}: ${tooltipItem.raw}`;
+                                      <Box sx={{ height: 400, width: "100%" }}>
+                                        <Radar
+                                          key={`radar-${index}`}
+                                          data={prepareAdmetGraphData(index)}
+                                          options={{
+                                            responsive: true,
+                                            maintainAspectRatio: false,
+                                            plugins: {
+                                              legend: {
+                                                position: "top",
+                                              },
+                                              title: {
+                                                display: true,
+                                                text: "ADMET Properties Analysis",
+                                              },
+                                              tooltip: {
+                                                callbacks: {
+                                                  label: (tooltipItem) => {
+                                                    return `${tooltipItem.dataset.label}: ${tooltipItem.raw}`
+                                                  },
                                                 },
                                               },
                                             },
-                                          },
-                                          scales: {
-                                            r: {
-                                              beginAtZero: true,
-                                              min: 0,
-                                              max: 100,
-                                              ticks: {
-                                                stepSize: 25,
-                                              },
-                                              pointLabels: {
-                                                font: {
-                                                  size: 12,
+                                            scales: {
+                                              r: {
+                                                beginAtZero: true,
+                                                min: 0,
+                                                max: 100,
+                                                ticks: {
+                                                  stepSize: 25,
+                                                },
+                                                pointLabels: {
+                                                  font: {
+                                                    size: 12,
+                                                  },
+                                                },
+                                                grid: {
+                                                  color: "rgba(0, 0, 0, 0.1)",
                                                 },
                                               },
-                                              grid: {
-                                                color: "rgba(0, 0, 0, 0.1)",
-                                              },
                                             },
-                                          },
-                                        }}
-                                        height={100}
-                                      />
+                                          }}
+                                        />
+                                      </Box>
                                     ) : (
                                       <Typography variant="body2" sx={{ color: "text.secondary" }}>
                                         No ADMET data available for comparison.
@@ -1266,80 +1752,79 @@ const RDkit = () => {
                       )}
                     </Grid>
 
-                    {/* Failed Reactions & Statistics */}
-                    <Grid item xs={12} lg={4}>
-                      <Box sx={{ mb: 4 }}>
-                        <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 2, color: "#2c3e50" }}>
-                          Failed Reactions
-                        </Typography>
-                        {reactionResult.failedReactions.length === 0 ? (
-                          <Alert severity="success" icon={<CheckCircle />}>
-                            <Typography variant="body2">All reactions completed successfully!</Typography>
-                          </Alert>
-                        ) : (
-                          reactionResult.failedReactions.map((fail, index) => (
-                            <Card key={index} variant="outlined" sx={{ mb: 2, borderRadius: 1 }}>
-                              <CardContent sx={{ p: 2 }}>
-                                <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>
-                                  {fail.reactionType || "Unknown Reaction"}
-                                </Typography>
-                                <Typography variant="body2" sx={{ mb: 1, color: "#5d6d7e" }}>
-                                  Reactants: {fail.reactants.join(", ")}
-                                </Typography>
-                                <Typography variant="body2" sx={{ color: "#d32f2f" }}>
-                                  Reason: {fail.reason}
-                                </Typography>
-                              </CardContent>
-                            </Card>
-                          ))
-                        )}
-                      </Box>
-
+                    <Grid item xs={12}>
                       <Card variant="outlined" sx={{ borderRadius: 1, bgcolor: "#fafafa" }}>
                         <CardHeader
                           title={
                             <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-                              Statistics
+                              Overall Statistics
                             </Typography>
                           }
                         />
                         <CardContent sx={{ pt: 0 }}>
                           <Grid container spacing={2}>
-                            <Grid item xs={6}>
+                            <Grid item xs={3}>
                               <Typography variant="caption" sx={{ fontWeight: 600, color: "#5d6d7e" }}>
                                 Mean MW:
                               </Typography>
                               <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                                {reactionResult.statistics.mean_mw.toFixed(2)}
+                                {reactionResult.statistics?.mean_mw?.toFixed(2) || "N/A"}
                               </Typography>
                             </Grid>
-                            <Grid item xs={6}>
+                            <Grid item xs={3}>
                               <Typography variant="caption" sx={{ fontWeight: 600, color: "#5d6d7e" }}>
                                 Std MW:
                               </Typography>
                               <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                                {reactionResult.statistics.std_mw.toFixed(2)}
+                                {reactionResult.statistics?.std_mw?.toFixed(2) || "N/A"}
                               </Typography>
                             </Grid>
-                            <Grid item xs={6}>
+                            <Grid item xs={3}>
                               <Typography variant="caption" sx={{ fontWeight: 600, color: "#5d6d7e" }}>
                                 Min MW:
                               </Typography>
                               <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                                {reactionResult.statistics.min_mw.toFixed(2)}
+                                {reactionResult.statistics?.min_mw?.toFixed(2) || "N/A"}
                               </Typography>
                             </Grid>
-                            <Grid item xs={6}>
+                            <Grid item xs={3}>
                               <Typography variant="caption" sx={{ fontWeight: 600, color: "#5d6d7e" }}>
                                 Max MW:
                               </Typography>
                               <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                                {reactionResult.statistics.max_mw.toFixed(2)}
+                                {reactionResult.statistics?.max_mw?.toFixed(2) || "N/A"}
                               </Typography>
                             </Grid>
                           </Grid>
                         </CardContent>
                       </Card>
+                    </Grid>
+
+                    <Grid item xs={12}>
+                      <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 2, color: "#2c3e50" }}>
+                        Failed Reactions
+                      </Typography>
+                      {reactionResult.failedReactions.length === 0 ? (
+                        <Alert severity="success" icon={<CheckCircle />}>
+                          <Typography variant="body2">All reactions completed successfully!</Typography>
+                        </Alert>
+                      ) : (
+                        reactionResult.failedReactions.map((fail, index) => (
+                          <Card key={index} variant="outlined" sx={{ mb: 2, borderRadius: 1 }}>
+                            <CardContent sx={{ p: 2 }}>
+                              <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>
+                                {fail.reactionType || "Unknown Reaction"}
+                              </Typography>
+                              <Typography variant="body2" sx={{ mb: 1, color: "#5d6d7e" }}>
+                                Reactants: {fail.reactants?.join(", ") || "N/A"}
+                              </Typography>
+                              <Typography variant="body2" sx={{ color: "#d32f2f" }}>
+                                Reason: {fail.reason || "Unknown error"}
+                              </Typography>
+                            </CardContent>
+                          </Card>
+                        ))
+                      )}
                     </Grid>
                   </Grid>
                 </CardContent>

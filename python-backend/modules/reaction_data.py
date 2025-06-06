@@ -872,5 +872,680 @@ reaction_smarts_map = {
         'smarts': '[C:1]=[C:2][C:3].[C:4]=[C:5]>>[C:1]=[C:4].[C:2][C:3]=[C:5]',
         'description': 'Grubbs Olefin Metathesis',
         'priority': 8
+    },
+     # Additional Nucleophilic Substitution Reactions (10)
+    'SN2_Alkylthiolate': {
+        'smarts': '[C:1][Cl,Br,I:2].[S-:3][C:4]>>[C:1][S:3][C:4].[Cl,Br,I:2]',
+        'description': 'Alkyl Halide + Thiolate -> Thioether + Halide',
+        'priority': 7
+    },
+    'SN2_Alkynide': {
+        'smarts': '[C:1][Cl,Br,I:2].[C:3]#[C-:4]>>[C:1][C:3]#[C:4].[Cl,Br,I:2]',
+        'description': 'Alkyl Halide + Alkynide -> Terminal Alkyne + Halide',
+        'priority': 7
+    },
+    'SNAr_Amine': {
+        'smarts': '[c:1][Cl,Br:2].[N:3][H:4]>>[c:1][N:3].[Cl,Br:2][H:4]',
+        'description': 'Aryl Halide + Amine -> Aryl Amine + Halide (SNAr)',
+        'priority': 6
+    },
+    'SN2_Phosphite': {
+        'smarts': '[C:1][Cl,Br,I:2].[P:3]([O:4])[O:5]>>[C:1][P:3]([O:4])[O:5].[Cl,Br,I:2]',
+        'description': 'Alkyl Halide + Phosphite -> Phosphonate + Halide',
+        'priority': 6
+    },
+    'SN2_Selenol': {
+        'smarts': '[C:1][Cl,Br,I:2].[Se:3][H:4]>>[C:1][Se:3].[Cl,Br,I:2][H:4]',
+        'description': 'Alkyl Halide + Selenol -> Selenoether + Hydrogen Halide',
+        'priority': 7
+    },
+    'SN2_Alkylamine_Secondary': {
+        'smarts': '[C:1][Cl,Br,I:2].[N:3]([C:4])[H:5]>>[C:1][N:3][C:4].[Cl,Br,I:2][H:5]',
+        'description': 'Alkyl Halide + Secondary Amine -> Tertiary Amine + Halide',
+        'priority': 7
+    },
+    'SN2_Carboxylate_Ester': {
+        'smarts': '[C:1][Cl,Br,I:2].[O-:3][C:4](=[O:5])>>[C:1][O:3][C:4](=[O:5]).[Cl,Br,I:2]',
+        'description': 'Alkyl Halide + Carboxylate -> Ester + Halide',
+        'priority': 7
+    },
+    'SN1_Alkene': {
+        'smarts': '[C:1][C:2]([Cl,Br,I:3])[C:4]>>[C:1]=[C:2][C:4].[Cl,Br,I:3]',
+        'description': 'Tertiary Alkyl Halide -> Alkene + Halide (SN1 via Carbocation)',
+        'priority': 6
+    },
+    'SNAr_Phenoxide': {
+        'smarts': '[c:1][Cl,Br:2].[O-:3][c:4]>>[c:1][O:3][c:4].[Cl,Br:2]',
+        'description': 'Aryl Halide + Phenoxide -> Aryl Ether + Halide (SNAr)',
+        'priority': 6
+    },
+    'SN2_Nitrile': {
+        'smarts': '[C:1][Cl,Br,I:2].[C:3]#[N-:4]>>[C:1][C:3]#[N:4].[Cl,Br,I:2]',
+        'description': 'Alkyl Halide + Cyanide Ion -> Nitrile + Halide',
+        'priority': 7
+    },
+
+    # Additional Addition Reactions (10)
+    'Hydroalkoxylation': {
+        'smarts': '[C:1]=[C:2].[O:3][C:4]>>[C:1][C:2][O:3][C:4]',
+        'description': 'Alkene + Alcohol -> Ether (Hydroalkoxylation)',
+        'priority': 6
+    },
+    'Hydrothiolation': {
+        'smarts': '[C:1]=[C:2].[S:3][C:4]>>[C:1][C:2][S:3][C:4]',
+        'description': 'Alkene + Thiol -> Thioether (Hydrothiolation)',
+        'priority': 6
+    },
+    'Alkyne_Hydroboration': {
+        'smarts': '[C:1]#[C:2].[B:3][H:4]>>[C:1]=[C:2][B:3][H:4]',
+        'description': 'Alkyne + Borane -> Vinylborane',
+        'priority': 7
+    },
+    'Alkene_Hydrophosphination': {
+        'smarts': '[C:1]=[C:2].[P:3][H:4]>>[C:1][C:2][P:3][H:4]',
+        'description': 'Alkene + Phosphine -> Alkylphosphine',
+        'priority': 6
+    },
+    'Alkyne_Hydrosilylation': {
+        'smarts': '[C:1]#[C:2].[Si:3][H:4]>>[C:1]=[C:2][Si:3][H:4]',
+        'description': 'Alkyne + Silane -> Vinylsilane',
+        'priority': 7
+    },
+    'Alkene_Hydrocarboxylation': {
+        'smarts': '[C:1]=[C:2].[C:3](=[O:4])[OH:5]>>[C:1][C:2][C:3](=[O:4])[OH:5]',
+        'description': 'Alkene + Carboxylic Acid -> Alkylated Carboxylic Acid',
+        'priority': 6
+    },
+    'Alkyne_Hydroamination': {
+        'smarts': '[C:1]#[C:2].[N:3][H:4]>>[C:1]=[C:2][N:3][H:4]',
+        'description': 'Alkyne + Amine -> Enamine',
+        'priority': 7
+    },
+    'Dihydroxylation_Alkyne': {
+        'smarts': '[C:1]#[C:2].[O:3][O:4]>>[C:1]([OH:3])[C:2]([OH:4])',
+        'description': 'Alkyne + OsO4 -> 1,2-Diol',
+        'priority': 7
+    },
+    'Halohydrin_Formation': {
+        'smarts': '[C:1]=[C:2].[Cl:3][OH2:4]>>[C:1][Cl:3][C:2][OH:4]',
+        'description': 'Alkene + Cl2/H2O -> Chlorohydrin',
+        'priority': 7
+    },
+    'Alkene_Cyclopropanation': {
+        'smarts': '[C:1]=[C:2].[C:3][H:4][I:5]>>[C:1]1[C:2][C:3]1.[H:4][I:5]',
+        'description': 'Alkene + Carbenoid -> Cyclopropane (Simmons-Smith)',
+        'priority': 7
+    },
+
+    # Additional Elimination Reactions (10)
+    'E1_Alcohol': {
+        'smarts': '[C:1][C:2]([OH:3])[C:4]>>[C:1]=[C:2][C:4].[OH2:3]',
+        'description': 'Tertiary Alcohol -> Alkene + Water (E1 Dehydration)',
+        'priority': 6
+    },
+    'E2_Alcohol': {
+        'smarts': '[C:1][C:2]([OH:3])[H:4].[O-:5]>>[C:1]=[C:2].[OH2:3][O:5]',
+        'description': 'Alcohol + Base -> Alkene + Water (E2)',
+        'priority': 6
+    },
+    'Dehydrochlorination': {
+        'smarts': '[C:1][C:2]([Cl:3])[H:4]>>[C:1]=[C:2].[Cl:3][H:4]',
+        'description': 'Alkyl Chloride -> Alkene + HCl',
+        'priority': 6
+    },
+    'Dehydrosulfurization': {
+        'smarts': '[C:1][C:2]([S:3][H:4])[H:5]>>[C:1]=[C:2].[S:3][H:4][H:5]',
+        'description': 'Thiol -> Alkene + H2S',
+        'priority': 6
+    },
+    'E2_Amine': {
+        'smarts': '[C:1][C:2]([N:3][C:4])[H:5]>>[C:1]=[C:2].[N:3][C:4][H:5]',
+        'description': 'Tertiary Amine -> Alkene + Amine (Hofmann Elimination)',
+        'priority': 6
+    },
+    'Dehydrobromination_Alkyne': {
+        'smarts': '[C:1]([Br:2])[C:3]([H:4])[Br:5]>>[C:1]#[C:3].[Br:2][H:4][Br:5]',
+        'description': 'Geminal Dihalide -> Alkyne + 2HX',
+        'priority': 6
+    },
+    'Selenoxide_Elimination': {
+        'smarts': '[C:1][C:2][Se+:3]([C:4])[O-:5]>>[C:1]=[C:2].[Se:3][C:4]',
+        'description': 'Selenoxide -> Alkene + Selenide (Selenoxide Elimination)',
+        'priority': 6
+    },
+    'Dehydroiodination': {
+        'smarts': '[C:1][C:2]([I:3])[H:4]>>[C:1]=[C:2].[I:3][H:4]',
+        'description': 'Alkyl Iodide -> Alkene + HI',
+        'priority': 6
+    },
+    'Chugaev_Elimination': {
+        'smarts': '[C:1][C:2]([O:3][C:4][S:5])[H:6]>>[C:1]=[C:2].[O:3][C:4][S:5][H:6]',
+        'description': 'Alcohol Xanthate -> Alkene + COS + Thiol',
+        'priority': 6
+    },
+    'Corey_Winter': {
+        'smarts': '[C:1]([O:2])[C:3]([O:4])[S:5]>>[C:1]=[C:3].[O:2][S:5][O:4]',
+        'description': '1,2-Diol -> Alkene + CO2 + S (Corey-Winter)',
+        'priority': 6
+    },
+
+    # Additional Oxidation Reactions (10)
+    'Allylic_Oxidation': {
+        'smarts': '[C:1][C:2]=[C:3].[O:4]>>[C:1][C:2](=[O:4])[C:3]',
+        'description': 'Alkene -> Allylic Ketone (SeO2 Oxidation)',
+        'priority': 7
+    },
+    'Oxidative_Cleavage_Alkyne': {
+        'smarts': '[C:1]#[C:2].[O:3][O:4]>>[C:1](=[O:3])[OH:4].[C:2](=[O:3])[OH:4]',
+        'description': 'Alkyne -> Two Carboxylic Acids (Oxidative Cleavage)',
+        'priority': 6
+    },
+    'Tosylate_Oxidation': {
+        'smarts': '[C:1][O:2][S:3](=[O:4])(=[O:5])[c:6].[O:7]>>[C:1](=[O:2]).[S:3](=[O:4])(=[O:5])[c:6][O:7]',
+        'description': 'Tosylate -> Carbonyl + Tosylate',
+        'priority': 6
+    },
+    'SulfideToSulfone': {
+        'smarts': '[C:1][S:2][C:3].[O:4][O:5]>>[C:1][S:2](=[O:4])(=[O:5])[C:3]',
+        'description': 'Sulfide -> Sulfone (Double Oxidation)',
+        'priority': 6
+    },
+    'AmineToImine': {
+        'smarts': '[C:1][N:2][H:3].[O:4]>>[C:1]=[N:2].[OH2:4]',
+        'description': 'Primary Amine -> Imine (Oxidation)',
+        'priority': 7
+    },
+    'AlcoholToAcid_Direct': {
+        'smarts': '[C:1][CH2:2][OH:3]>>[C:1][C:2](=[O])[OH:3]',
+        'description': 'Primary Alcohol -> Carboxylic Acid (Direct Oxidation)',
+        'priority': 7
+    },
+    'Dess_Martin_Oxidation': {
+        'smarts': '[C:1][CH:2]([OH:3])[C:4]>>[C:1][C:2](=[O:3])[C:4]',
+        'description': 'Secondary Alcohol -> Ketone (Dess-Martin)',
+        'priority': 7
+    },
+    'Oppenauer_Oxidation': {
+        'smarts': '[C:1][CH:2]([OH:3])[C:4].[C:5]=[O:6]>>[C:1][C:2](=[O:3])[C:4].[C:5][OH:6]',
+        'description': 'Alcohol + Ketone -> Ketone + Alcohol (Oppenauer)',
+        'priority': 7
+    },
+    'Oxidation_Thioether': {
+        'smarts': '[C:1][S:2][C:3].[O:4]>>[C:1][S:2](=[O:4])[C:3]',
+        'description': 'Thioether -> Sulfoxide',
+        'priority': 6
+    },
+    'AmineToN_Oxide': {
+        'smarts': '[C:1][N:2]([C:3])[C:4].[O:5]>>[C:1][N+:2]([C:3])[C:4][O-:5]',
+        'description': 'Tertiary Amine -> Amine N-Oxide',
+        'priority': 6
+    },
+
+    # Additional Reduction Reactions (10)
+    'AlkyneToCisAlkene': {
+        'smarts': '[C:1]#[C:2].[H:3][H:4]>>[C:1]=[C:2][H:3][H:4]',
+        'description': 'Alkyne -> Cis-Alkene (Lindlar Reduction)',
+        'priority': 7
+    },
+    'NitrileToAmine_Primary': {
+        'smarts': '[C:1]#[N:2].[H:3][H:4]>>[C:1][CH2:2][NH2:2]',
+        'description': 'Nitrile -> Primary Amine (Reduction)',
+        'priority': 7
+    },
+    'ImineToSecondaryAmine': {
+        'smarts': '[C:1]=[N:2][C:3].[H:4][H:5]>>[C:1][NH:2][C:3]',
+        'description': 'Imine -> Secondary Amine',
+        'priority': 7
+    },
+    'KetoneToMethylene': {
+        'smarts': '[C:1][C:2](=[O:3])[C:4].[H:5][H:6]>>[C:1][CH2:2][C:4]',
+        'description': 'Ketone -> Methylene (Clemmensen)',
+        'priority': 6
+    },
+    'AldehydeToPrimaryAlcohol': {
+        'smarts': '[C:1][C:2](=[O:3])[H:4].[H:5][H:6]>>[C:1][CH2:2][OH:3]',
+        'description': 'Aldehyde -> Primary Alcohol (Reduction)',
+        'priority': 7
+    },
+    'NitrosoToHydroxylamine': {
+        'smarts': '[C:1][N:2]=[O:3].[H:4][H:5]>>[C:1][N:2][OH:3][H:4]',
+        'description': 'Nitroso -> Hydroxylamine',
+        'priority': 6
+    },
+    'AzideToPrimaryAmine': {
+        'smarts': '[C:1][N:2]=[N+:3]=[N-:4].[H:5][H:6]>>[C:1][NH2:2].[N:3]#[N:4]',
+        'description': 'Azide -> Primary Amine + Nitrogen',
+        'priority': 7
+    },
+    'EsterToAldehyde': {
+        'smarts': '[C:1][O:2][C:3](=[O:4]).[H:5][H:6]>>[C:1][OH:2].[C:3](=[O:4])[H:5]',
+        'description': 'Ester -> Aldehyde (DIBAL-H Reduction)',
+        'priority': 7
+    },
+    'AmideToAldehyde': {
+        'smarts': '[C:1][C:2](=[O:3])[N:4].[H:5][H:6]>>[C:1][C:2](=[O:3])[H:5].[N:4][H:6]',
+        'description': 'Amide -> Aldehyde (Reduction)',
+        'priority': 7
+    },
+    'DisulfideToThiol_Reduction': {
+        'smarts': '[C:1][S:2][S:3][C:4].[H:5][H:6]>>[C:1][S:2][H:5].[C:4][S:3][H:6]',
+        'description': 'Disulfide -> Two Thiols (Reduction)',
+        'priority': 6
+    },
+
+    # Additional Cross-Coupling Reactions (10)
+    'Sonogashira_Alkyl': {
+        'smarts': '[C:1][Br,I:2].[C:3]#[C:4][H:5]>>[C:1][C:3]#[C:4].[Br,I:2][H:5]',
+        'description': 'Alkyl Halide + Terminal Alkyne -> Coupled Alkyne (Sonogashira)',
+        'priority': 8
+    },
+    'Heck_Alkyl': {
+        'smarts': '[C:1][Br,I:2].[C:3]=[C:4]>>[C:1][C:3]=[C:4].[Br,I:2]',
+        'description': 'Alkyl Halide + Alkene -> Coupled Alkene (Heck)',
+        'priority': 8
+    },
+    'Suzuki_Alkyl_Boronate': {
+        'smarts': '[C:1][Br,I:2].[C:3][B:4]([O:5])[O:6]>>[C:1][C:3].[Br,I:2][B:4]([O:5])[O:6]',
+        'description': 'Alkyl Halide + Boronate Ester -> Coupled Product',
+        'priority': 7
+    },
+    'Stille_Alkyl': {
+        'smarts': '[C:1][Br,I:2].[C:3][Sn:4]>>[C:1][C:3].[Br,I:2][Sn:4]',
+        'description': 'Alkyl Halide + Organotin -> Coupled Product (Stille)',
+        'priority': 8
+    },
+    'Negishi_Alkyl': {
+        'smarts': '[C:1][Br,I:2].[C:3][Zn:4][Cl:5]>>[C:1][C:3].[Br,I:2][Zn:4][Cl:5]',
+        'description': 'Alkyl Halide + Organozinc -> Coupled Product (Negishi)',
+        'priority': 8
+    },
+    'Kumada_Alkyl': {
+        'smarts': '[C:1][Br,I:2].[C:3][Mg:4][Cl:5]>>[C:1][C:3].[Br,I:2][Mg:4][Cl:5]',
+        'description': 'Alkyl Halide + Grignard -> Coupled Product (Kumada)',
+        'priority': 8
+    },
+    'Hiyama_Alkyl': {
+        'smarts': '[C:1][Br,I:2].[C:3][Si:4]>>[C:1][C:3].[Br,I:2][Si:4]',
+        'description': 'Alkyl Halide + Organosilane -> Coupled Product (Hiyama)',
+        'priority': 8
+    },
+    'Buchwald_Hartwig_Secondary': {
+        'smarts': '[c:1][Br,I:2].[N:3]([C:4])[H:5]>>[c:1][N:3][C:4].[Br,I:2][H:5]',
+        'description': 'Aryl Halide + Secondary Amine -> Tertiary Aryl Amine (Buchwald-Hartwig)',
+        'priority': 8
+    },
+    'Cross_Coupling_Vinyl': {
+        'smarts': '[c:1][Br,I:2].[C:3]=[C:4]>>[c:1][C:3]=[C:4].[Br,I:2]',
+        'description': 'Aryl Halide + Vinyl -> Aryl Alkene',
+        'priority': 8
+    },
+    'Miyaura_Borylation_Alkyl': {
+        'smarts': '[C:1][Br,I:2].[B:3]([O:4])[O:5]>>[C:1][B:3]([O:4])[O:5].[Br,I:2]',
+        'description': 'Alkyl Halide -> Alkyl Boronate (Miyaura Borylation)',
+        'priority': 8
+    },
+
+    # Additional Cycloaddition Reactions (10)
+    '1,3-Dipolar_Nitrone': {
+        'smarts': '[C:1]=[C:2].[C:3]=[N+:4][O-:5]>>[C:1]1[C:2][C:3][N+:4][O-:5]1',
+        'description': 'Alkene + Nitrone -> Isoxazolidine',
+        'priority': 7
+    },
+    'Diels_Alder_Alkyne': {
+        'smarts': '[C:1]=[C:2][C:3]=[C:4].[C:5]#[C:6]>>[C:1]1[C:2][C:5][C:6][C:4][C:3]1',
+        'description': 'Diene + Alkyne -> Cyclohexene (Diels-Alder)',
+        'priority': 9
+    },
+    '[2+2]_Photocycloaddition': {
+        'smarts': '[C:1]=[C:2].[C:3]=[C:4]>>[C:1]1[C:2][C:3][C:4]1',
+        'description': 'Alkene + Alkene -> Cyclobutane ([2+2] Photocycloaddition)',
+        'priority': 7
+    },
+    '1,3-Dipolar_Azomethine': {
+        'smarts': '[C:1]=[C:2].[C:3]=[N:4][C:5]>>[C:1]1[C:2][C:3][N:4][C:5]1',
+        'description': 'Alkene + Azomethine Ylide -> Pyrrolidine',
+        'priority': 7
+    },
+    'Paterno_Buchi_Alkyne': {
+        'smarts': '[C:1]#[C:2].[C:3]=[O:4]>>[C:1]1[C:2][O:4][C:3]1',
+        'description': 'Alkyne + Carbonyl -> Oxetene (Paterno-Buchi)',
+        'priority': 7
+    },
+    'Cycloaddition_Nitrile': {
+        'smarts': '[C:1]=[C:2].[C:3]#[N:4]>>[C:1]1[C:2][C:3][N:4]1',
+        'description': 'Alkene + Nitrile -> Four-Membered Heterocycle',
+        'priority': 7
+    },
+    '[4+2]_Hetero_Diels_Alder_Nitroso': {
+        'smarts': '[C:1]=[C:2][C:3]=[C:4].[N:5]=[O:6]>>[C:1]1[C:2][N:5][O:6][C:4][C:3]1',
+        'description': 'Diene + Nitroso -> Oxazine (Hetero Diels-Alder)',
+        'priority': 7
+    },
+    '1,5-Dipolar_Cycloaddition': {
+        'smarts': '[C:1]=[C:2][C:3][N:4]=[N:5]>>[C:1]1[C:2][C:3][N:4][N:5]1',
+        'description': '1,5-Dipole -> Five-Membered Heterocycle',
+        'priority': 7
+    },
+    'Cycloaddition_Carbonyl_Ylide': {
+        'smarts': '[C:1]=[C:2].[C:3][C:4][O:5]>>[C:1]1[C:2][C:3][C:4][O:5]1',
+        'description': 'Alkene + Carbonyl Ylide -> Oxolane',
+        'priority': 7
+    },
+    'Alkyne_Trimerization': {
+        'smarts': '[C:1]#[C:2].[C:3]#[C:4].[C:5]#[C:6]>>[c:1]1[c:2][c:3][c:4][c:5][c:6]1',
+        'description': 'Three Alkynes -> Benzene (Trimerization)',
+        'priority': 8
+    },
+
+    # Additional Rearrangement Reactions (10)
+    'Sigmatropic_1,3': {
+        'smarts': '[C:1]=[C:2][C:3][C:4][H:5]>>[C:1][C:2]=[C:3][C:4][H:5]',
+        'description': '1,3-Sigmatropic Rearrangement',
+        'priority': 6
+    },
+    'Wolff_Rearrangement': {
+        'smarts': '[C:1][C:2](=[O:3])[N:4]#[N:5]>>[C:1]=[C:2][O:3].[N:4]#[N:5]',
+        'description': 'Diazo Ketone -> Ketene (Wolff)',
+        'priority': 6
+    },
+    'Schmidt_Rearrangement': {
+        'smarts': '[C:1](=[O:2])[N:3][N:4][H:5]>>[C:1][N:3]#[C:4].[OH2:2]',
+        'description': 'Carboxylic Acid + Azide -> Isocyanate (Schmidt)',
+        'priority': 6
+    },
+    'Baeyer_Villiger_Aldehyde': {
+        'smarts': '[C:1][C:2](=[O:3])[H:4]>>[C:1][O:3][C:2][OH:4]',
+        'description': 'Aldehyde -> Formate Ester (Baeyer-Villiger)',
+        'priority': 7
+    },
+    'Claisen_Allyl_Ether': {
+        'smarts': '[C:1]=[C:2][O:3][C:4]=[C:5]>>[C:1][C:2](=[O:3])[C:4]=[C:5]',
+        'description': 'Allyl Vinyl Ether -> Carbonyl (Claisen)',
+        'priority': 6
+    },
+    'Cope_Elimination_Oxide': {
+        'smarts': '[C:1][C:2][N+:3]([C:4])[O-:5]>>[C:1]=[C:2].[N:3][C:4][OH:5]',
+        'description': 'Amine Oxide -> Alkene + Hydroxylamine',
+        'priority': 6
+    },
+    'Fischer_Indole': {
+        'smarts': '[c:1][N:2][N:3][C:4](=[O:5])[C:6]>>[c:1]1[c:6][n:2][c:4][c:1]1',
+        'description': 'Aryl Hydrazone -> Indole (Fischer)',
+        'priority': 7
+    },
+    'Ireland_Claisen': {
+        'smarts': '[C:1][C:2](=[O:3])[O:4][C:5]=[C:6]>>[C:1][C:2](=[O:3])[C:5]=[C:6][O:4][H]',
+        'description': 'Silyl Enol Ether -> Rearranged Acid (Ireland-Claisen)',
+        'priority': 6
+    },
+    'Benzilic_Acid': {
+        'smarts': '[c:1][C:2](=[O:3])[C:4](=[O:5])[c:6]>>[c:1][C:2]([OH:3])[C:4](=[O:5])[c:6]',
+        'description': 'Diketone -> Hydroxy Acid (Benzilic Acid Rearrangement)',
+        'priority': 6
+    },
+    'Favorskii_Rearrangement': {
+        'smarts': '[C:1][C:2](=[O:3])[C:4]([Cl,Br:5])[C:6]>>[C:1][C:2](=[O:3])[C:4][C:6].[Cl,Br:5]',
+        'description': 'Alpha-Halo Ketone -> Carboxylic Acid (Favorskii)',
+        'priority': 6
+    },
+
+    # Additional Heterocycle Formation Reactions (10)
+    'Pyridine_Formation': {
+        'smarts': '[C:1]=[O:2].[C:3]=[O:4].[N:5][H:6]>>[c:1]1[c:3][n:5][c:1][c:3][c:1]1',
+        'description': 'Two Carbonyls + Ammonia -> Pyridine (Chichibabin)',
+        'priority': 7
+    },
+    'Thiophene_Formation': {
+        'smarts': '[C:1](=[O:2])[C:3][C:4](=[O:5]).[S:6]>>[c:1]1[c:3][c:4][s:6][c:1]1',
+        'description': 'Diketone + Sulfur -> Thiophene',
+        'priority': 7
+    },
+    'Furan_Formation': {
+        'smarts': '[C:1](=[O:2])[C:3][C:4](=[O:5]).[O:6]>>[c:1]1[c:3][c:4][o:6][c:1]1',
+        'description': 'Diketone + Oxygen -> Furan',
+        'priority': 7
+    },
+    'Pyrazoline_Formation': {
+        'smarts': '[C:1]=[C:2].[N:3][N:4][H:5]>>[C:1]1[C:2][N:3][N:4][H:5]1',
+        'description': 'Alkene + Diazo Compound -> Pyrazoline',
+        'priority': 7
+    },
+    'Oxazoline_Formation': {
+        'smarts': '[C:1](=[O:2])[Cl:3].[N:4][C:5][OH:6]>>[c:1]1[o:2][c:5][n:4][c:1]1.[Cl:3][H:6]',
+        'description': 'Acid Chloride + Amino Alcohol -> Oxazoline',
+        'priority': 7
+    },
+    'Imidazoline_Formation': {
+        'smarts': '[C:1](=[O:2])[Cl:3].[N:4][C:5][N:6][H:7]>>[c:1]1[n:4][c:5][n:6][c:1]1.[Cl:3][H:7]',
+        'description': 'Acid Chloride + Diamine -> Imidazoline',
+        'priority': 7
+    },
+    'Thiazoline_Formation': {
+        'smarts': '[C:1](=[O:2])[Cl:3].[N:4][C:5][S:6][H:7]>>[c:1]1[s:6][c:5][n:4][c:1]1.[Cl:3][H:7]',
+        'description': 'Acid Chloride + Amino Thiol -> Thiazoline',
+        'priority': 7
+    },
+    'Indole_Formation_Skatole': {
+        'smarts': '[c:1][N:2][H:3].[C:4](=[O:5])[C:6]>>[c:1]1[c:6][n:2][c:4][c:1]1',
+        'description': 'Aniline + Ketone -> Indole (Skatole Synthesis)',
+        'priority': 7
+    },
+    'Quinoline_Formation': {
+        'smarts': '[c:1][N:2][H:3].[C:4](=[O:5])[C:6]=[C:7]>>[c:1]1[c:6][c:7][n:2][c:4][c:1]1',
+        'description': 'Aniline + Enone -> Quinoline (Skraup Synthesis)',
+        'priority': 7
+    },
+    'Isoquinoline_Formation': {
+        'smarts': '[c:1][C:2][N:3][H:4].[C:5](=[O:6])>>[c:1]1[c:2][n:3][c:5][c:1]1.[OH2:6]',
+        'description': 'Benzylamine + Carbonyl -> Isoquinoline (Pictet-Spengler)',
+        'priority': 7
+    },
+
+    # Additional Protecting Group Chemistry (10)
+    'Benzyl_Protection': {
+        'smarts': '[C:1][OH:2].[C:3][Cl:4][c:5]>>[C:1][O:2][C:3][c:5].[Cl:4][H]',
+        'description': 'Alcohol + Benzyl Chloride -> Benzyl Ether',
+        'priority': 6
+    },
+    'TBS_Protection': {
+        'smarts': '[C:1][OH:2].[Si:3]([C:4])([C:5])[Cl:6]>>[C:1][O:2][Si:3]([C:4])([C:5]).[Cl:6][H]',
+        'description': 'Alcohol + TBS Chloride -> TBS-Protected Alcohol',
+        'priority': 6
+    },
+    'Trityl_Protection': {
+        'smarts': '[C:1][OH:2].[C:3]([c:4])([c:5])[Cl:6]>>[C:1][O:2][C:3]([c:4])([c:5]).[Cl:6][H]',
+        'description': 'Alcohol + Trityl Chloride -> Trityl Ether',
+        'priority': 6
+    },
+    'Boc_Protection_Secondary': {
+        'smarts': '[N:1]([C:2])[H:3].[C:4](=[O:5])[O:6][C:7]>>[N:1]([C:2])[C:4](=[O:5])[O:6][C:7].[H:3]',
+        'description': 'Secondary Amine + Boc Anhydride -> Boc-Protected Amine',
+        'priority': 6
+    },
+    'Fmoc_Protection_Secondary': {
+        'smarts': '[N:1]([C:2])[H:3].[C:4](=[O:5])[O:6][c:7]>>[N:1]([C:2])[C:4](=[O:5])[O:6][c:7].[H:3]',
+        'description': 'Secondary Amine + Fmoc Chloride -> Fmoc-Protected Amine',
+        'priority': 6
+    },
+    'Methyl_Ether_Protection': {
+        'smarts': '[C:1][OH:2].[C:3][I:4]>>[C:1][O:2][C:3].[I:4][H]',
+        'description': 'Alcohol + Methyl Iodide -> Methyl Ether',
+        'priority': 6
+    },
+    'SEM_Protection': {
+        'smarts': '[C:1][OH:2].[C:3][O:4][Si:5][Cl:6]>>[C:1][O:2][C:3][O:4][Si:5].[Cl:6][H]',
+        'description': 'Alcohol + SEM Chloride -> SEM-Protected Alcohol',
+        'priority': 6
+    },
+    'Acetal_Protection_Ketone': {
+        'smarts': '[C:1][C:2](=[O:3])[C:4].[O:5][C:6][O:7]>>[C:1][C:2]([O:5][C:6][O:7])[C:4].[OH2:3]',
+        'description': 'Ketone + Diol -> Cyclic Acetal',
+        'priority': 6
+    },
+    'Cbz_Protection_Secondary': {
+        'smarts': '[N:1]([C:2])[H:3].[C:4](=[O:5])[O:6][c:7]>>[N:1]([C:2])[C:4](=[O:5])[O:6][c:7].[H:3]',
+        'description': 'Secondary Amine + Cbz Chloride -> Cbz-Protected Amine',
+        'priority': 6
+    },
+    'PMB_Protection': {
+        'smarts': '[C:1][OH:2].[C:3][Cl:4][c:5][O:6][C:7]>>[C:1][O:2][C:3][c:5][O:6][C:7].[Cl:4][H]',
+        'description': 'Alcohol + PMB Chloride -> PMB Ether',
+        'priority': 6
+    },
+
+    # Additional Condensation Reactions (10)
+    'Aldol_Addition': {
+        'smarts': '[C:1][C:2](=[O:3])[H:4].[C:5][C:6](=[O:7])[H:8]>>[C:1][C:2]([OH:3])[C:5][C:6](=[O:7])[H:8]',
+        'description': 'Aldehyde + Aldehyde -> Beta-Hydroxy Aldehyde (Aldol Addition)',
+        'priority': 7
+    },
+    'Cannizzaro_Reaction': {
+        'smarts': '[c:1][C:2](=[O:3])[H:4].[c:5][C:6](=[O:7])[H:8]>>[c:1][C:2][OH:3].[c:5][C:6](=[O:7])[OH:8]',
+        'description': 'Aromatic Aldehyde -> Alcohol + Carboxylic Acid (Cannizzaro)',
+        'priority': 7
+    },
+    'Perkin_Condensation': {
+        'smarts': '[c:1][C:2](=[O:3])[H:4].[C:5](=[O:6])[O:7][C:8]>>[c:1][C:2]=[C:5][C:6](=[O:7])[O:8].[OH2:3]',
+        'description': 'Aromatic Aldehyde + Anhydride -> Cinnamic Acid (Perkin)',
+        'priority': 7
+    },
+    'Knoevenagel_Nitrile': {
+        'smarts': '[C:1]=[O:2].[C:3][C:4]#[N:5]>>[C:1]=[C:3][C:4]#[N:5].[OH2:2]',
+        'description': 'Carbonyl + Active Methylene Nitrile -> Unsaturated Nitrile',
+        'priority': 7
+    },
+    'Claisen_Schmidt': {
+        'smarts': '[c:1][C:2](=[O:3])[H:4].[C:5][C:6](=[O:7])[H:8]>>[c:1][C:2]=[C:5][C:6](=[O:7]).[OH2:3]',
+        'description': 'Aromatic Aldehyde + Ketone -> Enone (Claisen-Schmidt)',
+        'priority': 7
+    },
+    'Stobbe_Condensation': {
+        'smarts': '[C:1]=[O:2].[C:3]([C:4](=[O:5])[O:6])[C:7](=[O:8])[O:9]>>[C:1]=[C:3][C:4](=[O:5])[O:6].[C:7](=[O:8])[O:9]',
+        'description': 'Carbonyl + Succinic Ester -> Unsaturated Acid (Stobbe)',
+        'priority': 7
+    },
+    'Tishchenko_Reaction': {
+        'smarts': '[C:1][C:2](=[O:3])[H:4].[C:5][C:6](=[O:7])[H:8]>>[C:1][C:2](=[O:3])[O:7][C:6][C:5]',
+        'description': 'Two Aldehydes -> Ester (Tishchenko)',
+        'priority': 7
+    },
+    'Enamine_Formation': {
+        'smarts': '[C:1][C:2](=[O:3]).[N:4][H:5]>>[C:1][C:2]=[N:4].[OH2:3]',
+        'description': 'Ketone + Amine -> Enamine + Water',
+        'priority': 7
+    },
+    'Acetoacetic_Ester_Condensation': {
+        'smarts': '[C:1][C:2](=[O:3])[O:4][C:5].[C:6][C:7](=[O:8])[O:9][C:10]>>[C:1][C:2](=[O:3])[C:6][C:7](=[O:8])[OH:9].[C:5][O:4][C:10]',
+        'description': 'Two Esters -> Beta-Ketoester (Acetoacetic Ester Condensation)',
+        'priority': 7
+    },
+    'Knoevenagel_Ester': {
+        'smarts': '[C:1]=[O:2].[C:3][C:4](=[O:5])[O:6][C:7]>>[C:1]=[C:3][C:4](=[O:5])[O:6][C:7].[OH2:2]',
+        'description': 'Carbonyl + Active Methylene Ester -> Unsaturated Ester',
+        'priority': 7
+    },
+
+    # Additional Multi-Component Reactions (10)
+    'Ugi_Three_Component': {
+        'smarts': '[C:1]=[O:2].[N:3][H:4].[C:5][N:6]#[C:7]>>[C:1]([N:3][C:5])[N:6][C:7][OH:2]',
+        'description': 'Aldehyde + Amine + Isocyanide -> Amide (Ugi 3-Component)',
+        'priority': 8
+    },
+    'Passerini_Aldehyde': {
+        'smarts': '[C:1][C:2](=[O:3])[H:4].[C:5](=[O:6])[OH:7].[C:8][N:9]#[C:10]>>[C:1][C:2]([O:6][C:5])[O:7][C:8][C:10][N:9][H:4]',
+        'description': 'Aldehyde + Acid + Isocyanide -> Ester Amide (Passerini)',
+        'priority': 7
+    },
+    'Biginelli_Urea': {
+        'smarts': '[C:1][C:2](=[O:3])[H:4].[C:5][C:6](=[O:7])[C:8].[N:9][C:10](=[O:11])[N:12]>>[c:1]1[n:9][c:6][c:8][n:12][c:1]1.[OH2:3]',
+        'description': 'Aldehyde + Beta-Ketoester + Urea -> Dihydropyrimidinone (Biginelli)',
+        'priority': 7
+    },
+    'Hantzsch_Pyrrole': {
+        'smarts': '[C:1](=[O:2])[C:3][C:4](=[O:5]).[N:6][H:7][C:8]>>[c:1]1[c:3][c:4][n:6][c:8]1',
+        'description': 'Diketone + Amine -> Substituted Pyrrole (Hantzsch)',
+        'priority': 7
+    },
+    'Gewald_Thiazole': {
+        'smarts': '[C:1][C:2](=[O:3])[C:4].[S:5].[C:6]#[N:7]>>[c:1]1[c:2][c:4][s:5][c:6]1.[N:7][H]',
+        'description': 'Ketone + Sulfur + Nitrile -> Thiazole (Gewald)',
+        'priority': 7
+    },
+    'Povarov_Reaction': {
+        'smarts': '[c:1][N:2][H:3].[C:4]=[C:5].[C:6]=[O:7]>>[c:1]1[c:4][c:5][n:2][c:6][c:1]1.[OH2:7]',
+        'description': 'Aniline + Alkene + Aldehyde -> Quinoline (Povarov)',
+        'priority': 7
+    },
+    'Mannich_Imine': {
+        'smarts': '[C:1][C:2](=[O:3])[H:4].[N:5][C:6].[C:7]=[O:8]>>[C:1][C:2](=[O:3])[C:6][N:5][C:7][OH:8]',
+        'description': 'Aldehyde + Imine + Carbonyl -> Beta-Amino Carbonyl (Mannich)',
+        'priority': 7
+    },
+    'Strecker_Nitrile': {
+        'smarts': '[C:1][C:2](=[O:3])[H:4].[N:5][H:6][H:7].[C:8]#[N:9]>>[C:1][C:2]([N:5][H:7])[C:8]#[N:9].[OH2:3]',
+        'description': 'Aldehyde + Ammonia + Cyanide -> Amino Nitrile (Strecker)',
+        'priority': 7
+    },
+    'Paal_Knorr_Furan': {
+        'smarts': '[C:1](=[O:2])[C:3][C:4](=[O:5]).[O:6][H:7]>>[c:1]1[c:3][c:4][o:6][c:1]1.[OH2:5]',
+        'description': 'Diketone + Alcohol -> Furan (Paal-Knorr)',
+        'priority': 7
+    },
+    'Hantzsch_Thiazole': {
+        'smarts': '[C:1](=[O:2])[Cl:3].[C:4][C:5](=[S:6])[N:7][H:8]>>[c:1]1[c:4][s:6][c:5][n:7]1.[Cl:3][H:8]',
+        'description': 'Alpha-Halo Ketone + Thioamide -> Thiazole (Hantzsch)',
+        'priority': 7
+    },
+
+    # Additional Specialized Reactions (10)
+    'Wacker_Oxidation_Alkyne': {
+        'smarts': '[C:1]#[C:2][C:3].[O:4]>>[C:1][C:2](=[O:4])[C:3]',
+        'description': 'Terminal Alkyne -> Methyl Ketone (Wacker)',
+        'priority': 7
+    },
+    'Ring_Closing_Metathesis': {
+        'smarts': '[C:1]=[C:2][C:3].[C:4][C:5]=[C:6]>>[C:1]1[C:2][C:5][C:6]1.[C:3]=[C:4]',
+        'description': 'Diene -> Cyclic Alkene + Ethylene (Ring-Closing Metathesis)',
+        'priority': 8
+    },
+    'Pauson_Khand_Alkyne': {
+        'smarts': '[C:1]#[C:2].[C:3]=[C:4].[C:5]=[O:6]>>[C:1]1[C:2][C:3][C:4][C:5](=[O:6])1',
+        'description': 'Alkyne + Alkene + CO -> Cyclopentenone (Pauson-Khand)',
+        'priority': 7
+    },
+    'Hydroacylation': {
+        'smarts': '[C:1][C:2](=[O:3])[H:4].[C:5]=[C:6]>>[C:1][C:2](=[O:3])[C:5][C:6]',
+        'description': 'Aldehyde + Alkene -> Ketone (Hydroacylation)',
+        'priority': 7
+    },
+    'C_H_Insertion': {
+        'smarts': '[C:1][H:2].[C:3][N:4]#[N:5]>>[C:1][C:3].[N:4]#[N:5][H:2]',
+        'description': 'Alkane + Diazo -> Alkyl Insertion (C-H Insertion)',
+        'priority': 7
+    },
+    'Metathesis_Cross': {
+        'smarts': '[C:1]=[C:2][C:3].[C:4]=[C:5][C:6]>>[C:1]=[C:4].[C:2][C:3]=[C:5][C:6]',
+        'description': 'Two Alkenes -> Crossed Alkenes (Cross Metathesis)',
+        'priority': 8
+    },
+    'Hydroarylation': {
+        'smarts': '[c:1][H:2].[C:3]=[C:4]>>[c:1][C:3][C:4]',
+        'description': 'Aromatic C-H + Alkene -> Alkyl Aromatic (Hydroarylation)',
+        'priority': 7
+    },
+    'Click_Reaction_Thiol': {
+        'smarts': '[C:1]=[C:2].[S:3][H:4]>>[C:1][C:2][S:3][H:4]',
+        'description': 'Alkene + Thiol -> Thioether (Thiol-Ene Click)',
+        'priority': 7
+    },
+    'Oxidative_Coupling': {
+        'smarts': '[c:1][H:2].[c:3][H:4]>>[c:1][c:3].[H:2][H:4]',
+        'description': 'Two Aryl C-H -> Biaryl (Oxidative Coupling)',
+        'priority': 7
+    },
+    'Hydroboration_Oxidation': {
+        'smarts': '[C:1]=[C:2].[B:3][H:4].[O:5]>>[C:1][C:2][OH:5].[B:3][H:4]',
+        'description': 'Alkene + Borane + Oxidation -> Alcohol',
+        'priority': 7
     }
 }
