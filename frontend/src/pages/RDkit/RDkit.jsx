@@ -28,9 +28,6 @@ import {
   TableHead,
   TableRow,
   TableContainer,
-  Select,
-  FormControl,
-  InputLabel,
 } from "@mui/material"
 import {
   ExpandMore,
@@ -87,84 +84,15 @@ const loadingMessages = [
   "Generating and scoring reaction products...",
 ]
 
-
-
-const toastManager = {
-  activeToasts: new Set(),
-
-  show: (message, options = {}) => {
-    const toastId = options.id || `general-${Date.now()}-${message.slice(0, 20)}`
-    if (!toastManager.activeToasts.has(toastId)) {
-      toastManager.activeToasts.add(toastId)
-      const toastPromise = toast(message, {
-        ...options,
-        id: toastId,
-      })
-      
-      // Remove from active set after duration
-      setTimeout(() => {
-        toastManager.activeToasts.delete(toastId)
-      }, options.duration || 4000)
-      
-      return toastPromise
-    }
-  },
-
-  success: (message, options = {}) => {
-    const toastId = options.id || `success-${Date.now()}-${message.slice(0, 20)}`
-    if (!toastManager.activeToasts.has(toastId)) {
-      toastManager.activeToasts.add(toastId)
-      const toastPromise = toast.success(message, {
-        ...options,
-        id: toastId,
-      })
-      
-      setTimeout(() => {
-        toastManager.activeToasts.delete(toastId)
-      }, options.duration || 4000)
-      
-      return toastPromise
-    }
-  },
-
-  error: (message, options = {}) => {
-    const toastId = options.id || `error-${Date.now()}-${message.slice(0, 20)}`
-    if (!toastManager.activeToasts.has(toastId)) {
-      toastManager.activeToasts.add(toastId)
-      const toastPromise = toast.error(message, {
-        ...options,
-        id: toastId,
-      })
-      
-      setTimeout(() => {
-        toastManager.activeToasts.delete(toastId)
-      }, options.duration || 4000)
-      
-      return toastPromise
-    }
-  },
-
-  warn: (message, options = {}) => {
-    const toastId = options.id || `warn-${Date.now()}-${message.slice(0, 20)}`
-    if (!toastManager.activeToasts.has(toastId)) {
-      toastManager.activeToasts.add(toastId)
-      const toastPromise = toast(message, {
-        ...options,
-        id: toastId,
-        style: {
-          background: "#fff3e0",
-          color: "#e65100",
-          border: "1px solid #fb8c00",
-        },
-      })
-      
-      setTimeout(() => {
-        toastManager.activeToasts.delete(toastId)
-      }, options.duration || 4000)
-      
-      return toastPromise
-    }
-  },
+const toastWarn = (message, options = {}) => {
+  toast(message, {
+    ...options,
+    style: {
+      background: "#fff3e0",
+      color: "#e65100",
+      border: "1px solid #fb8c00",
+    },
+  })
 }
 
 const RDkit = () => {
@@ -181,15 +109,6 @@ const RDkit = () => {
   const [smilesImages, setSmilesImages] = useState({})
   const [retryAttempts, setRetryAttempts] = useState({ disease: 0, protein: 0, reaction: 0 })
   const [maxRetries] = useState(3)
-  const [selectedLigand, setSelectedLigand] = useState("")
-
-  useEffect(() => {
-  return () => {
-    // Clear all active toasts on unmount
-    toastManager.activeToasts.clear()
-    toast.dismiss()
-  }
-}, [])
 
   useEffect(() => {
     const fetchAvailableReactions = async () => {
@@ -197,11 +116,11 @@ const RDkit = () => {
       try {
         const response = await axios.get("http://127.0.0.1:5001/api/reactions", { timeout: 30000 })
         setAvailableReactions(response.data.reactions || [])
-        toastManager.success("Available reactions fetched successfully!", { id: "fetch-reactions" })
+        toast.success("Available reactions fetched successfully!", { id: "fetch-reactions" })
       } catch (err) {
         console.error("Error fetching available reactions:", err.message)
         setError(err.response?.data?.error || "Error fetching available reactions.")
-        toastManager.error("Failed to fetch available reactions.", { id: "fetch-reactions-error" })
+        toast.error("Failed to fetch available reactions.", { id: "fetch-reactions-error" })
       } finally {
         setReactionsLoading(false)
       }
@@ -295,7 +214,7 @@ const RDkit = () => {
       }
 
       setRetryAttempts((prev) => ({ ...prev, [type]: maxRetries - retriesLeft + 1 }))
-      toastManager.warn(`Retrying ${type} request... Attempt ${maxRetries - retriesLeft + 1} of ${maxRetries}`, {
+      toastWarn(`Retrying ${type} request... Attempt ${maxRetries - retriesLeft + 1} of ${maxRetries}`, {
         id: `retry-${type}`,
       })
       await new Promise((resolve) => setTimeout(resolve, 2000))
@@ -311,7 +230,6 @@ const RDkit = () => {
     setLoading(true)
     setCurrentStep(0)
     setRetryAttempts({ disease: 0, protein: 0, reaction: 0 })
-    setSelectedLigand("")
 
     try {
       const symptomsList = symptoms
@@ -321,7 +239,7 @@ const RDkit = () => {
 
       if (symptomsList.length === 0) {
         setError("Please enter at least one symptom.")
-        toastManager.error("Please enter at least one symptom.", { id: "submit-error" })
+        toast.error("Please enter at least one symptom.", { id: "submit-error" })
         setLoading(false)
         return
       }
@@ -329,14 +247,12 @@ const RDkit = () => {
       const validationResult = validateSymptoms(symptomsList)
       if (!validationResult.valid) {
         setError(validationResult.message)
-        toastManager.error(validationResult.message, { id: "submit-error" })
+        toast.error(validationResult.message, { id: "submit-error" })
         setLoading(false)
         return
       }
 
-      toastManager.show("This process may take up to 30 seconds per step due to complex computations.", {
-        id: "process-info",
-      })
+      toast("This process may take up to 30 seconds per step due to complex computations.", { id: "process-info" })
 
       // Step 1: Predict Disease
       let diseaseResponse
@@ -420,11 +336,11 @@ const RDkit = () => {
       }
 
       setReactionResult(reactionResponse.data || { reactionResults: [], failedReactions: [], statistics: {} })
-      toastManager.success("Analysis and reactions completed successfully!", { id: "submit-success" })
+      toast.success("Analysis and reactions completed successfully!", { id: "submit-success" })
     } catch (err) {
       console.error("Submission Error:", err.message)
       setError(err.message || "Error processing analysis. Please try again or check the backend server.")
-      toastManager.error(err.message || "Error processing analysis.", { id: "submit-error" })
+      toast.error(err.message || "Error processing analysis.", { id: "submit-error" })
     } finally {
       setLoading(false)
     }
@@ -441,8 +357,7 @@ const RDkit = () => {
     setAnchorEl(null)
     setSmilesImages({})
     setRetryAttempts({ disease: 0, protein: 0, reaction: 0 })
-    setSelectedLigand("")
-    toastManager.success("Form reset successfully!", { id: "reset-success" })
+    toast.success("Form reset successfully!", { id: "reset-success" })
   }
 
   const handleToggle = (key) => {
@@ -521,27 +436,9 @@ const RDkit = () => {
     }
   }
 
-  const handleLigandChange = (event) => {
-    setSelectedLigand(event.target.value)
-  }
-
-  const getSelectedLigandData = () => {
-    if (!result?.proteins?.TargetLigands || !selectedLigand) return null
-    return result.proteins.TargetLigands.find((ligand, index) => index.toString() === selectedLigand)
-  }
-
   return (
     <Box sx={{ minHeight: "100vh", bgcolor: "#f5f5f5", py: 4 }}>
-      <Toaster
-        position="top-right"
-        toastOptions={{
-          duration: 4000,
-          style: {
-            background: "#fff",
-            color: "#333",
-          },
-        }}
-      />
+      <Toaster position="top-right" />
       <Container maxWidth="xl">
         <Paper elevation={2} sx={{ p: 4, mb: 4, borderRadius: 1 }}>
           <Box sx={{ textAlign: "center", mb: 4 }}>
@@ -588,23 +485,6 @@ const RDkit = () => {
                         }}
                       >
                         Predict New Drug
-                      </Button>
-                      <Button
-                        variant="outlined"
-                        size="large"
-                        onClick={handleReset}
-                        disabled={loading}
-                        sx={{
-                          borderColor: "#2c3e50",
-                          color: "#2c3e50",
-                          "&:hover": {
-                            borderColor: "#1a252f",
-                            bgcolor: "rgba(44, 62, 80, 0.04)",
-                          },
-                          textTransform: "none",
-                        }}
-                      >
-                        Reset
                       </Button>
                     </Box>
                   </Grid>
@@ -1102,274 +982,220 @@ const RDkit = () => {
                 />
                 <CardContent>
                   {result.proteins.TargetLigands.length > 0 ? (
-                    <Box>
-                      <FormControl fullWidth sx={{ mb: 3 }}>
-                        <InputLabel id="ligand-select-label">Select a Target Ligand</InputLabel>
-                        <Select
-                          labelId="ligand-select-label"
-                          id="ligand-select"
-                          value={selectedLigand}
-                          label="Select a Target Ligand"
-                          onChange={handleLigandChange}
-                        >
-                          {result.proteins.TargetLigands.map((ligand, index) => (
-                            <MenuItem key={index} value={index.toString()}>
-                              <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-                                <Typography variant="body1" sx={{ fontWeight: 500 }}>
-                                  {ligand.ligandName || `Ligand ${index + 1}`}
+                    result.proteins.TargetLigands.map((ligand, index) => (
+                      <Card key={index} variant="outlined" sx={{ mb: 2, borderRadius: 1 }}>
+                        <CardContent sx={{ p: 2 }}>
+                          <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
+                            <Typography variant="subtitle1" sx={{ fontWeight: 600, flex: 1 }}>
+                              {ligand.ligandName || "Unknown Ligand"}
+                            </Typography>
+                            {ligand.LigandSmile === "Not applicable" && (
+                              <Chip label="Protein" size="small" sx={{ bgcolor: "#fff3e0", color: "#e65100" }} />
+                            )}
+                          </Box>
+
+                          <Grid container spacing={2}>
+                            <Grid item xs={12} sm={6}>
+                              <Typography variant="body2" sx={{ fontWeight: 600, color: "#5d6d7e" }}>
+                                Function:
+                              </Typography>
+                              <Typography variant="body2" sx={{ mb: 1 }}>
+                                {ligand.ligandFunction || "N/A"}
+                              </Typography>
+                            </Grid>
+                            <Grid item xs={12} sm={6}>
+                              <Typography variant="body2" sx={{ fontWeight: 600, color: "#5d6d7e" }}>
+                                DrugBank ID:
+                              </Typography>
+                              <Chip
+                                label={ligand.ligandDrugBankID || "N/A"}
+                                size="small"
+                                sx={{ fontFamily: "monospace" }}
+                              />
+                            </Grid>
+                            <Grid item xs={12}>
+                              <Typography variant="body2" sx={{ fontWeight: 600, color: "#5d6d7e" }}>
+                                SMILES:
+                              </Typography>
+                              <Paper
+                                variant="outlined"
+                                sx={{
+                                  p: 1,
+                                  bgcolor: "#fafafa",
+                                  fontFamily: "monospace",
+                                  fontSize: "0.85rem",
+                                  wordBreak: "break-all",
+                                }}
+                              >
+                                {ligand.LigandSmile || "N/A"}
+                              </Paper>
+                            </Grid>
+                            {ligand.LigandSmile &&
+                            ligand.LigandSmile !== "Not applicable" &&
+                            smilesImages[ligand.LigandSmile] ? (
+                              <Grid item xs={12}>
+                                <Typography variant="body2" sx={{ fontWeight: 600, color: "#5d6d7e" }}>
+                                  Structure:
                                 </Typography>
-                                {ligand.LigandSmile === "Not applicable" && (
-                                  <Chip label="Protein" size="small" sx={{ bgcolor: "#fff3e0", color: "#e65100" }} />
-                                )}
-                              </Box>
-                            </MenuItem>
-                          ))}
-                        </Select>
-                      </FormControl>
-
-                      {selectedLigand && getSelectedLigandData() && (
-                        <Card variant="outlined" sx={{ borderRadius: 1 }}>
-                          <CardContent sx={{ p: 3 }}>
-                            {(() => {
-                              const ligand = getSelectedLigandData()
-                              return (
-                                <>
-                                  <Box sx={{ display: "flex", alignItems: "center", mb: 3 }}>
-                                    <Typography variant="h6" sx={{ fontWeight: 600, flex: 1 }}>
-                                      {ligand.ligandName || "Unknown Ligand"}
-                                    </Typography>
-                                    {ligand.LigandSmile === "Not applicable" && (
-                                      <Chip
-                                        label="Protein"
-                                        size="small"
-                                        sx={{ bgcolor: "#fff3e0", color: "#e65100" }}
-                                      />
-                                    )}
-                                  </Box>
-
-                                  <Grid container spacing={3}>
-                                    <Grid item xs={12} md={6}>
-                                      <Typography variant="body2" sx={{ fontWeight: 600, color: "#5d6d7e", mb: 1 }}>
-                                        Function:
+                                <img
+                                  src={`data:image/png;base64,${smilesImages[ligand.LigandSmile]}`}
+                                  alt={`Structure of ${ligand.ligandName}`}
+                                  style={{ maxWidth: "200px", marginTop: "8px" }}
+                                />
+                              </Grid>
+                            ) : (
+                              <Grid item xs={12}>
+                                <Typography variant="body2" sx={{ fontWeight: 600, color: "#5d6d7e" }}>
+                                  Structure:
+                                </Typography>
+                                <Typography variant="caption" sx={{ color: "text.secondary" }}>
+                                  {ligand.LigandSmile === "Not applicable"
+                                    ? "Structure not applicable (Protein)"
+                                    : "Unable to load structure image"}
+                                </Typography>
+                              </Grid>
+                            )}
+                            <Grid item xs={12}>
+                              <Typography variant="body2" sx={{ fontWeight: 600, color: "#5d6d7e" }}>
+                                Functional Groups:
+                              </Typography>
+                              <Typography variant="body2" sx={{ mb: 1 }}>
+                                {getFunctionalGroups(ligand.LigandSmile)}
+                              </Typography>
+                            </Grid>
+                            <Grid item xs={12}>
+                              <Typography variant="body2" sx={{ fontWeight: 600, color: "#5d6d7e" }}>
+                                Description:
+                              </Typography>
+                              <Typography variant="body2">{ligand.LigandDiscription || "N/A"}</Typography>
+                            </Grid>
+                            {ligand.LigandSmile !== "Not applicable" && reactionResult && reactionResult.reactants && (
+                              <Grid item xs={12}>
+                                <Typography variant="body2" sx={{ fontWeight: 600, color: "#5d6d7e" }}>
+                                  ADMET Properties:
+                                </Typography>
+                                {(() => {
+                                  const reactant = reactionResult.reactants.find((r) => r.smiles === ligand.LigandSmile)
+                                  if (
+                                    !reactant ||
+                                    !reactant.admet_properties ||
+                                    reactant.admet_properties.length === 0
+                                  ) {
+                                    return <Typography variant="body2">Not available</Typography>
+                                  }
+                                  return reactant.admet_properties.map((section, secIdx) => (
+                                    <Box key={secIdx} sx={{ mt: 2 }}>
+                                      <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>
+                                        {section.section}
                                       </Typography>
-                                      <Typography variant="body2" sx={{ mb: 2 }}>
-                                        {ligand.ligandFunction || "N/A"}
-                                      </Typography>
-                                    </Grid>
-                                    <Grid item xs={12} md={6}>
-                                      <Typography variant="body2" sx={{ fontWeight: 600, color: "#5d6d7e", mb: 1 }}>
-                                        DrugBank ID:
-                                      </Typography>
-                                      <Chip
-                                        label={ligand.ligandDrugBankID || "N/A"}
-                                        size="small"
-                                        sx={{ fontFamily: "monospace", mb: 2 }}
-                                      />
-                                    </Grid>
-                                    <Grid item xs={12}>
-                                      <Typography variant="body2" sx={{ fontWeight: 600, color: "#5d6d7e", mb: 1 }}>
-                                        SMILES:
-                                      </Typography>
-                                      <Paper
-                                        variant="outlined"
+                                      <TableContainer
+                                        component={Paper}
                                         sx={{
-                                          p: 2,
-                                          bgcolor: "#fafafa",
-                                          fontFamily: "monospace",
-                                          fontSize: "0.9rem",
-                                          wordBreak: "break-all",
-                                          mb: 2,
+                                          boxShadow: "0 4px 12px rgba(0,0,0,0.05)",
+                                          borderRadius: 2,
+                                          overflow: "hidden",
                                         }}
                                       >
-                                        {ligand.LigandSmile || "N/A"}
-                                      </Paper>
-                                    </Grid>
-                                    {ligand.LigandSmile &&
-                                    ligand.LigandSmile !== "Not applicable" &&
-                                    smilesImages[ligand.LigandSmile] ? (
-                                      <Grid item xs={12}>
-                                        <Typography variant="body2" sx={{ fontWeight: 600, color: "#5d6d7e", mb: 1 }}>
-                                          Structure:
-                                        </Typography>
-                                        <Box sx={{ display: "flex", justifyContent: "center", mb: 2 }}>
-                                          <img
-                                            src={`data:image/png;base64,${smilesImages[ligand.LigandSmile]}`}
-                                            alt={`Structure of ${ligand.ligandName}`}
-                                            style={{ maxWidth: "300px", height: "auto" }}
-                                          />
-                                        </Box>
-                                      </Grid>
-                                    ) : (
-                                      <Grid item xs={12}>
-                                        <Typography variant="body2" sx={{ fontWeight: 600, color: "#5d6d7e", mb: 1 }}>
-                                          Structure:
-                                        </Typography>
-                                        <Typography variant="body2" sx={{ color: "text.secondary", mb: 2 }}>
-                                          {ligand.LigandSmile === "Not applicable"
-                                            ? "Structure not applicable (Protein)"
-                                            : "Unable to load structure image"}
-                                        </Typography>
-                                      </Grid>
-                                    )}
-                                    <Grid item xs={12}>
-                                      <Typography variant="body2" sx={{ fontWeight: 600, color: "#5d6d7e", mb: 1 }}>
-                                        Functional Groups:
-                                      </Typography>
-                                      <Typography variant="body2" sx={{ mb: 2 }}>
-                                        {getFunctionalGroups(ligand.LigandSmile)}
-                                      </Typography>
-                                    </Grid>
-                                    <Grid item xs={12}>
-                                      <Typography variant="body2" sx={{ fontWeight: 600, color: "#5d6d7e", mb: 1 }}>
-                                        Description:
-                                      </Typography>
-                                      <Typography variant="body2" sx={{ mb: 2 }}>
-                                        {ligand.LigandDiscription || "N/A"}
-                                      </Typography>
-                                    </Grid>
-                                    {ligand.LigandSmile !== "Not applicable" &&
-                                      reactionResult &&
-                                      reactionResult.reactants && (
-                                        <Grid item xs={12}>
-                                          <Typography variant="body2" sx={{ fontWeight: 600, color: "#5d6d7e", mb: 2 }}>
-                                            ADMET Properties:
-                                          </Typography>
-                                          {(() => {
-                                            const reactant = reactionResult.reactants.find(
-                                              (r) => r.smiles === ligand.LigandSmile,
-                                            )
-                                            if (
-                                              !reactant ||
-                                              !reactant.admet_properties ||
-                                              reactant.admet_properties.length === 0
-                                            ) {
-                                              return <Typography variant="body2">Not available</Typography>
-                                            }
-                                            return reactant.admet_properties.map((section, secIdx) => (
-                                              <Box key={secIdx} sx={{ mb: 3 }}>
-                                                <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 2 }}>
-                                                  {section.section}
-                                                </Typography>
-                                                <TableContainer
-                                                  component={Paper}
+                                        <Table size="small">
+                                          <TableHead>
+                                            <TableRow sx={{ bgcolor: "#2c3e50" }}>
+                                              <TableCell
+                                                sx={{
+                                                  fontWeight: 600,
+                                                  color: "white",
+                                                  py: 1.5,
+                                                  px: 2,
+                                                  borderBottom: "none",
+                                                }}
+                                              >
+                                                Property
+                                              </TableCell>
+                                              <TableCell
+                                                sx={{
+                                                  fontWeight: 600,
+                                                  color: "white",
+                                                  py: 1.5,
+                                                  px: 2,
+                                                  borderBottom: "none",
+                                                }}
+                                              >
+                                                Prediction
+                                              </TableCell>
+                                              <TableCell
+                                                sx={{
+                                                  fontWeight: 600,
+                                                  color: "white",
+                                                  py: 1.5,
+                                                  px: 2,
+                                                  borderBottom: "none",
+                                                }}
+                                              >
+                                                Units
+                                              </TableCell>
+                                            </TableRow>
+                                          </TableHead>
+                                          <TableBody>
+                                            {section.properties.map((prop, propIdx) => (
+                                              <TableRow
+                                                key={propIdx}
+                                                sx={{
+                                                  "&:nth-of-type(odd)": { bgcolor: "#f9fafb" },
+                                                  "&:hover": { bgcolor: "#f1f5f9" },
+                                                  transition: "background-color 0.3s ease",
+                                                }}
+                                              >
+                                                <TableCell
                                                   sx={{
-                                                    boxShadow: "0 4px 12px rgba(0,0,0,0.05)",
-                                                    borderRadius: 2,
-                                                    overflow: "hidden",
+                                                    py: 1.5,
+                                                    px: 2,
+                                                    borderBottom: "1px solid #e5e7eb",
+                                                    color: "#374151",
                                                   }}
                                                 >
-                                                  <Table size="small">
-                                                    <TableHead>
-                                                      <TableRow sx={{ bgcolor: "#2c3e50" }}>
-                                                        <TableCell
-                                                          sx={{
-                                                            fontWeight: 600,
-                                                            color: "white",
-                                                            py: 1.5,
-                                                            px: 2,
-                                                            borderBottom: "none",
-                                                          }}
-                                                        >
-                                                          Property
-                                                        </TableCell>
-                                                        <TableCell
-                                                          sx={{
-                                                            fontWeight: 600,
-                                                            color: "white",
-                                                            py: 1.5,
-                                                            px: 2,
-                                                            borderBottom: "none",
-                                                          }}
-                                                        >
-                                                          Prediction
-                                                        </TableCell>
-                                                        <TableCell
-                                                          sx={{
-                                                            fontWeight: 600,
-                                                            color: "white",
-                                                            py: 1.5,
-                                                            px: 2,
-                                                            borderBottom: "none",
-                                                          }}
-                                                        >
-                                                          Units
-                                                        </TableCell>
-                                                      </TableRow>
-                                                    </TableHead>
-                                                    <TableBody>
-                                                      {section.properties.map((prop, propIdx) => (
-                                                        <TableRow
-                                                          key={propIdx}
-                                                          sx={{
-                                                            "&:nth-of-type(odd)": { bgcolor: "#f9fafb" },
-                                                            "&:hover": { bgcolor: "#f1f5f9" },
-                                                            transition: "background-color 0.3s ease",
-                                                          }}
-                                                        >
-                                                          <TableCell
-                                                            sx={{
-                                                              py: 1.5,
-                                                              px: 2,
-                                                              borderBottom: "1px solid #e5e7eb",
-                                                              color: "#374151",
-                                                            }}
-                                                          >
-                                                            {prop.name}
-                                                          </TableCell>
-                                                          <TableCell
-                                                            sx={{
-                                                              py: 1.5,
-                                                              px: 2,
-                                                              borderBottom: "1px solid #e5e7eb",
-                                                              color: "#374151",
-                                                            }}
-                                                          >
-                                                            {prop.prediction}
-                                                          </TableCell>
-                                                          <TableCell
-                                                            sx={{
-                                                              py: 1.5,
-                                                              px: 2,
-                                                              borderBottom: "1px solid #e5e7eb",
-                                                              color: "#374151",
-                                                            }}
-                                                          >
-                                                            {prop.units || "-"}
-                                                          </TableCell>
-                                                        </TableRow>
-                                                      ))}
-                                                    </TableBody>
-                                                  </Table>
-                                                </TableContainer>
-                                              </Box>
-                                            ))
-                                          })()}
-                                        </Grid>
-                                      )}
-                                  </Grid>
+                                                  {prop.name}
+                                                </TableCell>
+                                                <TableCell
+                                                  sx={{
+                                                    py: 1.5,
+                                                    px: 2,
+                                                    borderBottom: "1px solid #e5e7eb",
+                                                    color: "#374151",
+                                                  }}
+                                                >
+                                                  {prop.prediction}
+                                                </TableCell>
+                                                <TableCell
+                                                  sx={{
+                                                    py: 1.5,
+                                                    px: 2,
+                                                    borderBottom: "1px solid #e5e7eb",
+                                                    color: "#374151",
+                                                  }}
+                                                >
+                                                  {prop.units || "-"}
+                                                </TableCell>
+                                              </TableRow>
+                                            ))}
+                                          </TableBody>
+                                        </Table>
+                                      </TableContainer>
+                                    </Box>
+                                  ))
+                                })()}
+                              </Grid>
+                            )}
+                          </Grid>
 
-                                  {ligand.LigandSmile === "Not applicable" && (
-                                    <Alert severity="warning" sx={{ mt: 2 }} icon={<Warning />}>
-                                      <Typography variant="body2">
-                                        This ligand is a protein and cannot be processed for chemical reactions.
-                                      </Typography>
-                                    </Alert>
-                                  )}
-                                </>
-                              )
-                            })()}
-                          </CardContent>
-                        </Card>
-                      )}
-
-                      {!selectedLigand && (
-                        <Alert severity="info" icon={<Info />}>
-                          <Typography variant="body2">
-                            Please select a ligand from the dropdown above to view its detailed information.
-                          </Typography>
-                        </Alert>
-                      )}
-                    </Box>
+                          {ligand.LigandSmile === "Not applicable" && (
+                            <Alert severity="warning" sx={{ mt: 2 }} icon={<Warning />}>
+                              <Typography variant="body2">
+                                This ligand is a protein and cannot be processed for chemical reactions.
+                              </Typography>
+                            </Alert>
+                          )}
+                        </CardContent>
+                      </Card>
+                    ))
                   ) : (
                     <Typography variant="body2" sx={{ color: "text.secondary" }}>
                       No target ligands identified.
@@ -1752,12 +1578,12 @@ const RDkit = () => {
                       )}
                     </Grid>
 
-                    <Grid item xs={12}>
+                     <Grid item xs={12}>
                       <Card variant="outlined" sx={{ borderRadius: 1, bgcolor: "#fafafa" }}>
                         <CardHeader
                           title={
                             <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-                              Overall Statistics
+                              Over all Statistics
                             </Typography>
                           }
                         />
@@ -1826,6 +1652,9 @@ const RDkit = () => {
                         ))
                       )}
                     </Grid>
+
+                   
+
                   </Grid>
                 </CardContent>
               </Paper>
