@@ -629,575 +629,578 @@ export default function Chatbot() {
     localStorage.setItem("drugDiscoveryProgress", JSON.stringify(completedSteps));
   }, [completedSteps]);
 
-  return (
-    <div className="font-sans">
-      {/* Trigger Button */}
-      <button
-        onClick={() => setIsPanelOpen(true)}
-        disabled={isPanelOpen}
-        onMouseEnter={() => setTooltipVisible("trigger")}
-        onMouseLeave={() => setTooltipVisible("")}
-        aria-label={isPanelOpen ? "Close Jarvis Assistant" : "Open Jarvis Assistant"}
-        className={`fixed bottom-6 right-6 h-16 w-16 rounded-full shadow-lg transition-all duration-200 transform hover:scale-105 flex items-center justify-center ${
-          isPanelOpen
-            ? "bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700"
-            : "bg-gradient-to-br from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700"
-        }`}
-      >
-        <Bot className="h-6 w-6 text-white" />
-      </button>
-      {tooltipVisible === "trigger" && (
-        <div className="absolute bottom-20 right-4 px-2 py-1 bg-gray-800 text-white text-xs rounded-lg shadow-sm">
-          {isPanelOpen ? "Close Jarvis" : "Ask Jarvis"}
-        </div>
-      )}
+ return (
+  <div className="font-sans" >
+    {/* Trigger Button */}
+    <button
+      onClick={() => setIsPanelOpen(true)}
+      disabled={isPanelOpen}
+      onMouseEnter={() => setTooltipVisible("trigger")}
+      onMouseLeave={() => setTooltipVisible("")}
+      aria-label={isPanelOpen ? "Close Jarvis Assistant" : "Open Jarvis Assistant"}
+      className={`fixed bottom-6 right-6 h-16 w-16 rounded-full shadow-lg transition-all duration-200 transform hover:scale-105 flex items-center justify-center ${
+        isPanelOpen
+          ? "bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700"
+          : "bg-gradient-to-br from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700"
+      }`}
+    >
+      <Bot className="h-6 w-6 text-white" />
+    </button>
+    {tooltipVisible === "trigger" && (
+      <div className="absolute bottom-20 right-4 px-2 py-1 bg-gray-800 text-white text-xs rounded-lg shadow-sm">
+        {isPanelOpen ? "Close Jarvis" : "Ask Jarvis"}
+      </div>
+    )}
 
-      {/* Pointing Message */}
-      {!isPanelOpen && (
-        <div className="fixed bottom-24 right-6">
-          <div className="relative bg-white rounded-lg shadow-lg p-3 mb-2 animate-pulse-scale">
-            <div className="absolute right-4 bottom-2 transform translate-y-full w-3 h-3 bg-white rotate-45"></div>
-            <div className="flex items-center space-x-2">
-              <div className="bg-blue-500/20 p-1.5 rounded-full">
-                <Bot className="h-4 w-4 text-blue-600" />
-              </div>
-              <div>
-                <div className="text-sm font-semibold text-gray-800">Drug Discovery Assistant</div>
-                <div className="text-xs text-gray-500">Click to interact with Jarvis</div>
-              </div>
+    {/* Pointing Message */}
+    {!isPanelOpen && (
+      <div className="fixed bottom-24 right-6">
+        <div className="relative bg-white rounded-lg shadow-lg p-3 mb-2 animate-pulse-scale">
+          <div className="absolute right-4 bottom-2 transform translate-y-full w-3 h-3 bg-white rotate-45" />
+          <div className="flex items-center space-x-2">
+            <div className="bg-blue-500/20 p-1.5 rounded-full">
+              <Bot className="h-4 w-4 text-blue-600" />
+            </div>
+            <div>
+              <div className="text-sm font-semibold text-gray-800">Drug Discovery Assistant</div>
+              <div className="text-xs text-gray-500">Click to interact with Jarvis</div>
             </div>
           </div>
         </div>
-      )}
+      </div>
+    )}
 
-      {/* Right Side Panel */}
-      {isPanelOpen && (
-        <div className="fixed top-0 right-0 h-full md:w-96 bg-white shadow-2xl z-50 flex flex-col border-l border-gray-200 animate-in slide-in-from-right duration-300">
-          <div className="flex items-center justify-between p-4 border-b border-gray-200">
-            <div className="flex items-center space-x-2">
-              <button
-                onClick={resetToInitialSelection}
-                aria-label="Back to initial selection"
-                className="rounded-full h-8 w-8 bg-gray-100 hover:bg-gray-200 text-gray-600 flex items-center justify-center"
-              >
-                <ArrowLeft className="h-4 w-4" />
-              </button>
-              <Dna className="h-6 w-6 text-blue-600" />
-              <h2 className="text-xl font-semibold text-gray-800">Jarvis</h2>
-            </div>
-            <div className="flex items-center space-x-2">
-              <button
-                onClick={() => {
-                  const helpPrompt =
-                    "In beginner mode, you can type questions or follow guided steps. In doubt mode, use voice input to ask questions. Use the buttons to navigate or say 'stop' to end the conversation.";
-                  setConversationHistory((prev) => [...prev, { type: "jarvis", text: helpPrompt }]);
-                  speakResponse(helpPrompt);
-                }}
-                aria-label="Help"
-                className="rounded-full h-8 w-8 bg-gray-100 hover:bg-gray-200 text-gray-600 flex items-center justify-center"
-              >
-                <HelpCircle className="h-4 w-4" />
-              </button>
-              <button
-                onClick={stopConversation}
-                aria-label="Close panel"
-                className="rounded-full h-8 w-8 bg-gray-100 hover:bg-gray-200 text-gray-600 flex items-center justify-center"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
+    {/* Right Side Panel */}
+    {isPanelOpen && (
+      <div className="fixed top-0 right-0 h-full md:w-96 bg-white shadow-2xl z-50 flex flex-col border-l border-gray-200 animate-in slide-in-from-right duration-300">
+        <div className="flex items-center justify-between p-4 border-b border-gray-200">
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={resetToInitialSelection}
+              aria-label="Back to initial selection"
+              className="rounded-full h-8 w-8 bg-gray-100 hover:bg-gray-200 text-gray-600 flex items-center justify-center"
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </button>
+            <Dna className="h-6 w-6 text-blue-600" />
+            <h2 className="text-xl font-semibold text-gray-800">Jarvis</h2>
           </div>
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={() => {
+                const helpPrompt =
+                  "In beginner mode, you can type questions or follow guided steps. In doubt mode, use voice input to ask questions. Use the buttons to navigate or say 'stop' to end the conversation.";
+                setConversationHistory((prev) => [...prev, { type: "jarvis", text: helpPrompt }]);
+                speakResponse(helpPrompt);
+              }}
+              aria-label="Help"
+              className="rounded-full h-8 w-8 bg-gray-100 hover:bg-gray-200 text-gray-600 flex items-center justify-center"
+            >
+              <HelpCircle className="h-4 w-4" />
+            </button>
+            <button
+              onClick={stopConversation}
+              aria-label="Close panel"
+              className="rounded-full h-8 w-8 bg-gray-100 hover:bg-gray-200 text-gray-600 flex items-center justify-center"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
 
-          {!mode && (
-            <div className="flex-1 p-6 flex flex-col items-center justify-center space-y-6">
-              <div className="text-center">
-                <h3 className="text-lg font-semibold text-gray-800 mb-2">Welcome to Jarvis</h3>
-                <p className="text-sm text-gray-600">Choose an option to start your drug discovery journey.</p>
-              </div>
-              <button
-                onClick={() => startConversation("beginner")}
-                className="w-full py-3 px-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all duration-200 text-sm font-semibold"
-                aria-label="Start as a beginner"
-              >
-                Are you a beginner?
-              </button>
-              <button
-                onClick={() => startConversation("doubt")}
-                className="w-full py-3 px-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all duration-200 text-sm font-semibold"
-                aria-label="Ask a question"
-              >
-                Ask a question
-              </button>
+        {/* Initial Mode Selection */}
+        {!mode && (
+          <div className="flex-1 p-6 flex flex-col items-center justify-center space-y-6">
+            <div className="text-center">
+              <h3 className="text-lg font-semibold text-gray-800 mb-2">Welcome to Jarvis</h3>
+              <p className="text-sm text-gray-600">Choose an option to start your drug discovery journey.</p>
             </div>
-          )}
+            <button
+              onClick={() => startConversation("beginner")}
+              className="w-full py-3 px-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all duration-200 text-sm font-semibold"
+              aria-label="Start as a beginner"
+            >
+              Are you a beginner?
+            </button>
+            <button
+              onClick={() => startConversation("doubt")}
+              className="w-full py-3 px-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all duration-200 text-sm font-semibold"
+              aria-label="Ask a question"
+            >
+              Ask a question
+            </button>
+          </div>
+        )}
 
-          {mode && (
-            <div className="flex flex-col h-full">
-              {/* Header with progress bar for drug discovery */}
-              {mode === "beginner" &&
-                selectedOption === "drugDiscovery" &&
-                subMode !== "waiting_for_selection" &&
-                subMode !== "waiting_for_step_selection" &&
-                subMode !== "process_ended" && (
-                  <div className="p-4 bg-blue-50 border-b border-gray-200">
-                    <div className="flex items-center justify-between mb-2">
-                      <h3 className="text-sm font-medium text-blue-600">Drug Discovery Process</h3>
-                      <div className="text-xs text-blue-600">
-                        Step {currentToolIndex + 1} of {drugDiscoverySteps.length}
-                      </div>
+        {mode && (
+          <div className="flex flex-col h-full">
+            {/* Progress Bar for Drug Discovery */}
+            {mode === "beginner" &&
+              selectedOption === "drugDiscovery" &&
+              subMode !== "waiting_for_selection" &&
+              subMode !== "waiting_for_step_selection" &&
+              subMode !== "process_ended" && (
+                <div className="p-4 bg-blue-50 border-b border-gray-200">
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="text-sm font-medium text-blue-600">Drug Discovery Process</h3>
+                    <div className="text-xs text-blue-600">
+                      Step {currentToolIndex + 1} of {drugDiscoverySteps.length}
                     </div>
-                    <div className="w-full bg-gray-200 border rounded-full h-2">
+                  </div>
+                  <div className="w-full bg-gray-200 border rounded-full h-2">
+                    <div
+                      className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                      style={{ width: `${((currentToolIndex + 1) / drugDiscoverySteps.length) * 100}%` }}
+                    />
+                  </div>
+                  <div className="flex items-center space-x-4 overflow-x-auto pb-2 mt-2">
+                    {drugDiscoverySteps.map((step, index) => (
                       <div
-                        className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                        style={{ width: `${((currentToolIndex + 1) / drugDiscoverySteps.length) * 100}%` }}
-                      ></div>
-                    </div>
-                    <div className="flex items-center space-x-4 overflow-x-auto pb-2 mt-2">
-                      {drugDiscoverySteps.map((step, index) => (
+                        key={index}
+                        className={`flex-shrink-0 flex items-center ${
+                          completedSteps.includes(step.path)
+                            ? "text-green-600"
+                            : index === currentToolIndex
+                            ? "text-blue-600"
+                            : "text-gray-400"
+                        }`}
+                      >
                         <div
-                          key={index}
-                          className={`flex-shrink-0 flex items-center ${
+                          className={`h-8 w-8 rounded-full flex items-center justify-center ${
                             completedSteps.includes(step.path)
-                              ? "text-green-600"
+                              ? "bg-green-100 border border-green-300"
                               : index === currentToolIndex
-                              ? "text-blue-600"
-                              : "text-gray-400"
+                              ? "bg-blue-100 border border-blue-500"
+                              : "bg-gray-100"
                           }`}
                         >
-                          <div
-                            className={`h-8 w-8 rounded-full flex items-center justify-center ${
-                              completedSteps.includes(step.path)
-                                ? "bg-green-100 border border-green-300"
-                                : index === currentToolIndex
-                                ? "bg-blue-100 border border-blue-500"
-                                : "bg-gray-100"
-                            }`}
-                          >
-                            {completedSteps.includes(step.path) ? <CheckCircle className="h-4 w-4" /> : index + 1}
-                          </div>
-                          {index < drugDiscoverySteps.length - 1 && <ChevronRight className="h-4 w-4 mx-1" />}
+                          {completedSteps.includes(step.path) ? <CheckCircle className="h-4 w-4" /> : index + 1}
                         </div>
+                        {index < drugDiscoverySteps.length - 1 && <ChevronRight className="h-4 w-4 mx-1" />}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+            {/* Current Step Details for Drug Discovery */}
+            {mode === "beginner" &&
+              selectedOption === "drugDiscovery" &&
+              subMode !== "waiting_for_selection" &&
+              subMode !== "waiting_for_step_selection" &&
+              subMode !== "process_ended" && (
+                <div className="p-4 bg-blue-50 border-b border-gray-200">
+                  <div className="flex items-start space-x-3">
+                    <div className="bg-blue-100 p-2 rounded-full">
+                      {iconMap[drugDiscoverySteps[currentToolIndex]?.icon]}
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-medium text-gray-800">
+                        {drugDiscoverySteps[currentToolIndex]?.name}
+                      </h4>
+                      <p className="text-xs text-gray-600">{drugDiscoverySteps[currentToolIndex]?.description}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+            {/* Navigation Buttons for Drug Discovery */}
+            {mode === "beginner" &&
+              selectedOption === "drugDiscovery" &&
+              subMode !== "waiting_for_selection" &&
+              subMode !== "waiting_for_step_selection" &&
+              subMode !== "process_ended" && (
+                <div className="flex justify-between p-4 bg-white border-b border-gray-200">
+                  <button
+                    disabled={true}
+                    className="flex items-center space-x-1 px-3 py-2 rounded-md text-sm font-medium text-gray-400 cursor-not-allowed"
+                    aria-label="Previous step (disabled)"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                    <span>Previous</span>
+                  </button>
+                  {currentToolIndex === drugDiscoverySteps.length - 1 ? (
+                    <button
+                      onClick={endProcess}
+                      disabled={isSpeaking}
+                      className={`flex items-center space-x-1 px-3 py-2 rounded-md text-sm font-medium ${
+                        isSpeaking ? "text-gray-400 cursor-not-allowed" : "text-blue-600 hover:bg-blue-50"
+                      }`}
+                      aria-label="End drug discovery process"
+                    >
+                      <span>End Process</span>
+                      <ChevronRight className="h-4 w-4" />
+                    </button>
+                  ) : (
+                    <button
+                      onClick={proceedToNextStep}
+                      disabled={isSpeaking}
+                      className={`flex items-center space-x-1 px-3 py-2 rounded-md text-sm font-medium ${
+                        isSpeaking ? "text-gray-400 cursor-not-allowed" : "text-blue-600 hover:bg-blue-50"
+                      }`}
+                      aria-label="Next step"
+                    >
+                      <span>Next</span>
+                      <ChevronRight className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
+              )}
+
+            {/* Option Selection for Beginner Mode */}
+            {mode === "beginner" && subMode === "waiting_for_selection" && (
+              <div className="p-6 bg-blue-50 border-b border-gray-200">
+                <h3 className="text-sm font-medium text-gray-800 mb-3">Select an option to explore:</h3>
+                <div className="grid grid-cols-1 gap-3">
+                  <button
+                    onClick={handleDashboardSelection}
+                    className="flex items-center space-x-3 p-3 bg-white rounded-lg border border-gray-200 hover:border-blue-300 hover:bg-blue-50 transition-all duration-200"
+                    aria-label="Explore dashboard tools"
+                  >
+                    <div className="bg-blue-400 p-2 rounded-full">{iconMap["Atom"]}</div>
+                    <div className="text-left">
+                      <div className="text-sm font-medium text-gray-800">Dashboard Tools</div>
+                      <div className="text-xs text-gray-500">Explore all available tools</div>
+                    </div>
+                  </button>
+                  <button
+                    onClick={handleDrugDiscoverySelection}
+                    className="flex items-center space-x-3 p-3 bg-white rounded-lg border border-gray-200 hover:border-blue-300 hover:bg-blue-50 transition-all duration-200"
+                    aria-label="Start drug discovery process"
+                  >
+                    <div className="bg-blue-400 p-2 rounded-full">{iconMap["Pill"]}</div>
+                    <div className="text-left">
+                      <div className="text-sm font-medium text-gray-800">Drug Discovery</div>
+                      <div className="text-xs text-gray-500">Guided step-by-step journey</div>
+                    </div>
+                  </button>
+                </div>
+                <div className="flex justify-end gap-2 mt-4">
+                  <button
+                    onClick={stopConversation}
+                    className="flex-1 px-4 py-2 rounded-lg text-sm font-semibold text-white bg-red-600 hover:bg-red-800 transition-all duration-200"
+                    aria-label="Stop conversation"
+                  >
+                    End Conversation
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Tool Selection for Dashboard */}
+            {mode === "beginner" && subMode === "waiting_for_tool_selection" && (
+              <div className="p-6 bg-blue-50 border-b border-gray-200">
+                <h3 className="text-sm font-medium text-gray-800 mb-3">Select a tool to explore:</h3>
+                <div className="grid grid-cols-1 gap-3">
+                  {dashboardRoutes.map((tool, index) => (
+                    <button
+                      key={index}
+                      onClick={() => handleToolSelection(tool)}
+                      className="flex items-center space-x-3 p-3 bg-white rounded-lg border border-gray-200 hover:border-blue-300 hover:bg-blue-50 transition-all duration-200"
+                      aria-label={`Select ${tool.name} tool`}
+                    >
+                      <div className="bg-blue-100 p-2 rounded-full">{iconMap[tool.icon]}</div>
+                      <div className="text-left">
+                        <div className="text-sm font-medium text-gray-800">{tool.name}</div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+                <div className="flex justify-between gap-2 mt-4">
+                  <button
+                    onClick={async () => {
+                      const prompt = "Returning to option selection.";
+                      setConversationHistory((prev) => [...prev, { type: "jarvis", text: prompt }]);
+                      await speakResponse(prompt);
+                      setSubMode("waiting_for_selection");
+                      setSelectedOption(null);
+                    }}
+                    className="flex-1 px-4 py-2 rounded-lg text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 transition-all duration-200"
+                    aria-label="Go back to option selection"
+                  >
+                    Back
+                  </button>
+                  <button
+                    onClick={stopConversation}
+                    className="flex-1 px-4 py-2 rounded-lg text-sm font-semibold text-white bg-red-600 hover:bg-red-700 transition-all duration-200"
+                    aria-label="End conversation"
+                  >
+                    End Conversation
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Step Selection for Drug Discovery */}
+            {mode === "beginner" && subMode === "waiting_for_step_selection" && (
+              <div className="p-6 bg-blue-50 border-b border-gray-200">
+                <h3 className="text-sm font-medium text-gray-800 mb-3">Select a step to explore:</h3>
+                <div className="grid grid-cols-1 gap-3">
+                  {drugDiscoverySteps.map((step, index) => {
+                    const isCurrentStep = index === currentToolIndex;
+                    const isCompleted = completedSteps.includes(step.path);
+                    const isDisabled = !isCurrentStep || isCompleted;
+                    return (
+                      <button
+                        key={index}
+                        onClick={() => handleStepSelection(step)}
+                        disabled={isDisabled}
+                        className={`flex items-center space-x-3 p-3 bg-white rounded-lg border border-gray-200 transition-all duration-200 ${
+                          isDisabled ? "opacity-50 cursor-not-allowed" : "hover:border-blue-300 hover:bg-blue-50"
+                        }`}
+                        aria-label={isDisabled ? `${step.name} (locked)` : `Select ${step.name}`}
+                      >
+                        <div className="bg-blue-100 p-2 rounded-full">
+                          {isCompleted ? <CheckCircle className="h-4 w-4 text-green-600" /> : iconMap[step.icon]}
+                        </div>
+                        <div className="text-left">
+                          <div className="text-sm font-medium text-gray-800">{step.name}</div>
+                          <div className="text-xs text-gray-500">{step.description}</div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className="flex justify-between gap-2 mt-4">
+                  <button
+                    onClick={async () => {
+                      const prompt = "Returning to option selection.";
+                      setConversationHistory((prev) => [...prev, { type: "jarvis", text: prompt }]);
+                      await speakResponse(prompt);
+                      setSubMode("waiting_for_selection");
+                      setSelectedOption(null);
+                    }}
+                    className="flex-1 px-4 py-2 rounded-lg text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 transition-all duration-200"
+                    aria-label="Go back to option selection"
+                  >
+                    Back
+                  </button>
+                  <button
+                    onClick={stopConversation}
+                    className="flex-1 px-4 py-2 rounded-lg text-sm font-semibold text-white bg-red-600 hover:bg-red-700 transition-all duration-200"
+                    aria-label="End conversation"
+                  >
+                    End Conversation
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Process Ended Options */}
+            {mode === "beginner" && subMode === "process_ended" && (
+              <div className="p-6 bg-blue-50 border-b border-gray-200">
+                <h3 className="text-sm font-medium text-gray-800 mb-3">Drug Discovery Completed!</h3>
+                <div className="grid grid-cols-1 gap-3">
+                  <button
+                    onClick={restartProcess}
+                    className="flex items-center space-x-3 p-3 bg-white rounded-lg border border-gray-200 hover:border-blue-300 hover:bg-blue-50 transition-all duration-200"
+                    aria-label="Restart drug discovery process"
+                  >
+                    <div className="bg-blue-100 p-2 rounded-full">{iconMap["Pill"]}</div>
+                    <div className="text-left">
+                      <div className="text-sm font-medium text-gray-800">Restart Drug Discovery</div>
+                      <div className="text-xs text-gray-500">Start the process again</div>
+                    </div>
+                  </button>
+                  <button
+                    onClick={handleDashboardSelection}
+                    className="flex items-center space-x-3 p-3 bg-white rounded-lg border border-gray-200 hover:border-blue-300 hover:bg-blue-50 transition-all duration-200"
+                    aria-label="Explore dashboard tools"
+                  >
+                    <div className="bg-blue-100 p-2 rounded-full">{iconMap["Atom"]}</div>
+                    <div className="text-left">
+                      <div className="text-sm font-medium text-gray-800">Explore Dashboard Tools</div>
+                      <div className="text-xs text-gray-500">Try other tools</div>
+                    </div>
+                  </button>
+                  <button
+                    onClick={() => {
+                      setSubMode("waiting_for_selection");
+                      const prompt = "Returning to option selection.";
+                      setConversationHistory((prev) => [...prev, { type: "jarvis", text: prompt }]);
+                      speakResponse(prompt);
+                    }}
+                    className="flex items-center space-x-3 p-3 bg-white rounded-lg border border-gray-200 hover:border-blue-300 hover:bg-blue-50 transition-all duration-200"
+                    aria-label="Return to option selection"
+                  >
+                    <div className="bg-blue-100 p-2 rounded-full">{iconMap["Bot"]}</div>
+                    <div className="text-left">
+                      <div className="text-sm font-medium text-gray-800">Back to Options</div>
+                      <div className="text-xs text-gray-500">Choose between dashboard or drug discovery</div>
+                    </div>
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Conversation History */}
+            <div ref={conversationRef} className="flex-auto overflow-y-auto p-6 space-y-4">
+              {conversationHistory.map((msg, index) => (
+                <div key={index} className={`flex ${msg.type === "user" ? "justify-end" : "justify-start"}`}>
+                  <div
+                    className={`max-w-[80%] ${
+                      msg.type === "user"
+                        ? "bg-blue-600 text-white rounded-tr-none"
+                        : "bg-white text-gray-800 rounded-tl-none border border-gray-200 shadow-sm"
+                    } rounded-2xl px-4 py-2 transition-all duration-200`}
+                  >
+                    {msg.type === "jarvis" && (
+                      <div className="flex items-center space-x-2 mb-1 pb-1 border-b border-gray-200">
+                        <Bot className="h-3 w-3 text-blue-600" />
+                        <span className="text-xs font-medium text-blue-600">JARVIS</span>
+                      </div>
+                    )}
+                    <p className="text-sm whitespace-pre-wrap">{msg.text}</p>
+                  </div>
+                </div>
+              ))}
+              {(isLoading || isSpeaking) && (
+                <div className="flex justify-start">
+                  <div className="max-w-[80%] w-full py-2 px-4 bg-white border rounded-2xl border-gray-200 shadow-sm">
+                    <div className="flex items-center space-x-2 pb-0">
+                      <Bot className="h-3 w-3 text-blue-600" />
+                      <span className="text-xs font-semibold text-blue-600">JARVIS</span>
+                    </div>
+                    <div className="flex space-x-1 items-center">
+                      <div className="h-3 w-1 bg-blue-400 animate-wave" />
+                      <div className="h-4 w-1 bg-blue-400 animate-wave" style={{ animationDelay: "100ms" }} />
+                      <div className="h-5 w-1 bg-blue-400 animate-wave" style={{ animationDelay: "200ms" }} />
+                      <div className="h-4 w-1 bg-blue-400 animate-wave" style={{ animationDelay: "300ms" }} />
+                      <div className="h-3 w-1 bg-blue-400 animate-wave" style={{ animationDelay: "400ms" }} />
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Input Area */}
+            <div className="p-6 border-t border-gray-200">
+              {mode === "doubt" && (
+                <div className="flex items-center justify-between px-4 py-2 rounded-full bg-white border border-gray-200 shadow-sm">
+                  <div className="flex items-center space-x-2 text-sm text-gray-600">
+                    {isListening && mode === "doubt" ? (
+                      <>
+                        <div className="relative">
+                          <div className="absolute inset-0 bg-green-100 rounded-full animate-ping" />
+                          <Mic className="h-5 w-5 text-green-600" />
+                        </div>
+                        <span className="text-sm">Listening...</span>
+                      </>
+                    ) : (
+                      <>
+                        <MicOff className="h-5 w-5 text-red-600" />
+                        <span className="text-sm">Voice recognition paused</span>
+                      </>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => (isListening ? stopConversation() : startConversation("doubt"))}
+                    className={`px-4 py-2 rounded-lg text-sm font-semibold text-white ${
+                      isListening ? "bg-red-600 hover:bg-red-700" : "bg-blue-600 hover:bg-blue-700"
+                    } transition-all duration-200`}
+                    aria-label={isListening ? "Stop voice conversation" : "Start voice conversation"}
+                  >
+                    {isListening ? "Stop" : "Start"}
+                  </button>
+                </div>
+              )}
+              {mode === "beginner" && subMode === "waiting_for_question" && (
+                <div className="flex flex-col space-y-3">
+                  <input
+                    type="text"
+                    placeholder="Ask a question about this tool..."
+                    className="w-full px-4 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                    onKeyDown={async (e) => {
+                      if (e.key === "Enter" && e.target.value.trim()) {
+                        setSubMode("resolving_doubt");
+                        const query = e.target.value.trim();
+                        setConversationHistory((prev) => [...prev, { type: "user", text: query }]);
+                        await fetchResponse(query);
+                        e.target.value = "";
+                      }
+                    }}
+                    aria-label="Ask a question about the current tool"
+                  />
+                  {suggestedQuestions[targetRoute]?.length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      {suggestedQuestions[targetRoute].map((q, index) => (
+                        <button
+                          key={index}
+                          onClick={() => {
+                            setSubMode("resolving_doubt");
+                            setConversationHistory((prev) => [...prev, { type: "user", text: q }]);
+                            fetchResponse(q);
+                          }}
+                          className="px-3 py-1 bg-blue-100 text-blue-600 rounded-full text-xs hover:bg-blue-200 transition-all duration-200"
+                          aria-label={`Ask suggested question: ${q}`}
+                        >
+                          {q}
+                        </button>
                       ))}
                     </div>
-                  </div>
-                )}
-
-              {/* Current step details */}
-              {mode === "beginner" &&
-                selectedOption === "drugDiscovery" &&
-                subMode !== "waiting_for_selection" &&
-                subMode !== "waiting_for_step_selection" &&
-                subMode !== "process_ended" && (
-                  <div className="p-4 bg-blue-50 border-b border-gray-200">
-                    <div className="flex items-start space-x-3">
-                      <div className="bg-blue-100 p-2 rounded-full">
-                        {iconMap[drugDiscoverySteps[currentToolIndex]?.icon]}
-                      </div>
-                      <div>
-                        <h4 className="text-sm font-medium text-gray-800">
-                          {drugDiscoverySteps[currentToolIndex]?.name}
-                        </h4>
-                        <p className="text-xs text-gray-600">{drugDiscoverySteps[currentToolIndex]?.description}</p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-              {/* Manual navigation buttons */}
-              {mode === "beginner" &&
-                selectedOption === "drugDiscovery" &&
-                subMode !== "waiting_for_selection" &&
-                subMode !== "waiting_for_step_selection" &&
-                subMode !== "process_ended" && (
-                  <div className="flex justify-between p-4 bg-white border-b border-gray-200">
-                    <button
-                      disabled={true} // Disable Previous button
-                      className="flex items-center space-x-1 px-3 py-2 rounded-md text-sm font-medium text-gray-400 cursor-not-allowed"
-                      aria-label="Previous step (disabled)"
-                    >
-                      <ChevronLeft className="h-4 w-4" />
-                      <span>Previous</span>
-                    </button>
-                    {currentToolIndex === drugDiscoverySteps.length - 1 ? (
-                      <button
-                        onClick={endProcess}
-                        disabled={isSpeaking}
-                        className={`flex items-center space-x-1 px-3 py-2 rounded-md text-sm font-medium ${
-                          isSpeaking ? "text-gray-400 cursor-not-allowed" : "text-blue-600 hover:bg-blue-50"
-                        }`}
-                        aria-label="End drug discovery process"
-                      >
-                        <span>End Process</span>
-                        <ChevronRight className="h-4 w-4" />
-                      </button>
-                    ) : (
+                  )}
+                  <div className="flex justify-end gap-2">
+                    {selectedOption === "drugDiscovery" && currentToolIndex < drugDiscoverySteps.length - 1 && (
                       <button
                         onClick={proceedToNextStep}
                         disabled={isSpeaking}
-                        className={`flex items-center space-x-1 px-3 py-2 rounded-md text-sm font-medium ${
-                          isSpeaking ? "text-gray-400 cursor-not-allowed" : "text-blue-600 hover:bg-blue-50"
-                        }`}
-                        aria-label="Next step"
+                        className={`flex-1 px-4 py-2 rounded-lg text-sm font-semibold text-white ${
+                          isSpeaking ? "bg-gray-400 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-700"
+                        } transition-all duration-200`}
+                        aria-label="Proceed to next step"
                       >
-                        <span>Next</span>
-                        <ChevronRight className="h-4 w-4" />
+                        Next Step
                       </button>
                     )}
-                  </div>
-                )}
-
-              {/* Manual selection for beginner mode */}
-              {mode === "beginner" && subMode === "waiting_for_selection" && (
-                <div className="p-6 bg-blue-50 border-b border-gray-200">
-                  <h3 className="text-sm font-medium text-gray-800 mb-3">Select an option to continue:</h3>
-                  <div className="grid grid-cols-1 gap-3">
-                    <button
-                      onClick={handleDashboardSelection}
-                      className="flex items-center space-x-3 p-3 bg-white rounded-lg border border-gray-200 hover:border-blue-300 hover:bg-blue-50 transition-all duration-200"
-                      aria-label="Explore dashboard tools"
-                    >
-                      <div className="bg-blue-100 p-2 rounded-full">{iconMap["Atom"]}</div>
-                      <div className="text-left">
-                        <div className="text-sm font-medium text-gray-800">Dashboard Tools</div>
-                        <div className="text-xs text-gray-500">Explore all available tools</div>
-                      </div>
-                    </button>
-                    <button
-                      onClick={handleDrugDiscoverySelection}
-                      className="flex items-center space-x-3 p-3 bg-white rounded-lg border border-gray-200 hover:border-blue-300 hover:bg-blue-50 transition-all duration-200"
-                      aria-label="Start drug discovery process"
-                    >
-                      <div className="bg-blue-100 p-2 rounded-full">{iconMap["Pill"]}</div>
-                      <div className="text-left">
-                        <div className="text-sm font-medium text-gray-800">Drug Discovery Process</div>
-                        <div className="text-xs text-gray-500">Guided step-by-step journey</div>
-                      </div>
-                    </button>
-                  </div>
-                  <div className="flex justify-between gap-2 mt-4">
-                    <button
-                      onClick={stopConversation}
-                      className="flex-1 px-4 py-2 rounded-lg text-sm font-semibold text-white bg-red-600 hover:bg-red-700 transition-all duration-200"
-                      aria-label="End conversation"
-                    >
-                      End Conversation
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* Tool selection for dashboard */}
-              {mode === "beginner" && subMode === "waiting_for_tool_selection" && (
-                <div className="p-6 bg-blue-50 border-b border-gray-200">
-                  <h3 className="text-sm font-medium text-gray-800 mb-3">Select a tool to explore:</h3>
-                  <div className="grid grid-cols-1 gap-3">
-                    {dashboardRoutes.map((tool, index) => (
+                    {selectedOption === "dashboard" && (
                       <button
-                        key={index}
-                        onClick={() => handleToolSelection(tool)}
-                        className="flex items-center space-x-3 p-3 bg-white rounded-lg border border-gray-200 hover:border-blue-300 hover:bg-blue-50 transition-all duration-200"
-                        aria-label={`Select ${tool.name} tool`}
-                      >
-                        <div className="bg-blue-100 p-2 rounded-full">{iconMap[tool.icon]}</div>
-                        <div className="text-left">
-                          <div className="text-sm font-medium text-gray-800">{tool.name}</div>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                  <div className="flex justify-between gap-2 mt-4">
-                    <button
-                      onClick={async () => {
-                        const prompt = "Returning to option selection.";
-                        setConversationHistory((prev) => [...prev, { type: "jarvis", text: prompt }]);
-                        await speakResponse(prompt);
-                        setSubMode("waiting_for_selection");
-                        setSelectedOption(null);
-                      }}
-                      className="flex-1 px-4 py-2 rounded-lg text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 transition-all duration-200"
-                      aria-label="Go back to option selection"
-                    >
-                      Back
-                    </button>
-                    <button
-                      onClick={stopConversation}
-                      className="flex-1 px-4 py-2 rounded-lg text-sm font-semibold text-white bg-red-600 hover:bg-red-700 transition-all duration-200"
-                      aria-label="End conversation"
-                    >
-                      End Conversation
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* Step selection for drug discovery */}
-              {mode === "beginner" && subMode === "waiting_for_step_selection" && (
-                <div className="p-6 bg-blue-50 border-b border-gray-200">
-                  <h3 className="text-sm font-medium text-gray-800 mb-3">Select a step to explore:</h3>
-                  <div className="grid grid-cols-1 gap-3">
-                    {drugDiscoverySteps.map((step, index) => {
-                      const isCurrentStep = index === currentToolIndex;
-                      const isCompleted = completedSteps.includes(step.path);
-                      const isDisabled = !isCurrentStep || isCompleted;
-                      return (
-                        <button
-                          key={index}
-                          onClick={() => handleStepSelection(step)}
-                          disabled={isDisabled}
-                          className={`flex items-center space-x-3 p-3 bg-white rounded-lg border border-gray-200 transition-all duration-200 ${
-                            isDisabled ? "opacity-50 cursor-not-allowed" : "hover:border-blue-300 hover:bg-blue-50"
-                          }`}
-                          aria-label={isDisabled ? `${step.name} (locked)` : `Select ${step.name}`}
-                        >
-                          <div className="bg-blue-100 p-2 rounded-full">
-                            {isCompleted ? <CheckCircle className="h-4 w-4 text-green-600" /> : iconMap[step.icon]}
-                          </div>
-                          <div className="text-left">
-                            <div className="text-sm font-medium text-gray-800">{step.name}</div>
-                            <div className="text-xs text-gray-500">{step.description}</div>
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                  <div className="flex justify-between gap-2 mt-4">
-                    <button
-                      onClick={async () => {
-                        const prompt = "Returning to option selection.";
-                        setConversationHistory((prev) => [...prev, { type: "jarvis", text: prompt }]);
-                        await speakResponse(prompt);
-                        setSubMode("waiting_for_selection");
-                        setSelectedOption(null);
-                      }}
-                      className="flex-1 px-4 py-2 rounded-lg text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 transition-all duration-200"
-                      aria-label="Go back to option selection"
-                    >
-                      Back
-                    </button>
-                    <button
-                      onClick={stopConversation}
-                      className="flex-1 px-4 py-2 rounded-lg text-sm font-semibold text-white bg-red-600 hover:bg-red-700 transition-all duration-200"
-                      aria-label="End conversation"
-                    >
-                      End Conversation
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* Process ended options */}
-              {mode === "beginner" && subMode === "process_ended" && (
-                <div className="p-6 bg-blue-50 border-b border-gray-200">
-                  <h3 className="text-sm font-medium text-gray-800 mb-3">Drug Discovery Completed!</h3>
-                  <div className="grid grid-cols-1 gap-3">
-                    <button
-                      onClick={restartProcess}
-                      className="flex items-center space-x-3 p-3 bg-white rounded-lg border border-gray-200 hover:border-blue-300 hover:bg-blue-50 transition-all duration-200"
-                      aria-label="Restart drug discovery process"
-                    >
-                      <div className="bg-blue-100 p-2 rounded-full">{iconMap["Pill"]}</div>
-                      <div className="text-left">
-                        <div className="text-sm font-medium text-gray-800">Restart Drug Discovery</div>
-                        <div className="text-xs text-gray-500">Start the process again</div>
-                      </div>
-                    </button>
-                    <button
-                      onClick={handleDashboardSelection}
-                      className="flex items-center space-x-3 p-3 bg-white rounded-lg border border-gray-200 hover:border-blue-300 hover:bg-blue-50 transition-all duration-200"
-                      aria-label="Explore dashboard tools"
-                    >
-                      <div className="bg-blue-100 p-2 rounded-full">{iconMap["Atom"]}</div>
-                      <div className="text-left">
-                        <div className="text-sm font-medium text-gray-800">Explore Dashboard Tools</div>
-                        <div className="text-xs text-gray-500">Try other tools</div>
-                      </div>
-                    </button>
-                    <button
-                      onClick={() => {
-                        setSubMode("waiting_for_selection");
-                        const prompt = "Returning to option selection.";
-                        setConversationHistory((prev) => [...prev, { type: "jarvis", text: prompt }]);
-                        speakResponse(prompt);
-                      }}
-                      className="flex items-center space-x-3 p-3 bg-white rounded-lg border border-gray-200 hover:border-blue-300 hover:bg-blue-50 transition-all duration-200"
-                      aria-label="Return to option selection"
-                    >
-                      <div className="bg-blue-100 p-2 rounded-full">{iconMap["Bot"]}</div>
-                      <div className="text-left">
-                        <div className="text-sm font-medium text-gray-800">Back to Options</div>
-                        <div className="text-xs text-gray-500">Choose between dashboard or drug discovery</div>
-                      </div>
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* Conversation History */}
-              <div ref={conversationRef} className="flex-auto overflow-y-auto p-6 space-y-4">
-                {conversationHistory.map((msg, index) => (
-                  <div key={index} className={`flex ${msg.type === "user" ? "justify-end" : "justify-start"}`}>
-                    <div
-                      className={`max-w-[80%] ${
-                        msg.type === "user"
-                          ? "bg-blue-600 text-white rounded-tr-none"
-                          : "bg-white text-gray-800 rounded-tl-none border border-gray-200 shadow-sm"
-                      } rounded-2xl px-4 py-2 transition-all duration-200`}
-                    >
-                      {msg.type === "jarvis" && (
-                        <div className="flex items-center space-x-2 mb-1 pb-1 border-b border-gray-200">
-                          <Bot className="h-3 w-3 text-blue-600" />
-                          <span className="text-xs font-medium text-blue-600">JARVIS</span>
-                        </div>
-                      )}
-                      <p className="text-sm whitespace-pre-wrap">{msg.text}</p>
-                    </div>
-                  </div>
-                ))}
-                {(isLoading || isSpeaking) && (
-                  <div className="flex justify-start">
-                    <div className="max-w-[80%] w-full py-2 px-4 bg-white border rounded-2xl border-gray-200 shadow-sm">
-                      <div className="flex items-center space-x-2 pb-0">
-                        <Bot className="h-3 w-3 text-blue-600" />
-                        <span className="text-xs font-semibold text-blue-600">JARVIS</span>
-                      </div>
-                      <div className="flex space-x-1 items-center">
-                        <div className="h-3 w-1 bg-blue-400 animate-wave"></div>
-                        <div className="h-4 w-1 bg-blue-400 animate-wave" style={{ animationDelay: "100ms" }}></div>
-                        <div className="h-5 w-1 bg-blue-400 animate-wave" style={{ animationDelay: "200ms" }}></div>
-                        <div className="h-4 w-1 bg-blue-400 animate-wave" style={{ animationDelay: "300ms" }}></div>
-                        <div className="h-3 w-1 bg-blue-400 animate-wave" style={{ animationDelay: "400ms" }}></div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Input Area */}
-              <div className="p-6 border-t border-gray-200">
-                {mode === "doubt" && (
-                  <div className="flex items-center justify-between px-4 py-2 rounded-full bg-white border border-gray-200 shadow-sm">
-                    <div className="flex items-center space-x-2 text-sm text-gray-600">
-                      {isListening && mode === "doubt" ? (
-                        <>
-                          <div className="relative">
-                            <div className="absolute inset-0 bg-green-100 rounded-full animate-ping"></div>
-                            <Mic className="h-5 w-5 text-green-600" />
-                          </div>
-                          <span className="text-sm">Listening...</span>
-                        </>
-                      ) : (
-                        <>
-                          <MicOff className="h-5 w-5 text-red-600" />
-                          <span className="text-sm">Voice recognition paused</span>
-                        </>
-                      )}
-                    </div>
-                    <button
-                      onClick={() => (isListening ? stopConversation() : startConversation("doubt"))}
-                      className={`px-4 py-2 rounded-lg text-sm font-semibold text-white ${
-                        isListening ? "bg-red-600 hover:bg-red-700" : "bg-blue-600 hover:bg-blue-700"
-                      } transition-all duration-200`}
-                      aria-label={isListening ? "Stop voice conversation" : "Start voice conversation"}
-                    >
-                      {isListening ? "Stop" : "Start"}
-                    </button>
-                  </div>
-                )}
-                {mode === "beginner" && subMode === "waiting_for_question" && (
-                  <div className="flex flex-col space-y-3">
-                    <input
-                      type="text"
-                      placeholder="Ask a question about this tool..."
-                      className="w-full px-4 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                      onKeyDown={async (e) => {
-                        if (e.key === "Enter" && e.target.value.trim()) {
-                          setSubMode("resolving_doubt");
-                          const query = e.target.value.trim();
-                          setConversationHistory((prev) => [...prev, { type: "user", text: query }]);
-                          await fetchResponse(query);
-                          e.target.value = "";
-                        }
-                      }}
-                      aria-label="Ask a question about the current tool"
-                    />
-                    {suggestedQuestions[targetRoute]?.length > 0 && (
-                      <div className="flex flex-wrap gap-2">
-                        {suggestedQuestions[targetRoute].map((q, index) => (
-                          <button
-                            key={index}
-                            onClick={() => {
-                              setSubMode("resolving_doubt");
-                              setConversationHistory((prev) => [...prev, { type: "user", text: q }]);
-                              fetchResponse(q);
-                            }}
-                            className="px-3 py-1 bg-blue-100 text-blue-600 rounded-full text-xs hover:bg-blue-200 transition-all duration-200"
-                            aria-label={`Ask suggested question: ${q}`}
-                          >
-                            {q}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                    <div className="flex justify-end gap-2">
-                      {selectedOption === "drugDiscovery" && currentToolIndex < drugDiscoverySteps.length - 1 && (
-                        <button
-                          onClick={proceedToNextStep}
-                          disabled={isSpeaking}
-                          className={`flex-1 px-4 py-2 rounded-lg text-sm font-semibold text-white ${
-                            isSpeaking ? "bg-gray-400 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-700"
-                          } transition-all duration-200`}
-                          aria-label="Proceed to next step"
-                        >
-                          Next Step
-                        </button>
-                      )}
-                      {/* <button
                         onClick={async () => {
-                          const prompt = `Returning to ${selectedOption === "drugDiscovery" ? "step" : "tool"} selection.`;
+                          const prompt = "Returning to tool selection.";
                           setConversationHistory((prev) => [...prev, { type: "jarvis", text: prompt }]);
                           await speakResponse(prompt);
-                          setSubMode(selectedOption === "drugDiscovery" ? "waiting_for_step_selection" : "waiting_for_tool_selection");
+                          setSubMode("waiting_for_tool_selection");
                         }}
                         disabled={isSpeaking}
                         className={`flex-1 px-4 py-2 rounded-lg text-sm font-semibold text-white ${
                           isSpeaking ? "bg-gray-400 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-700"
                         } transition-all duration-200`}
-                        aria-label={`Select another ${selectedOption === "drugDiscovery" ? "step" : "tool"}`}
+                        aria-label="Select another tool"
                       >
-                        Select Another {selectedOption === "drugDiscovery" ? "Step" : "Tool"}
-                      </button> */}
-                    </div>
+                        Select Another Tool
+                      </button>
+                    )}
                   </div>
-                )}
-                <div className="mt-2 text-xs text-center text-gray-500">
-                  Jarvis can assist with molecular structures, drug discovery processes, and medical queries
                 </div>
+              )}
+              <div className="mt-2 text-xs text-center text-gray-500">
+                Jarvis can assist with molecular structures, drug discovery processes, and medical queries
               </div>
             </div>
-          )}
-        </div>
-      )}
-      <style>
-        {`
-          @keyframes pulse-scale {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.05); }
-          }
-          @keyframes wave {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-4px); }
-          }
-          .animate-wave {
-            animation: wave 0.8s infinite;
-          }
-          .animate-ping {
-            animation: ping 1s cubic-bezier(0, 0, 0.2, 1) infinite;
-          }
-          @keyframes ping {
-            75%, 100% { transform: scale(2); opacity: 0; }
-          }
-        `}
-      </style>
-    </div>
-  );
+          </div>
+        )}
+      </div>
+    )}
+    <style>
+      {`
+        @keyframes pulse-scale {
+          0%, 100% { transform: scale(1); }
+          50% { transform: scale(1.05); }
+        }
+        @keyframes wave {
+          0%, 100% { transform: translateY(0); }
+          50% { transform: translateY(-4px); }
+        }
+        .animate-wave {
+          animation: wave 0.8s infinite;
+        }
+        .animate-ping {
+          animation: ping 1s cubic-bezier(0, 0, 0.2, 1) infinite;
+        }
+        @keyframes ping {
+          75%, 100% { transform: scale(2); opacity: 0; }
+        }
+      `}
+    </style>
+  </div>
+);
 }
