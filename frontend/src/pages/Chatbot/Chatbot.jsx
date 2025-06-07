@@ -1,37 +1,118 @@
 import { useState, useEffect, useRef } from "react";
-import { Bot, Microscope, Atom, Brain, X, Mic, MicOff, Volume2, VolumeX, Dna, Pill } from "lucide-react";
-import { useAuthStore } from "../../Store/auth.store.js";
 import { useNavigate, useLocation } from "react-router-dom";
+import {
+  Bot,
+  Microscope,
+  Atom,
+  Brain,
+  X,
+  Mic,
+  MicOff,
+  Dna,
+  Pill,
+  ChevronRight,
+  ChevronLeft,
+  CheckCircle,
+  HelpCircle,
+  ArrowLeft,
+} from "lucide-react";
+import { useAuthStore } from "../../Store/auth.store.js";
 
 export default function Chatbot() {
-  const [isListening, setIsListening] = useState(false);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
-  const [transcript, setTranscript] = useState("");
   const [response, setResponse] = useState("");
-  const [isSpeaking, setIsSpeaking] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [isListening, setIsListening] = useState(false);
   const [isRecognizing, setIsRecognizing] = useState(false);
+  const [transcript, setTranscript] = useState("");
   const [conversationHistory, setConversationHistory] = useState([]);
-  const [showTooltip, setShowTooltip] = useState("");
+  const [tooltipVisible, setTooltipVisible] = useState("");
   const [mode, setMode] = useState(null); // null, "doubt", or "beginner"
-  const [subMode, setSubMode] = useState(null); // null, "waiting_for_question", "resolving_doubt", "tour_complete"
-  const [targetRoute, setTargetRoute] = useState(null); // Track intended route
+  const [subMode, setSubMode] = useState(null); // null, "waiting_for_selection", "waiting_for_tool_selection", "waiting_for_step_selection", "explaining_tab", "waiting_for_question", "resolving_doubt", "tour_complete", "process_ended"
+  const [targetRoute, setTargetRoute] = useState(null);
+  const [currentToolIndex, setCurrentToolIndex] = useState(0);
+  const [selectedOption, setSelectedOption] = useState(null); // "dashboard" or "drugDiscovery"
+  const [selectedTool, setSelectedTool] = useState(null); // Track manually selected tool or step
+  const [completedSteps, setCompletedSteps] = useState(
+    JSON.parse(localStorage.getItem("drugDiscoveryProgress") || "[]")
+  ); // Persist progress
   const recognitionRef = useRef(null);
   const isCleaningUp = useRef(false);
+  const recognitionState = useRef("idle");
   const conversationRef = useRef(null);
-  const hasPromptedQuestion = useRef(false);
-  const recognitionState = useRef("idle"); // idle, starting, running, stopping
-  const lastStartAttempt = useRef(0); // For debouncing
-  const lastProcessedRoute = useRef(null); // Prevent duplicate useEffect triggers
-  const intendedMode = useRef(null); // Track intended mode
-  const modeLock = useRef(false); // Prevent mode resets
+  const lastProcessedRoute = useRef(null);
+  const recognitionLock = useRef(false);
   const { user } = useAuthStore();
   const navigate = useNavigate();
   const location = useLocation();
 
+  // Define dashboard routes and drug discovery steps
+  const dashboardRoutes = [
+    { path: "/dashboard/protein-structure", name: "Protein Structure", icon: "Atom" },
+    { path: "/dashboard/protein-structure-mutation", name: "Protein Structure Mutation", icon: "Dna" },
+    { path: "/dashboard/cost-estimation", name: "Cost Estimation", icon: "Pill" },
+    { path: "/dashboard/ai-research-paper-generator", name: "AI Research Paper Generator", icon: "Brain" },
+    { path: "/dashboard/ai-driven-target-prediction", name: "AI-Driven Target Prediction", icon: "Microscope" },
+    { path: "/dashboard/ai-naming", name: "AI Naming Suggestion", icon: "Bot" },
+  ];
+
+  const drugDiscoverySteps = [
+    {
+      path: "/dashboard/protein-structure-mutation",
+      name: "Step 1: Protein Mutation",
+      description: "Combine molecules to create new compounds",
+      icon: "Dna",
+    },
+    {
+      path: "/dashboard/cost-estimation",
+      name: "Step 2: Cost Estimation",
+      description: "Calculate synthesis and production costs",
+      icon: "Pill",
+    },
+    {
+      path: "/dashboard/ai-naming",
+      name: "Step 3: AI Naming",
+      description: "Generate potential drug names",
+      icon: "Bot",
+    },
+    {
+      path: "/dashboard/ai-research-paper-generator",
+      name: "Step 4: Research Paper",
+      description: "Create research paper drafts",
+      icon: "Brain",
+    },
+    {
+      path: "/dashboard/summary",
+      name: "Step 5: Summary",
+      description: "Review your drug discovery project",
+      icon: "Microscope",
+    },
+  ];
+
+  // Suggested questions per tool/step
+  const suggestedQuestions = {
+    "/dashboard/protein-structure": ["How do I visualize a protein in 3D?", "What file formats are supported?"],
+    "/dashboard/protein-structure-mutation": ["How does mutation affect drug design?", "Can I specify mutation sites?"],
+    "/dashboard/cost-estimation": ["What factors are included in cost estimation?", "How accurate is the cost prediction?"],
+    "/dashboard/ai-research-paper-generator": ["Can I customize the paper format?", "What data is required for the draft?"],
+    "/dashboard/ai-driven-target-prediction": ["How does AI predict drug targets?", "What is the accuracy of predictions?"],
+    "/dashboard/ai-naming": ["How are drug names generated?", "Can I filter names by criteria?"],
+    "/dashboard/summary": ["What is included in the project summary?", "Can I export the summary?"],
+  };
+
+  // Map icon names to components
+  const iconMap = {
+    Atom: <Atom className="h-4 w-4" />,
+    Dna: <Dna className="h-4 w-4" />,
+    Pill: <Pill className="h-4 w-4" />,
+    Brain: <Brain className="h-4 w-4" />,
+    Microscope: <Microscope className="h-4 w-4" />,
+    Bot: <Bot className="h-4 w-4" />,
+  };
+
   // Normalize path for route comparison
   const normalizePath = (path) => {
-    console.log(`Normalizing path: ${path}`);
     if (!path || typeof path !== "string") {
       console.warn(`Invalid path: ${path}, returning default '/dashboard'`);
       return "/dashboard";
@@ -39,30 +120,7 @@ export default function Chatbot() {
     return path.replace(/\/+$/, "").toLowerCase();
   };
 
-  // Log state changes for debugging
-  useEffect(() => {
-    console.log(`State update: isListening=${isListening}, isRecognizing=${isRecognizing}, isSpeaking=${isSpeaking}, mode=${mode}, subMode=${subMode}, path=${location.pathname}, recognitionState=${recognitionState.current}, targetRoute=${targetRoute}, intendedMode=${intendedMode.current}, modeLock=${modeLock.current}`);
-  }, [isListening, isRecognizing, isSpeaking, mode, subMode, location.pathname, targetRoute]);
-
-  // Forcefully set subMode when hasPromptedQuestion is true
-  useEffect(() => {
-    if (hasPromptedQuestion.current && subMode !== "waiting_for_question" && mode === "beginner" && !modeLock.current) {
-      console.warn(`SubMode mismatch: subMode=${subMode}, forcing to waiting_for_question`);
-      setSubMode("waiting_for_question");
-    }
-  }, [subMode, mode]);
-
-  // Check for BrowserRouter
-  useEffect(() => {
-    if (!navigate || typeof navigate !== "function") {
-      console.error("Navigate function is undefined. Ensure Chatbot is wrapped in BrowserRouter.");
-    }
-    if (!location || !location.pathname) {
-      console.error("Location or pathname is undefined. Check React Router setup.");
-    }
-  }, [navigate, location]);
-
-  // Initialize Web Speech API
+  // Initialize Web Speech API for recognition (doubt mode only)
   const createRecognition = () => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) {
@@ -77,68 +135,35 @@ export default function Chatbot() {
     return recognition;
   };
 
-  // Configure recognition handlers
+  // Configure recognition handlers (doubt mode only)
   const setupRecognition = (recognition) => {
+    recognition.onstart = () => {
+      console.log("Recognition started");
+      setIsRecognizing(true);
+      recognitionState.current = "active";
+    };
+
     recognition.onresult = async (event) => {
-      const speechResult = event.results[event.results.length - 1][0].transcript.trim().toLowerCase();
-      console.log(`Captured transcript: ${speechResult}, mode=${mode}, subMode=${subMode}, intendedMode=${intendedMode.current}, modeLock=${modeLock.current}`);
+      const speechResult = event.results[event.results.length - 1][0].transcript.trim();
+      console.log(`Captured transcript: "${speechResult}"`);
       setTranscript(speechResult);
       setConversationHistory((prev) => [...prev, { type: "user", text: speechResult }]);
 
-      if (speechResult.includes("stop") || speechResult.includes("thank you")) {
+      if (speechResult.toLowerCase().includes("stop") || speechResult.toLowerCase().includes("thank you")) {
         console.log("Stop command detected, stopping conversation");
         await stopConversation();
         return;
       }
 
-      // Restore mode synchronously
-      let currentMode = mode;
-      if (!currentMode && intendedMode.current) {
-        console.warn(`Mode is null, restoring from intendedMode: ${intendedMode.current}`);
-        currentMode = intendedMode.current;
-        setMode(currentMode);
-        setSubMode(currentMode === "beginner" ? "waiting_for_question" : null);
-        await new Promise((resolve) => setTimeout(resolve, 0));
-      }
-
-      if (!currentMode || currentMode !== intendedMode.current || modeLock.current) {
-        console.warn(`Invalid state: mode=${currentMode}, subMode=${subMode}, intendedMode=${intendedMode.current}, modeLock=${modeLock.current}, prompting restart`);
-        modeLock.current = true;
-        await speakResponse("Please start a new conversation in beginner or question mode.");
-        modeLock.current = false;
-        setIsListening(true);
-        await startRecognition();
-        return;
-      }
-
-      modeLock.current = true;
-      try {
-        if (currentMode === "beginner") {
-          console.log(`Processing in beginner mode with subMode=${subMode}`);
-          await handleBeginnerMode(speechResult, currentMode);
-        } else if (currentMode === "doubt") {
-          console.log("Processing in doubt mode");
-          await fetchResponse(speechResult);
-        } else {
-          console.warn(`Unexpected mode: ${currentMode}, resetting`);
-          setMode(null);
-          setSubMode(null);
-          intendedMode.current = null;
-          await speakResponse("Please start a new conversation in beginner or question mode.");
-        }
-      } catch (error) {
-        console.error(`Error in onresult: ${error}`);
-        await speakResponse("Sorry, an error occurred. Please try again.");
-      } finally {
-        modeLock.current = false;
-      }
+      await fetchResponse(speechResult);
     };
 
     recognition.onend = async () => {
-      console.log(`Recognition ended, isListening: ${isListening}, isCleaningUp: ${isCleaningUp.current}, isSpeaking: ${isSpeaking}, isRecognizing: ${isRecognizing}, recognitionState: ${recognitionState.current}`);
+      console.log(`Recognition ended - isListening: ${isListening}, isSpeaking: ${isSpeaking}`);
       setIsRecognizing(false);
       recognitionState.current = "idle";
-      if (isListening && !isCleaningUp.current && !isSpeaking && mode && mode === intendedMode.current) {
+      if (!isCleaningUp.current && !isSpeaking && isListening && mode === "doubt") {
+        console.log("Restarting recognition");
         await startRecognition();
       }
     };
@@ -147,72 +172,121 @@ export default function Chatbot() {
       console.error(`Speech recognition error: ${event.error}`);
       setIsRecognizing(false);
       recognitionState.current = "idle";
-      if (event.error === "no-speech" && isListening && !isCleaningUp.current && mode) {
-        console.log("No speech detected, retrying recognition");
-        const message = "I didn't hear anything.";
+      if (event.error === "no-speech" && !isCleaningUp.current && isListening && mode === "doubt") {
+        const message = "I didn't hear anything. Please try again.";
         setConversationHistory((prev) => [...prev, { type: "jarvis", text: message }]);
         await speakResponse(message);
-        if (isListening && !isCleaningUp.current && !isSpeaking && mode) {
+        await startRecognition();
+      } else {
+        recognitionRef.current = null;
+        if (!isCleaningUp.current && isListening && mode === "doubt") {
           await startRecognition();
         }
-      } else if (isListening && !isCleaningUp.current && !isSpeaking && mode) {
-        console.log("Retrying recognition after error");
-        await startRecognition();
       }
     };
   };
 
-  // Start speech recognition with robust state management
-  const startRecognition = async () => {
-    const now = Date.now();
-    if (now - lastStartAttempt.current < 1000) {
-      console.log("Debouncing startRecognition attempt");
-      return;
-    }
-    lastStartAttempt.current = now;
-
-    console.log(`Attempting to start recognition, isListening: ${isListening}, isCleaningUp: ${isCleaningUp.current}, isSpeaking: ${isSpeaking}, isRecognizing: ${isRecognizing}, recognitionState=${recognitionState.current}, recognitionRef.current=${!!recognitionRef.current}`);
-    
-    // Ensure recognition is stopped before starting
-    if (recognitionRef.current && (isRecognizing || recognitionState.current !== "idle")) {
-      try {
-        recognitionState.current = "stopping";
-        recognitionRef.current.stop();
-        await new Promise((resolve) => setTimeout(resolve, 200));
-        recognitionState.current = "idle";
-        setIsRecognizing(false);
-      } catch (error) {
-        console.error(`Error stopping recognition before start: ${error}`);
+  // Start speech recognition (doubt mode only)
+  const startRecognition = async (retryCount = 0) => {
+    if (recognitionLock.current || isCleaningUp.current || isSpeaking) {
+      console.log("Recognition blocked");
+      if (isSpeaking && retryCount < 3) {
+        await new Promise((resolve) => setTimeout(resolve, 500));
+        await startRecognition(retryCount + 1);
       }
-    }
-
-    if (!recognitionRef.current || isCleaningUp.current || isSpeaking) {
-      console.log("Cannot start recognition: not initialized, cleaning up, or speaking");
-      recognitionState.current = "idle";
-      setIsRecognizing(false);
       return;
     }
+
+    recognitionLock.current = true;
 
     try {
-      recognitionState.current = "starting";
+      if (recognitionRef.current && (isRecognizing || recognitionState.current === "active")) {
+        recognitionRef.current.stop();
+        await new Promise((resolve) => setTimeout(resolve, 200));
+      }
+
+      if (!recognitionRef.current) {
+        recognitionRef.current = createRecognition();
+        if (!recognitionRef.current) {
+          recognitionLock.current = false;
+          const errorMessage = "Speech recognition is not supported on this device.";
+          setConversationHistory((prev) => [...prev, { type: "jarvis", text: errorMessage }]);
+          await speakResponse(errorMessage);
+          setIsListening(false);
+          return;
+        }
+        setupRecognition(recognitionRef.current);
+      }
+
       recognitionRef.current.start();
-      recognitionState.current = "running";
-      setIsRecognizing(true);
       setIsListening(true);
-      console.log("Speech recognition started successfully");
+      setIsRecognizing(true);
     } catch (error) {
       console.error(`Error starting recognition: ${error}`);
       setIsRecognizing(false);
       recognitionState.current = "idle";
-      if (!isCleaningUp.current && !isSpeaking && mode) {
-        setTimeout(() => startRecognition(), 1000);
+
+      if (retryCount < 2) {
+        recognitionRef.current = null;
+        await new Promise((resolve) => setTimeout(resolve, 200));
+        await startRecognition(retryCount + 1);
+      } else {
+        const message = "Sorry, I couldn't start speech recognition. Please try again.";
+        setConversationHistory((prev) => [...prev, { type: "jarvis", text: message }]);
+        await speakResponse(message);
+        setIsListening(false);
       }
+    } finally {
+      recognitionLock.current = false;
     }
+  };
+
+  // Speak response using Web Speech API
+  const speakResponse = async (text) => {
+    return new Promise((resolve) => {
+      if (!text || typeof text !== "string") {
+        console.error("Invalid text for speech synthesis:", text);
+        setIsSpeaking(false);
+        resolve();
+        return;
+      }
+
+      if (recognitionRef.current && isRecognizing) {
+        try {
+          recognitionRef.current.stop();
+          setIsRecognizing(false);
+          recognitionState.current = "idle";
+        } catch (error) {
+          console.error(`Error stopping recognition: ${error}`);
+        }
+      }
+
+      window.speechSynthesis.cancel();
+
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = "en-US";
+      utterance.rate = 0.9;
+      utterance.onstart = () => {
+        setIsSpeaking(true);
+      };
+      utterance.onend = async () => {
+        setIsSpeaking(false);
+        if (mode === "doubt" && isListening && !isCleaningUp.current) {
+          await startRecognition();
+        }
+        resolve();
+      };
+      utterance.onerror = (event) => {
+        console.error(`Speech synthesis error: ${event.error}`);
+        setIsSpeaking(false);
+        resolve();
+      };
+      window.speechSynthesis.speak(utterance);
+    });
   };
 
   // Start conversation
   const startConversation = async (selectedMode) => {
-    console.log(`Starting conversation with mode: ${selectedMode}`);
     isCleaningUp.current = false;
     setIsPanelOpen(true);
     setIsListening(false);
@@ -223,69 +297,47 @@ export default function Chatbot() {
     setMode(selectedMode);
     setSubMode(null);
     setTargetRoute(null);
-    intendedMode.current = selectedMode;
-    modeLock.current = false;
-    hasPromptedQuestion.current = false;
-    recognitionState.current = "idle";
-    lastProcessedRoute.current = null;
+    setCurrentToolIndex(0);
+    setSelectedTool(null);
+    setSelectedOption(null);
+    setCompletedSteps(JSON.parse(localStorage.getItem("drugDiscoveryProgress") || "[]"));
 
     if (recognitionRef.current) {
       try {
-        recognitionState.current = "stopping";
         recognitionRef.current.stop();
-        await new Promise((resolve) => setTimeout(resolve, 200));
-        recognitionState.current = "idle";
       } catch (error) {
-        console.error(`Error stopping existing recognition: ${error}`);
+        console.error(`Error stopping recognition: ${error}`);
       }
       recognitionRef.current = null;
     }
 
-    recognitionRef.current = createRecognition();
-    if (!recognitionRef.current) {
-      const errorMessage = "Speech recognition is not supported in this browser.";
-      setResponse(errorMessage);
-      setConversationHistory((prev) => [{ type: "jarvis", text: errorMessage }]);
-      await speakResponse(errorMessage);
-      setIsPanelOpen(false);
-      return;
-    }
-    setupRecognition(recognitionRef.current);
-
     let welcomeMessage = "";
     if (selectedMode === "doubt") {
-      welcomeMessage = "I am Jarvis, here to assist with your drug discovery questions. Ask away!";
+      welcomeMessage = "I am Jarvis, here to assist with your medical and pharmaceutical questions. Please speak your question.";
       setConversationHistory([{ type: "jarvis", text: welcomeMessage }]);
       await speakResponse(welcomeMessage);
       setIsListening(true);
       await startRecognition();
     } else if (selectedMode === "beginner") {
-      welcomeMessage =
-        "Welcome to your drug discovery journey! I'm Jarvis, and I'll guide you through the process. " +
-        "Let's start with the Protein Structure Mutation tool.";
+      welcomeMessage = "Welcome to your drug discovery journey! I'm Jarvis, and I'll guide you through the dashboard tools or the drug discovery process. Please select an option.";
       setConversationHistory([{ type: "jarvis", text: welcomeMessage }]);
       await speakResponse(welcomeMessage);
-      const target = "/dashboard/protein-structure-mutation";
-      setTargetRoute(target);
-      console.log(`Navigating to ${target}`);
-      navigate(target, { replace: true, state: { fromJarvis: true } });
+      setSubMode("waiting_for_selection");
     }
   };
 
   // Stop conversation
   const stopConversation = async () => {
-    console.log("Stopping conversation");
     isCleaningUp.current = true;
     setIsListening(false);
     setIsRecognizing(false);
     setMode(null);
     setSubMode(null);
     setTargetRoute(null);
-    intendedMode.current = null;
-    modeLock.current = false;
-    hasPromptedQuestion.current = false;
-    recognitionState.current = "idle";
-    lastProcessedRoute.current = null;
+    setCurrentToolIndex(0);
+    setSelectedTool(null);
+    setSelectedOption(null);
+    setCompletedSteps([]);
 
     const goodbyeMessage = "Goodbye. Thank you for using Jarvis.";
     setConversationHistory((prev) => [...prev, { type: "jarvis", text: goodbyeMessage }]);
@@ -293,50 +345,49 @@ export default function Chatbot() {
 
     if (recognitionRef.current) {
       try {
-        recognitionState.current = "stopping";
         recognitionRef.current.stop();
-        await new Promise((resolve) => setTimeout(resolve, 200));
-        recognitionState.current = "idle";
       } catch (error) {
         console.error(`Error stopping recognition: ${error}`);
       }
       recognitionRef.current = null;
     }
 
+    localStorage.setItem("drugDiscoveryProgress", JSON.stringify([]));
     setTimeout(() => {
       setIsPanelOpen(false);
       isCleaningUp.current = false;
     }, 200);
   };
 
-  // Toggle speech
-  const toggleSpeech = async () => {
-    if (isSpeaking) {
-      setIsSpeaking(false);
-      setIsListening(true);
-      await startRecognition();
-    } else if (response) {
-      await speakResponse(response);
-    }
+  // Reset to initial selection screen
+  const resetToInitialSelection = async () => {
+    const prompt = "Returning to the initial selection screen.";
+    setConversationHistory((prev) => [...prev, { type: "jarvis", text: prompt }]);
+    await speakResponse(prompt);
+    setMode(null);
+    setSubMode(null);
+    setTargetRoute(null);
+    setCurrentToolIndex(0);
+    setSelectedTool(null);
+    setSelectedOption(null);
+    setCompletedSteps([]);
+    localStorage.setItem("drugDiscoveryProgress", JSON.stringify([]));
   };
 
   // Fetch response from Gemini API
   const fetchResponse = async (query) => {
-    console.log(`Fetching response for query: ${query}`);
     setIsLoading(true);
-
-    const problemStatement = `The process of drug discovery is time-consuming, expensive, and often inefficient, with a high rate of failure in clinical trials. Traditional methods rely heavily on trial and error, requiring years of research and significant financial investment. Additionally, the complexity of biological systems and the vast chemical space make it challenging to identify promising drug candidates efficiently. Generative AI, with its ability to analyze large datasets, predict molecular interactions, and generate novel compounds, has the potential to revolutionize this process. However, there is a lack of accessible, user-friendly tools that leverage generative AI to assist researchers in accelerating drug discovery while reducing costs and improving success rates.`;
-
-    const prompt = `You are Jarvis, an AI assistant specialized in drug discovery. You are trained on the following problem statement: "${problemStatement}". Answer the user's query related to drug discovery, from basic molecule or drug names to complex information about the process, generative AI applications, or challenges. Provide a concise, accurate response suitable for researchers. Query: ${query}`;
+    const contextInfo = selectedTool ? `Current tool context: ${selectedTool.name}. ` : "";
+    const problemStatement = `You are Jarvis, an AI assistant specialized in medical and pharmaceutical domains. ${contextInfo}Answer the user's query comprehensively and accurately. Keep your response concise but informative. Query: ${query}`;
 
     try {
       const response = await fetch(
-        "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=AIzaSyDyujm50dHMYdn1Vv50dDDqcAhgUqCOuUGU",
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${import.meta.env.VITE_API_KEY}`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            contents: [{ parts: [{ text: prompt }] }],
+            contents: [{ parts: [{ text: problemStatement }] }],
           }),
         }
       );
@@ -347,399 +398,208 @@ export default function Chatbot() {
 
       const data = await response.json();
       const text = data.candidates[0].content.parts[0].text;
-      console.log(`API response: ${text}`);
       setResponse(text);
       setConversationHistory((prev) => [...prev, { type: "jarvis", text }]);
       await speakResponse(text);
 
+      // Store the Q&A in local storage
       const jarvisEntry = {
         title: `Query: ${query.slice(0, 50)}`,
         questions: query,
         answers: text,
+        toolContext: selectedTool?.name || "General",
         userId: user?._id || "66f172e9c7e124f5c4b3c2d1",
         createdAt: new Date().toISOString(),
       };
       const storedEntries = JSON.parse(localStorage.getItem("jarvisEntries") || "[]");
       storedEntries.push(jarvisEntry);
       localStorage.setItem("jarvisEntries", JSON.stringify(storedEntries));
-      console.log("Stored entry in localStorage:", jarvisEntry);
+
+      if (mode === "beginner" && (subMode === "resolving_doubt" || subMode === "waiting_for_question")) {
+        setSubMode("waiting_for_question");
+        const followUpPrompt = "Would you like to ask another question or select a different tool/step?";
+        setConversationHistory((prev) => [...prev, { type: "jarvis", text: followUpPrompt }]);
+        await speakResponse(followUpPrompt);
+      }
     } catch (error) {
       console.error(`Error fetching Gemini API: ${error}`);
-      const errorMessage = "Sorry, I encountered an error. Please try again.";
+      const errorMessage = "Sorry, I encountered an error while processing your question. Would you like to try again or select another tool/step?";
       setResponse(errorMessage);
       setConversationHistory((prev) => [...prev, { type: "jarvis", text: errorMessage }]);
       await speakResponse(errorMessage);
 
-      const jarvisEntry = {
-        title: `Query error: ${query.slice(0, 50)}`,
-        questions: query,
-        answers: `Error: ${error.message}`,
-        userId: user?._id || "66f172e9c7e124f5c4b3c2d1",
-        createdAt: new Date().toISOString(),
-      };
-      const storedEntries = JSON.parse(localStorage.getItem("jarvisEntries") || "[]");
-      storedEntries.push(jarvisEntry);
-      localStorage.setItem("jarvisEntries", JSON.stringify(storedEntries));
-      console.log("Stored error entry in localStorage:", jarvisEntry);
+      if (mode === "beginner") {
+        setSubMode("waiting_for_question");
+      }
     } finally {
       setIsLoading(false);
-      if (mode === "beginner" && subMode === "resolving_doubt") {
-        console.log("Setting subMode to waiting_for_question after fetch");
-        setSubMode("waiting_for_question");
-        hasPromptedQuestion.current = true;
-        const questionPrompt = "Do you have any more questions about this tool? Say 'yes' or 'no'.";
-        setConversationHistory((prev) => [...prev, { type: "jarvis", text: questionPrompt }]);
-        await speakResponse(questionPrompt);
-      }
     }
   };
 
-  // Speak response using Web Speech API
-  const speakResponse = async (text) => {
-    return new Promise((resolve) => {
-      console.log(`Speaking response: ${text}, mode=${mode}, subMode=${subMode}, intendedMode=${intendedMode.current}, modeLock=${modeLock.current}`);
-      if (recognitionRef.current && isListening && !isCleaningUp.current) {
-        try {
-          recognitionState.current = "stopping";
-          recognitionRef.current.stop();
-          console.log("Recognition paused for speech");
-          setTimeout(() => {
-            recognitionState.current = "idle";
-            setIsRecognizing(false);
-          }, 200);
-        } catch (error) {
-          console.error(`Error stopping recognition: ${error}`);
-          recognitionState.current = "idle";
-          setIsRecognizing(false);
-        }
-      }
+  // Handle dashboard tools selection
+  const handleDashboardSelection = async () => {
+    setSelectedOption("dashboard");
+    setSubMode("waiting_for_tool_selection");
+    const prompt = "You chose to explore dashboard tools. Please select a tool to learn about.";
+    setConversationHistory((prev) => [...prev, { type: "jarvis", text: prompt }]);
+    await speakResponse(prompt);
+  };
 
-      modeLock.current = true;
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = "en-US";
-      utterance.onstart = () => {
-        setIsSpeaking(true);
-        console.log(`Speech started, isListening=${isListening}, mode=${mode}, subMode=${subMode}, intendedMode=${intendedMode.current}, modeLock=${modeLock.current}`);
-      };
-      utterance.onend = async () => {
-        setIsSpeaking(false);
-        console.log(`Speech ended, mode=${mode}, subMode=${subMode}, hasPrompted=${hasPromptedQuestion.current}, isListening=${isListening}, intendedMode=${intendedMode.current}, modeLock=${modeLock.current}`);
-        if (text.includes("Goodbye.")) {
-          setIsListening(false);
-          setIsRecognizing(false);
-          recognitionState.current = "idle";
-          setIsPanelOpen(false);
-          isCleaningUp.current = true;
-        } else if (mode && mode === intendedMode.current) {
-          setIsListening(true);
-          if (!recognitionRef.current && !isCleaningUp.current) {
-            recognitionRef.current = createRecognition();
-            if (recognitionRef.current) {
-              setupRecognition(recognitionRef.current);
-            }
-          }
-          await startRecognition();
-        }
-        modeLock.current = false;
-        resolve();
-      };
-      utterance.onerror = (error) => {
-        console.error(`Speech synthesis error: ${error}`);
-        setIsSpeaking(false);
-        setIsListening(mode && mode === intendedMode.current ? true : false);
-        setIsRecognizing(false);
-        recognitionState.current = "idle";
-        if (mode && mode === intendedMode.current) {
-          startRecognition();
-        }
-        modeLock.current = false;
-        resolve();
-      };
-      window.speechSynthesis.speak(utterance);
+  // Handle drug discovery selection
+  const handleDrugDiscoverySelection = async () => {
+    setSelectedOption("drugDiscovery");
+    setSubMode("waiting_for_step_selection");
+    const prompt = "You chose the drug discovery process. Please select the current step to begin.";
+    setConversationHistory((prev) => [...prev, { type: "jarvis", text: prompt }]);
+    await speakResponse(prompt);
+  };
+
+  // Handle manual tool selection with delay
+  const handleToolSelection = async (tool) => {
+    setSelectedTool({ ...tool, icon: tool.icon });
+    const prompt = `You selected ${tool.name}. Now navigating to that page for more information.`;
+    setConversationHistory((prev) => [...prev, { type: "jarvis", text: prompt }]);
+    await speakResponse(prompt);
+    await new Promise((resolve) => setTimeout(resolve, 1000)); // 1-second delay
+    navigate(tool.path, { replace: true, state: { fromJarvis: true } });
+    setTargetRoute(tool.path);
+    setSubMode("explaining_tab");
+    setCurrentToolIndex(dashboardRoutes.findIndex((t) => t.path === tool.path));
+    lastProcessedRoute.current = tool.path;
+    await speakFieldsForRoute(tool.path);
+  };
+
+  // Handle manual step selection with delay
+  const handleStepSelection = async (step) => {
+    setSelectedTool({ ...step, icon: step.icon });
+    const prompt = `You selected ${step.name}. Now navigating to that page for more information.`;
+    setConversationHistory((prev) => [...prev, { type: "jarvis", text: prompt }]);
+    await speakResponse(prompt);
+    await new Promise((resolve) => setTimeout(resolve, 1000)); // 1-second delay
+    navigate(step.path, { replace: true, state: { fromJarvis: true } });
+    setTargetRoute(step.path);
+    setSubMode("explaining_tab");
+    setCurrentToolIndex(drugDiscoverySteps.findIndex((s) => s.path === step.path));
+    setCompletedSteps((prev) => {
+      const newSteps = [...prev, step.path];
+      localStorage.setItem("drugDiscoveryProgress", JSON.stringify(newSteps));
+      return newSteps;
     });
+    await speakFieldsForRoute(step.path);
   };
 
-  // Handle beginner mode logic
-const handleBeginnerMode = async (speechResult, currentMode) => {
-  console.log(`Beginner mode handler - Transcript: "${speechResult}" | Mode: ${currentMode} | SubMode: ${subMode} | Path: ${location.pathname} | IntendedMode: ${intendedMode.current} | ModeLock: ${modeLock.current}`);
+  // Proceed to next step in the process
+  const proceedToNextStep = async () => {
+    setCompletedSteps((prev) => {
+      const newSteps = [...prev, drugDiscoverySteps[currentToolIndex].path];
+      localStorage.setItem("drugDiscoveryProgress", JSON.stringify(newSteps));
+      return newSteps;
+    });
+    const completionPrompt = `Step ${currentToolIndex + 1} completed!`;
+    setConversationHistory((prev) => [...prev, { type: "jarvis", text: completionPrompt }]);
+    await speakResponse(completionPrompt);
 
-  // Validate mode
-  if (currentMode !== "beginner" || currentMode !== intendedMode.current) {
-    console.warn(`Invalid mode in handleBeginnerMode: ${currentMode}, resetting to beginner`);
-    setMode("beginner");
-    intendedMode.current = "beginner";
-    setSubMode("waiting_for_question");
-    hasPromptedQuestion.current = true;
-    modeLock.current = false;
-    await speakResponse("Do you have any questions about this tool? Say 'yes' or 'no'.");
-    await startRecognition();
-    return;
-  }
-
-  const routes = [
-    "/dashboard/protein-structure-mutation",
-    "/dashboard/cost-estimation",
-    "/dashboard/ai-naming",
-  ];
-  const normalizedCurrentPath = normalizePath(location.pathname);
-  const currentRouteIndex = routes.findIndex((route) => normalizePath(route) === normalizedCurrentPath);
-  console.log(`Current path: ${normalizedCurrentPath}, Current route index: ${currentRouteIndex}`);
-
-  const yesVariants = ["yes", "yeah", "yep", "sure", "okay"];
-  const noVariants = ["no", "nope", "nah", "not really"];
-
-  try {
-    // Stop recognition before processing
-    if (recognitionRef.current && isListening) {
-      recognitionState.current = "stopping";
-      recognitionRef.current.stop();
-      await new Promise((resolve) => setTimeout(resolve, 200));
-      recognitionState.current = "idle";
-      setIsRecognizing(false);
-      setIsListening(false);
-      console.log("Recognition stopped for processing");
-    }
-
-    if (subMode === "waiting_for_question" || !subMode) {
-      if (yesVariants.some((v) => speechResult.toLowerCase().includes(v))) {
-        console.log("Detected 'yes', switching to resolving_doubt");
-        setSubMode("resolving_doubt");
-        modeLock.current = false;
-        await speakResponse("Please ask your question about the current tool.");
-        await startRecognition();
-      } else if (noVariants.some((v) => speechResult.toLowerCase().includes(v))) {
-        console.log("Detected 'no', proceeding to next route");
-        let nextRoute;
-        if (currentRouteIndex === -1) {
-          console.warn(`Invalid current route: ${location.pathname}, navigating to cost-estimation`);
-          nextRoute = "/dashboard/cost-estimation";
-        } else if (currentRouteIndex === 1) {
-          console.warn(`Current route is cost-estimation, navigating to ai-naming`);
-          nextRoute = "/dashboard/ai-naming";
-        } else {
-          const nextRouteIndex = currentRouteIndex + 1;
-          console.log(`Next route index: ${nextRouteIndex}, Routes length: ${routes.length}`);
-          if (nextRouteIndex < routes.length) {
-            nextRoute = routes[nextRouteIndex];
-          } else {
-            console.log("Tour complete, prompting user choice");
-            const completeMsg =
-              "You've completed the drug discovery process tour! Would you like to start over or switch to asking questions? Say 'start over' or 'ask questions'.";
-            setConversationHistory((prev) => [...prev, { type: "jarvis", text: completeMsg }]);
-            setSubMode("tour_complete");
-            hasPromptedQuestion.current = false;
-            modeLock.current = false;
-            await speakResponse(completeMsg);
-            await startRecognition();
-            return;
-          }
-        }
-
-        // Perform navigation
-        console.log(`Navigating to: ${nextRoute}`);
-        setConversationHistory((prev) => [
-          ...prev,
-          { type: "jarvis", text: `Navigating to ${getRouteName(nextRoute)}` },
-        ]);
-        setTargetRoute(nextRoute);
-        navigate(nextRoute, { replace: true, state: { fromJarvis: true } });
-        modeLock.current = false;
-
-        // Defer state reset until navigation is confirmed
-        setSubMode("waiting_for_question");
-        hasPromptedQuestion.current = true;
-
-        await startRecognition();
-      } else {
-        console.log("Unrecognized response, prompting for 'yes' or 'no'");
-        setSubMode("waiting_for_question");
-        hasPromptedQuestion.current = true;
-        modeLock.current = false;
-        await speakResponse("Do you have any questions about this tool? Say 'yes' or 'no'.");
-        await startRecognition();
-      }
-    } else if (subMode === "resolving_doubt") {
-      console.log("Processing doubt query in beginner mode");
-      await fetchResponse(speechResult);
-      await startRecognition();
-    } else if (subMode === "tour_complete") {
-      if (speechResult.toLowerCase().includes("start over")) {
-        console.log("Restarting tour, navigating to first route");
-        setConversationHistory((prev) => [
-          ...prev,
-          { type: "jarvis", text: `Navigating to ${getRouteName(routes[0])}` },
-        ]);
-        setTargetRoute(routes[0]);
-        navigate(routes[0], { replace: true, state: { fromJarvis: true } });
-        setSubMode("waiting_for_question");
-        hasPromptedQuestion.current = true;
-        modeLock.current = false;
-        await startRecognition();
-      } else if (speechResult.toLowerCase().includes("ask questions")) {
-        console.log("Switching to doubt mode");
-        setMode("doubt");
-        intendedMode.current = "doubt";
-        setSubMode(null);
-        hasPromptedQuestion.current = false;
-        modeLock.current = false;
-        await speakResponse("Switching to question mode. Ask your drug discovery question.");
-        await startRecognition();
-      } else {
-        console.log("Unrecognized response, prompting for 'start over' or 'ask questions'");
-        modeLock.current = false;
-        await speakResponse("Please say 'start over' to begin again or 'ask questions' to switch modes.");
-        await startRecognition();
-      }
+    if (currentToolIndex < drugDiscoverySteps.length - 1) {
+      const nextStep = drugDiscoverySteps[currentToolIndex + 1];
+      const prompt = `Moving to ${nextStep.name}.`;
+      setConversationHistory((prev) => [...prev, { type: "jarvis", text: prompt }]);
+      await speakResponse(prompt);
+      await new Promise((resolve) => setTimeout(resolve, 1000)); // 1-second delay
+      navigate(nextStep.path, { replace: true, state: { fromJarvis: true } });
+      setTargetRoute(nextStep.path);
+      setSubMode("explaining_tab");
+      setCurrentToolIndex(currentToolIndex + 1);
+      lastProcessedRoute.current = nextStep.path;
+      await speakFieldsForRoute(nextStep.path);
     } else {
-      console.warn(`Unexpected subMode: ${subMode}, resetting to waiting_for_question`);
-      setSubMode("waiting_for_question");
-      hasPromptedQuestion.current = true;
-      modeLock.current = false;
-      await speakResponse("Do you have any questions about this tool? Say 'yes' or 'no'.");
-      await startRecognition();
+      const prompt = "You've reached the end of the drug discovery process. Click 'End Process' to complete or explore other options.";
+      setConversationHistory((prev) => [...prev, { type: "jarvis", text: prompt }]);
+      await speakResponse(prompt);
+      setSubMode("tour_complete");
     }
-  } catch (error) {
-    console.error(`Beginner mode error: ${error}`);
-    setSubMode("waiting_for_question");
-    hasPromptedQuestion.current = true;
-    modeLock.current = false;
-    await speakResponse("Sorry, I encountered an error. Please say 'yes' or 'no' to continue.");
-    await startRecognition();
-  }
-};
+  };
+
+  // End drug discovery process
+  const endProcess = async () => {
+    const congratsPrompt = "Congratulations! You've successfully completed the drug discovery process! Would you like to restart the process or explore dashboard tools?";
+    setConversationHistory((prev) => [...prev, { type: "jarvis", text: congratsPrompt }]);
+    await speakResponse(congratsPrompt);
+    setSubMode("process_ended");
+    setCurrentToolIndex(0);
+    setCompletedSteps([]);
+    localStorage.setItem("drugDiscoveryProgress", JSON.stringify([]));
+  };
+
+  // Restart the current process
+  const restartProcess = async () => {
+    setCompletedSteps([]);
+    localStorage.setItem("drugDiscoveryProgress", JSON.stringify([]));
+    const routes = selectedOption === "drugDiscovery" ? drugDiscoverySteps : dashboardRoutes;
+    const prompt = `Starting over with ${routes[0].name}.`;
+    setConversationHistory((prev) => [...prev, { type: "jarvis", text: prompt }]);
+    await speakResponse(prompt);
+    await new Promise((resolve) => setTimeout(resolve, 1000)); // 1-second delay
+    navigate(routes[0].path, { replace: true, state: { fromJarvis: true } });
+    setTargetRoute(routes[0].path);
+    setSubMode("explaining_tab");
+    setCurrentToolIndex(0);
+    lastProcessedRoute.current = routes[0].path;
+    await speakFieldsForRoute(routes[0].path);
+  };
 
   // Speak form fields and tab info based on route
   const speakFieldsForRoute = async (route) => {
-    console.log(`Speaking fields for route: ${route}, mode=${mode}, subMode=${subMode}, intendedMode=${intendedMode.current}, modeLock=${modeLock.current}`);
-    if (!route || typeof route !== "string") {
-      console.error(`Invalid route: ${route}, defaulting to /dashboard/protein-structure-mutation`);
-      route = "/dashboard/protein-structure-mutation";
-      setTargetRoute(route);
-      navigate(route, { replace: true, state: { fromJarvis: true } });
-    }
     const normalizedRoute = normalizePath(route);
     let message = "";
+
     switch (normalizedRoute) {
+      case normalizePath("/dashboard/protein-structure"):
+        message = "You are in the Protein Structure tool. This tool visualizes protein structures in 3D, helping you analyze molecular configurations.";
+        break;
       case normalizePath("/dashboard/protein-structure-mutation"):
-        message =
-          "You are in the Protein Structure Mutation tool. This tool generates new drug molecules by combining two existing ones. " +
-          "Please fill in: New Molecule Title, a name for your molecule; " +
-          "Search First Molecule, enter the SMILES string for the first molecule; " +
-          "Search Second Molecule, enter the SMILES string for the second molecule. " +
-          "Click 'Generate Molecule' to create a new compound.";
+        message = "You are in the Protein Structure Mutation tool. This tool generates new drug molecules by modifying protein structures.";
         break;
       case normalizePath("/dashboard/cost-estimation"):
-        message =
-          "You are in the Cost Estimation tool. This tool estimates synthesis and production costs. " +
-          "Select a SMILES string from your generated molecules in the dropdown, then click 'Estimate Cost'.";
+        message = "You are in the Cost Estimation tool. This tool estimates synthesis and production costs for drug development.";
+        break;
+      case normalizePath("/dashboard/ai-research-paper-generator"):
+        message = "You are in the AI Research Paper Generator tool. This tool generates research paper drafts based on your drug discovery data.";
+        break;
+      case normalizePath("/dashboard/ai-driven-target-prediction"):
+        message = "You are in the AI-Driven Target Prediction tool. This tool predicts potential drug targets using artificial intelligence.";
         break;
       case normalizePath("/dashboard/ai-naming"):
-        message =
-          "You are in the AI Naming Suggestion tool. This tool generates drug names. " +
-          "Select a Molecule Title and a SMILES string from the dropdowns, then click 'Start Prediction'.";
+        message = "You are in the AI Naming Suggestion tool. This tool generates creative and relevant drug names.";
+        break;
+      case normalizePath("/dashboard/summary"):
+        message = "You are in the Summary tool. This tool provides a comprehensive review of your drug discovery project.";
         break;
       default:
-        message = "It seems you're on an unrecognized page. Let's return to the drug discovery tour.";
-        setConversationHistory((prev) => [
-          ...prev,
-          { type: "jarvis", text: message },
-        ]);
-        setTargetRoute("/dashboard/protein-structure-mutation");
-        navigate("/dashboard/protein-structure-mutation", { replace: true, state: { fromJarvis: true } });
-        await speakResponse(message);
-        return;
+        message = "It seems you're on an unrecognized page. Let's return to the first tool.";
+        navigate(dashboardRoutes[0].path, { replace: true, state: { fromJarvis: true } });
+        lastProcessedRoute.current = dashboardRoutes[0].path;
+        break;
     }
-    setConversationHistory((prev) => [
-      ...prev,
-      { type: "jarvis", text: `Now at ${getRouteName(route)}. ${message}` },
-    ]);
-    await speakResponse(`Now at ${getRouteName(route)}. ${message}`);
 
-    setSubMode("waiting_for_question");
-    hasPromptedQuestion.current = true;
-    const questionPrompt = "Do you have any questions about this tool? Say 'yes' or 'no'.";
-    setConversationHistory((prev) => [...prev, { type: "jarvis", text: questionPrompt }]);
-    await speakResponse(questionPrompt);
+    const fullMessage = `Now at ${getRouteName(route)}. ${message}`;
+    setConversationHistory((prev) => [...prev, { type: "jarvis", text: fullMessage }]);
+    await speakResponse(fullMessage);
+
+    if (mode === "beginner") {
+      setSubMode("waiting_for_question");
+      const questionPrompt = "Do you have any questions about this tool? If not, you can select another step or proceed to the next step.";
+      setConversationHistory((prev) => [...prev, { type: "jarvis", text: questionPrompt }]);
+      await speakResponse(questionPrompt);
+    }
   };
 
-  // Get route name for user-friendly display
+  // Get route name for display
   const getRouteName = (route) => {
-    if (!route) {
-      console.warn(`Invalid route for getRouteName: ${route}, returning 'Unknown'`);
-      return "Unknown";
-    }
-    switch (normalizePath(route)) {
-      case normalizePath("/dashboard/protein-structure-mutation"):
-        return "Protein Structure Mutation";
-      case normalizePath("/dashboard/cost-estimation"):
-        return "Cost Estimation";
-      case normalizePath("/dashboard/ai-naming"):
-        return "AI Naming Suggestion";
-      default:
-        return "Unknown";
-    }
+    const foundRoute =
+      dashboardRoutes.find((r) => normalizePath(r.path) === normalizePath(route)) ||
+      drugDiscoverySteps.find((s) => normalizePath(s.path) === normalizePath(route));
+    return foundRoute ? foundRoute.name : "Unknown";
   };
-
-  // Handle route changes and validate navigation
-  useEffect(() => {
-    console.log(`useEffect triggered, mode: ${mode}, subMode: ${subMode}, path: ${location.pathname}, fromJarvis: ${!!location.state?.fromJarvis}, targetRoute: ${targetRoute}, intendedMode: ${intendedMode.current}, modeLock: ${modeLock.current}`);
-    if (!location || !location.pathname) {
-      console.error("Location or pathname is undefined, redirecting to default route");
-      const defaultRoute = "/dashboard/protein-structure-mutation";
-      setTargetRoute(defaultRoute);
-      navigate(defaultRoute, { replace: true, state: { fromJarvis: true } });
-      return;
-    }
-    if (!mode && location.state?.fromJarvis && !modeLock.current) {
-      console.warn(`Mode is null with fromJarvis, resetting to beginner, intendedMode: ${intendedMode.current}`);
-      setMode("beginner");
-      intendedMode.current = "beginner";
-      setSubMode(null);
-      hasPromptedQuestion.current = false;
-    }
-    if ((mode === "beginner" || mode === null) && location.state?.fromJarvis && location.pathname && !modeLock.current) {
-      const normalizedPath = normalizePath(location.pathname);
-      const validRoutes = [
-        "/dashboard/protein-structure-mutation",
-        "/dashboard/cost-estimation",
-        "/dashboard/ai-naming",
-      ].map(normalizePath);
-      console.log(`Route changed to: ${normalizedPath}, validRoutes: ${validRoutes}, lastProcessedRoute: ${lastProcessedRoute.current}, targetRoute: ${targetRoute}`);
-      if (validRoutes.includes(normalizedPath) && normalizedPath !== normalizePath(lastProcessedRoute.current)) {
-        if (targetRoute && normalizePath(targetRoute) !== normalizedPath) {
-          console.warn(`Route mismatch: current=${normalizedPath}, target=${targetRoute}, retrying navigation`);
-          navigate(targetRoute, { replace: true, state: { fromJarvis: true } });
-          return;
-        }
-        console.log(`Triggering speakFieldsForRoute for: ${location.pathname}`);
-        lastProcessedRoute.current = location.pathname;
-        speakFieldsForRoute(location.pathname);
-      } else if (!validRoutes.includes(normalizedPath)) {
-        console.warn(`Invalid route for beginner mode: ${location.pathname}, redirecting to first route`);
-        const firstRoute = "/dashboard/protein-structure-mutation";
-        setTargetRoute(firstRoute);
-        navigate(firstRoute, { replace: true, state: { fromJarvis: true } });
-        setConversationHistory((prev) => [
-          ...prev,
-          { type: "jarvis", text: `Navigating to ${getRouteName(firstRoute)}` },
-        ]);
-        setMode("beginner");
-        intendedMode.current = "beginner";
-        setSubMode(null);
-        hasPromptedQuestion.current = false;
-        lastProcessedRoute.current = firstRoute;
-        speakFieldsForRoute(firstRoute);
-      }
-    }
-  }, [location, mode, subMode, navigate, targetRoute]);
-
-  // Monitor targetRoute for navigation confirmation
-  useEffect(() => {
-    if (targetRoute && normalizePath(location.pathname) !== normalizePath(targetRoute)) {
-      console.warn(`Target route mismatch: current=${location.pathname}, target=${targetRoute}, retrying navigation`);
-      navigate(targetRoute, { replace: true, state: { fromJarvis: true } });
-    }
-  }, [location.pathname, targetRoute, navigate]);
 
   // Scroll to bottom of conversation
   useEffect(() => {
@@ -748,77 +608,62 @@ const handleBeginnerMode = async (speechResult, currentMode) => {
     }
   }, [conversationHistory]);
 
-  // Clean up speech synthesis and recognition on unmount
+  // Clean up on unmount
   useEffect(() => {
     return () => {
-      console.log("Cleaning up speech synthesis and recognition");
       isCleaningUp.current = true;
       window.speechSynthesis.cancel();
       if (recognitionRef.current) {
         try {
-          recognitionState.current = "stopping";
           recognitionRef.current.stop();
         } catch (error) {
           console.error(`Error stopping recognition: ${error}`);
         }
-        recognitionRef.current = null;
       }
-      setIsRecognizing(false);
-      recognitionState.current = "idle";
-      modeLock.current = false;
+      recognitionRef.current = null;
     };
   }, []);
+
+  // Save progress to localStorage when completedSteps changes
+  useEffect(() => {
+    localStorage.setItem("drugDiscoveryProgress", JSON.stringify(completedSteps));
+  }, [completedSteps]);
 
   return (
     <div className="font-sans">
       {/* Trigger Button */}
-      <div className="relative">
-        <button
-          onClick={() => setIsPanelOpen(true)}
-          disabled={isPanelOpen}
-          onMouseEnter={() => setShowTooltip("trigger")}
-          onMouseLeave={() => setShowTooltip("")}
-          className={`fixed bottom-6 right-6 h-16 w-16 rounded-full shadow-lg transition-all transform hover:scale-105 flex items-center justify-center ${
-            isPanelOpen
-              ? "bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700"
-              : "bg-gradient-to-br from-blue-500 to-blue-600 hover:from-blue-600 to-blue-700"
-          }`}
-        >
-          {isPanelOpen ? <MicOff className="h-6 w-6 text-white" /> : <Mic className="h-6 w-6 text-white" />}
-        </button>
-        {showTooltip === "trigger" && (
-          <div className="absolute bottom-full right-0 mb-2 px-2 py-1 bg-gray-800 text-white text-xs rounded shadow-lg whitespace-nowrap">
-            <div>{isPanelOpen ? "Close Jarvis" : "Ask Jarvis"}</div>
-          </div>
-        )}
-      </div>
+      <button
+        onClick={() => setIsPanelOpen(true)}
+        disabled={isPanelOpen}
+        onMouseEnter={() => setTooltipVisible("trigger")}
+        onMouseLeave={() => setTooltipVisible("")}
+        aria-label={isPanelOpen ? "Close Jarvis Assistant" : "Open Jarvis Assistant"}
+        className={`fixed bottom-6 right-6 h-16 w-16 rounded-full shadow-lg transition-all duration-200 transform hover:scale-105 flex items-center justify-center ${
+          isPanelOpen
+            ? "bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700"
+            : "bg-gradient-to-br from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700"
+        }`}
+      >
+        <Bot className="h-6 w-6 text-white" />
+      </button>
+      {tooltipVisible === "trigger" && (
+        <div className="absolute bottom-20 right-4 px-2 py-1 bg-gray-800 text-white text-xs rounded-lg shadow-sm">
+          {isPanelOpen ? "Close Jarvis" : "Ask Jarvis"}
+        </div>
+      )}
 
       {/* Pointing Message */}
       {!isPanelOpen && (
-        <div className="fixed bottom-24 right-7">
-          <div
-            className="relative bg-white rounded-lg shadow-lg p-3 mb-2"
-            style={{
-              animation: "pulse-scale 2s infinite ease-in-out",
-              transformOrigin: "center",
-            }}
-          >
-            <style>
-              {`
-                @keyframes pulse-scale {
-                  0%, 100% { transform: scale(1); }
-                  50% { transform: scale(1.05); }
-                }
-              `}
-            </style>
+        <div className="fixed bottom-24 right-6">
+          <div className="relative bg-white rounded-lg shadow-lg p-3 mb-2 animate-pulse-scale">
             <div className="absolute right-4 bottom-2 transform translate-y-full w-3 h-3 bg-white rotate-45"></div>
             <div className="flex items-center space-x-2">
               <div className="bg-blue-500/20 p-1.5 rounded-full">
-                <Mic className="h-4 w-4 text-blue-600" />
+                <Bot className="h-4 w-4 text-blue-600" />
               </div>
               <div>
-                <div className="text-sm font-medium text-gray-800">Drug Discovery Voice Assistant</div>
-                <div className="text-xs text-gray-500">Click to speak with Jarvis</div>
+                <div className="text-sm font-semibold text-gray-800">Drug Discovery Assistant</div>
+                <div className="text-xs text-gray-500">Click to interact with Jarvis</div>
               </div>
             </div>
           </div>
@@ -827,138 +672,400 @@ const handleBeginnerMode = async (speechResult, currentMode) => {
 
       {/* Right Side Panel */}
       {isPanelOpen && (
-        <div className="fixed top-0 right-0 h-full w-full md:w-96 bg-white shadow-2xl z-50 flex flex-col border-l border-gray-200 animate-in slide-in-from-right duration-300">
+        <div className="fixed top-0 right-0 h-full md:w-96 bg-white shadow-2xl z-50 flex flex-col border-l border-gray-200 animate-in slide-in-from-right duration-300">
           <div className="flex items-center justify-between p-4 border-b border-gray-200">
             <div className="flex items-center space-x-2">
+              <button
+                onClick={resetToInitialSelection}
+                aria-label="Back to initial selection"
+                className="rounded-full h-8 w-8 bg-gray-100 hover:bg-gray-200 text-gray-600 flex items-center justify-center"
+              >
+                <ArrowLeft className="h-4 w-4" />
+              </button>
               <Dna className="h-6 w-6 text-blue-600" />
               <h2 className="text-xl font-semibold text-gray-800">Jarvis</h2>
             </div>
-            <button
-              onClick={stopConversation}
-              className="rounded-full h-8 w-8 bg-gray-100 hover:bg-gray-200 text-gray-600 flex items-center justify-center"
-            >
-              <X className="h-4 w-4" />
-              <span className="sr-only">Close</span>
-            </button>
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={() => {
+                  const helpPrompt =
+                    "In beginner mode, you can type questions or follow guided steps. In doubt mode, use voice input to ask questions. Use the buttons to navigate or say 'stop' to end the conversation.";
+                  setConversationHistory((prev) => [...prev, { type: "jarvis", text: helpPrompt }]);
+                  speakResponse(helpPrompt);
+                }}
+                aria-label="Help"
+                className="rounded-full h-8 w-8 bg-gray-100 hover:bg-gray-200 text-gray-600 flex items-center justify-center"
+              >
+                <HelpCircle className="h-4 w-4" />
+              </button>
+              <button
+                onClick={stopConversation}
+                aria-label="Close panel"
+                className="rounded-full h-8 w-8 bg-gray-100 hover:bg-gray-200 text-gray-600 flex items-center justify-center"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
           </div>
 
-          {!mode ? (
-            <div className="flex-1 p-6 flex flex-col items-center justify-center space-y-4">
+          {!mode && (
+            <div className="flex-1 p-6 flex flex-col items-center justify-center space-y-6">
               <div className="text-center">
                 <h3 className="text-lg font-semibold text-gray-800 mb-2">Welcome to Jarvis</h3>
-                <p className="text-sm text-gray-600">
-                  Choose an option to start your drug discovery journey.
-                </p>
+                <p className="text-sm text-gray-600">Choose an option to start your drug discovery journey.</p>
               </div>
               <button
                 onClick={() => startConversation("beginner")}
-                className="w-full py-3 px-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+                className="w-full py-3 px-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all duration-200 text-sm font-semibold"
+                aria-label="Start as a beginner"
               >
                 Are you a beginner?
               </button>
               <button
                 onClick={() => startConversation("doubt")}
-                className="w-full py-3 px-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+                className="w-full py-3 px-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all duration-200 text-sm font-semibold"
+                aria-label="Ask a question"
               >
                 Ask a question
               </button>
             </div>
-          ) : (
+          )}
+
+          {mode && (
             <div className="flex flex-col h-full">
-              {/* Jarvis Visualization */}
-              <div className="p-6 bg-gradient-to-br from-blue-50 to-cyan-50 border-b border-gray-200">
-                <div className="flex flex-col items-center text-center space-y-2">
-                  <div className="relative">
-                    <div
-                      className="absolute inset-0 rounded-full bg-blue-500/10 animate-pulse"
-                      style={{ animationDuration: "3s" }}
-                    ></div>
-                    <div className="h-24 w-24 rounded-full bg-gradient-to-br from-blue-400 to-blue-500 flex items-center justify-center">
-                      <Dna className="h-12 w-12 text-white" />
+              {/* Header with progress bar for drug discovery */}
+              {mode === "beginner" &&
+                selectedOption === "drugDiscovery" &&
+                subMode !== "waiting_for_selection" &&
+                subMode !== "waiting_for_step_selection" &&
+                subMode !== "process_ended" && (
+                  <div className="p-4 bg-blue-50 border-b border-gray-200">
+                    <div className="flex items-center justify-between mb-2">
+                      <h3 className="text-sm font-medium text-blue-600">Drug Discovery Process</h3>
+                      <div className="text-xs text-blue-600">
+                        Step {currentToolIndex + 1} of {drugDiscoverySteps.length}
+                      </div>
+                    </div>
+                    <div className="w-full bg-gray-200 border rounded-full h-2">
+                      <div
+                        className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                        style={{ width: `${((currentToolIndex + 1) / drugDiscoverySteps.length) * 100}%` }}
+                      ></div>
+                    </div>
+                    <div className="flex items-center space-x-4 overflow-x-auto pb-2 mt-2">
+                      {drugDiscoverySteps.map((step, index) => (
+                        <div
+                          key={index}
+                          className={`flex-shrink-0 flex items-center ${
+                            completedSteps.includes(step.path)
+                              ? "text-green-600"
+                              : index === currentToolIndex
+                              ? "text-blue-600"
+                              : "text-gray-400"
+                          }`}
+                        >
+                          <div
+                            className={`h-8 w-8 rounded-full flex items-center justify-center ${
+                              completedSteps.includes(step.path)
+                                ? "bg-green-100 border border-green-300"
+                                : index === currentToolIndex
+                                ? "bg-blue-100 border border-blue-500"
+                                : "bg-gray-100"
+                            }`}
+                          >
+                            {completedSteps.includes(step.path) ? <CheckCircle className="h-4 w-4" /> : index + 1}
+                          </div>
+                          {index < drugDiscoverySteps.length - 1 && <ChevronRight className="h-4 w-4 mx-1" />}
+                        </div>
+                      ))}
                     </div>
                   </div>
-                  <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-cyan-600">
-                    JARVIS
-                  </h1>
-                  <p className="text-blue-700 text-sm">Drug Discovery Assistant</p>
-                  <div className="flex items-center mt-2 space-x-1">
-                    <div
-                      className={`h-2 w-2 rounded-full ${isListening ? "bg-green-500 animate-pulse" : "bg-red-500"}`}
-                    ></div>
-                    <span className="text-xs text-gray-600">{isListening ? "Listening" : "Idle"}</span>
-                  </div>
-                </div>
-                <div className="w-64 mt-4">
-                  <img
-                    src="/jarvis.jpg"
-                    alt="Molecular AI Visualization"
-                    className="rounded-xl shadow-md max-w-full h-auto object-cover border border-gray-200"
-                    onError={(e) => {
-                      e.target.onerror = null;
-                      e.target.src = "/jarvis.jpg";
-                    }}
-                  />
-                </div>
-                <div className="w-full space-y-4 mt-4">
-                  <div className="grid grid-cols-4 gap-2">
-                    <div className="flex items-center justify-center gap-1 py-1 bg-white border border-gray-200 rounded-md px-2 shadow-sm">
-                      <Atom className="h-3 w-3 text-blue-600" /> <span className="text-xs text-gray-700">Molecules</span>
-                    </div>
-                    <div className="flex items-center justify-center gap-1 py-1 bg-white border border-gray-200 rounded-md px-2 shadow-sm">
-                      <Brain className="h-3 w-3 text-blue-600" /> <span className="text-xs text-gray-700">AI</span>
-                    </div>
-                    <div className="flex items-center justify-center gap-1 py-1 bg-white border border-gray-200 rounded-md px-2 shadow-sm">
-                      <Microscope className="h-3 w-3 text-blue-600" /> <span className="text-xs text-gray-700">Research</span>
-                    </div>
-                    <div className="flex items-center justify-center gap-1 py-1 bg-white border border-gray-200 rounded-md px-2 shadow-sm">
-                      <Pill className="h-3 w-3 text-blue-600" /> <span className="text-xs text-gray-700">Drugs</span>
+                )}
+
+              {/* Current step details */}
+              {mode === "beginner" &&
+                selectedOption === "drugDiscovery" &&
+                subMode !== "waiting_for_selection" &&
+                subMode !== "waiting_for_step_selection" &&
+                subMode !== "process_ended" && (
+                  <div className="p-4 bg-blue-50 border-b border-gray-200">
+                    <div className="flex items-start space-x-3">
+                      <div className="bg-blue-100 p-2 rounded-full">
+                        {iconMap[drugDiscoverySteps[currentToolIndex]?.icon]}
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-medium text-gray-800">
+                          {drugDiscoverySteps[currentToolIndex]?.name}
+                        </h4>
+                        <p className="text-xs text-gray-600">{drugDiscoverySteps[currentToolIndex]?.description}</p>
+                      </div>
                     </div>
                   </div>
-                  <div className="text-xs text-gray-500 text-center">Powered by Gemini</div>
+                )}
+
+              {/* Manual navigation buttons */}
+              {mode === "beginner" &&
+                selectedOption === "drugDiscovery" &&
+                subMode !== "waiting_for_selection" &&
+                subMode !== "waiting_for_step_selection" &&
+                subMode !== "process_ended" && (
+                  <div className="flex justify-between p-4 bg-white border-b border-gray-200">
+                    <button
+                      disabled={true} // Disable Previous button
+                      className="flex items-center space-x-1 px-3 py-2 rounded-md text-sm font-medium text-gray-400 cursor-not-allowed"
+                      aria-label="Previous step (disabled)"
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                      <span>Previous</span>
+                    </button>
+                    {currentToolIndex === drugDiscoverySteps.length - 1 ? (
+                      <button
+                        onClick={endProcess}
+                        disabled={isSpeaking}
+                        className={`flex items-center space-x-1 px-3 py-2 rounded-md text-sm font-medium ${
+                          isSpeaking ? "text-gray-400 cursor-not-allowed" : "text-blue-600 hover:bg-blue-50"
+                        }`}
+                        aria-label="End drug discovery process"
+                      >
+                        <span>End Process</span>
+                        <ChevronRight className="h-4 w-4" />
+                      </button>
+                    ) : (
+                      <button
+                        onClick={proceedToNextStep}
+                        disabled={isSpeaking}
+                        className={`flex items-center space-x-1 px-3 py-2 rounded-md text-sm font-medium ${
+                          isSpeaking ? "text-gray-400 cursor-not-allowed" : "text-blue-600 hover:bg-blue-50"
+                        }`}
+                        aria-label="Next step"
+                      >
+                        <span>Next</span>
+                        <ChevronRight className="h-4 w-4" />
+                      </button>
+                    )}
+                  </div>
+                )}
+
+              {/* Manual selection for beginner mode */}
+              {mode === "beginner" && subMode === "waiting_for_selection" && (
+                <div className="p-6 bg-blue-50 border-b border-gray-200">
+                  <h3 className="text-sm font-medium text-gray-800 mb-3">Select an option to continue:</h3>
+                  <div className="grid grid-cols-1 gap-3">
+                    <button
+                      onClick={handleDashboardSelection}
+                      className="flex items-center space-x-3 p-3 bg-white rounded-lg border border-gray-200 hover:border-blue-300 hover:bg-blue-50 transition-all duration-200"
+                      aria-label="Explore dashboard tools"
+                    >
+                      <div className="bg-blue-100 p-2 rounded-full">{iconMap["Atom"]}</div>
+                      <div className="text-left">
+                        <div className="text-sm font-medium text-gray-800">Dashboard Tools</div>
+                        <div className="text-xs text-gray-500">Explore all available tools</div>
+                      </div>
+                    </button>
+                    <button
+                      onClick={handleDrugDiscoverySelection}
+                      className="flex items-center space-x-3 p-3 bg-white rounded-lg border border-gray-200 hover:border-blue-300 hover:bg-blue-50 transition-all duration-200"
+                      aria-label="Start drug discovery process"
+                    >
+                      <div className="bg-blue-100 p-2 rounded-full">{iconMap["Pill"]}</div>
+                      <div className="text-left">
+                        <div className="text-sm font-medium text-gray-800">Drug Discovery Process</div>
+                        <div className="text-xs text-gray-500">Guided step-by-step journey</div>
+                      </div>
+                    </button>
+                  </div>
+                  <div className="flex justify-between gap-2 mt-4">
+                    <button
+                      onClick={stopConversation}
+                      className="flex-1 px-4 py-2 rounded-lg text-sm font-semibold text-white bg-red-600 hover:bg-red-700 transition-all duration-200"
+                      aria-label="End conversation"
+                    >
+                      End Conversation
+                    </button>
+                  </div>
                 </div>
-              </div>
+              )}
+
+              {/* Tool selection for dashboard */}
+              {mode === "beginner" && subMode === "waiting_for_tool_selection" && (
+                <div className="p-6 bg-blue-50 border-b border-gray-200">
+                  <h3 className="text-sm font-medium text-gray-800 mb-3">Select a tool to explore:</h3>
+                  <div className="grid grid-cols-1 gap-3">
+                    {dashboardRoutes.map((tool, index) => (
+                      <button
+                        key={index}
+                        onClick={() => handleToolSelection(tool)}
+                        className="flex items-center space-x-3 p-3 bg-white rounded-lg border border-gray-200 hover:border-blue-300 hover:bg-blue-50 transition-all duration-200"
+                        aria-label={`Select ${tool.name} tool`}
+                      >
+                        <div className="bg-blue-100 p-2 rounded-full">{iconMap[tool.icon]}</div>
+                        <div className="text-left">
+                          <div className="text-sm font-medium text-gray-800">{tool.name}</div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                  <div className="flex justify-between gap-2 mt-4">
+                    <button
+                      onClick={async () => {
+                        const prompt = "Returning to option selection.";
+                        setConversationHistory((prev) => [...prev, { type: "jarvis", text: prompt }]);
+                        await speakResponse(prompt);
+                        setSubMode("waiting_for_selection");
+                        setSelectedOption(null);
+                      }}
+                      className="flex-1 px-4 py-2 rounded-lg text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 transition-all duration-200"
+                      aria-label="Go back to option selection"
+                    >
+                      Back
+                    </button>
+                    <button
+                      onClick={stopConversation}
+                      className="flex-1 px-4 py-2 rounded-lg text-sm font-semibold text-white bg-red-600 hover:bg-red-700 transition-all duration-200"
+                      aria-label="End conversation"
+                    >
+                      End Conversation
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Step selection for drug discovery */}
+              {mode === "beginner" && subMode === "waiting_for_step_selection" && (
+                <div className="p-6 bg-blue-50 border-b border-gray-200">
+                  <h3 className="text-sm font-medium text-gray-800 mb-3">Select a step to explore:</h3>
+                  <div className="grid grid-cols-1 gap-3">
+                    {drugDiscoverySteps.map((step, index) => {
+                      const isCurrentStep = index === currentToolIndex;
+                      const isCompleted = completedSteps.includes(step.path);
+                      const isDisabled = !isCurrentStep || isCompleted;
+                      return (
+                        <button
+                          key={index}
+                          onClick={() => handleStepSelection(step)}
+                          disabled={isDisabled}
+                          className={`flex items-center space-x-3 p-3 bg-white rounded-lg border border-gray-200 transition-all duration-200 ${
+                            isDisabled ? "opacity-50 cursor-not-allowed" : "hover:border-blue-300 hover:bg-blue-50"
+                          }`}
+                          aria-label={isDisabled ? `${step.name} (locked)` : `Select ${step.name}`}
+                        >
+                          <div className="bg-blue-100 p-2 rounded-full">
+                            {isCompleted ? <CheckCircle className="h-4 w-4 text-green-600" /> : iconMap[step.icon]}
+                          </div>
+                          <div className="text-left">
+                            <div className="text-sm font-medium text-gray-800">{step.name}</div>
+                            <div className="text-xs text-gray-500">{step.description}</div>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <div className="flex justify-between gap-2 mt-4">
+                    <button
+                      onClick={async () => {
+                        const prompt = "Returning to option selection.";
+                        setConversationHistory((prev) => [...prev, { type: "jarvis", text: prompt }]);
+                        await speakResponse(prompt);
+                        setSubMode("waiting_for_selection");
+                        setSelectedOption(null);
+                      }}
+                      className="flex-1 px-4 py-2 rounded-lg text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 transition-all duration-200"
+                      aria-label="Go back to option selection"
+                    >
+                      Back
+                    </button>
+                    <button
+                      onClick={stopConversation}
+                      className="flex-1 px-4 py-2 rounded-lg text-sm font-semibold text-white bg-red-600 hover:bg-red-700 transition-all duration-200"
+                      aria-label="End conversation"
+                    >
+                      End Conversation
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Process ended options */}
+              {mode === "beginner" && subMode === "process_ended" && (
+                <div className="p-6 bg-blue-50 border-b border-gray-200">
+                  <h3 className="text-sm font-medium text-gray-800 mb-3">Drug Discovery Completed!</h3>
+                  <div className="grid grid-cols-1 gap-3">
+                    <button
+                      onClick={restartProcess}
+                      className="flex items-center space-x-3 p-3 bg-white rounded-lg border border-gray-200 hover:border-blue-300 hover:bg-blue-50 transition-all duration-200"
+                      aria-label="Restart drug discovery process"
+                    >
+                      <div className="bg-blue-100 p-2 rounded-full">{iconMap["Pill"]}</div>
+                      <div className="text-left">
+                        <div className="text-sm font-medium text-gray-800">Restart Drug Discovery</div>
+                        <div className="text-xs text-gray-500">Start the process again</div>
+                      </div>
+                    </button>
+                    <button
+                      onClick={handleDashboardSelection}
+                      className="flex items-center space-x-3 p-3 bg-white rounded-lg border border-gray-200 hover:border-blue-300 hover:bg-blue-50 transition-all duration-200"
+                      aria-label="Explore dashboard tools"
+                    >
+                      <div className="bg-blue-100 p-2 rounded-full">{iconMap["Atom"]}</div>
+                      <div className="text-left">
+                        <div className="text-sm font-medium text-gray-800">Explore Dashboard Tools</div>
+                        <div className="text-xs text-gray-500">Try other tools</div>
+                      </div>
+                    </button>
+                    <button
+                      onClick={() => {
+                        setSubMode("waiting_for_selection");
+                        const prompt = "Returning to option selection.";
+                        setConversationHistory((prev) => [...prev, { type: "jarvis", text: prompt }]);
+                        speakResponse(prompt);
+                      }}
+                      className="flex items-center space-x-3 p-3 bg-white rounded-lg border border-gray-200 hover:border-blue-300 hover:bg-blue-50 transition-all duration-200"
+                      aria-label="Return to option selection"
+                    >
+                      <div className="bg-blue-100 p-2 rounded-full">{iconMap["Bot"]}</div>
+                      <div className="text-left">
+                        <div className="text-sm font-medium text-gray-800">Back to Options</div>
+                        <div className="text-xs text-gray-500">Choose between dashboard or drug discovery</div>
+                      </div>
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {/* Conversation History */}
-              <div ref={conversationRef} className="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar">
-                {conversationHistory.map((message, index) => (
-                  <div key={index} className={`flex ${message.type === "user" ? "justify-end" : "justify-start"}`}>
+              <div ref={conversationRef} className="flex-auto overflow-y-auto p-6 space-y-4">
+                {conversationHistory.map((msg, index) => (
+                  <div key={index} className={`flex ${msg.type === "user" ? "justify-end" : "justify-start"}`}>
                     <div
-                      className={`max-w-[80%] rounded-2xl px-4 py-2 ${
-                        message.type === "user"
-                          ? "bg-blue-500 text-white rounded-tr-none"
+                      className={`max-w-[80%] ${
+                        msg.type === "user"
+                          ? "bg-blue-600 text-white rounded-tr-none"
                           : "bg-white text-gray-800 rounded-tl-none border border-gray-200 shadow-sm"
-                      }`}
+                      } rounded-2xl px-4 py-2 transition-all duration-200`}
                     >
-                      {message.type === "jarvis" && (
+                      {msg.type === "jarvis" && (
                         <div className="flex items-center space-x-2 mb-1 pb-1 border-b border-gray-200">
                           <Bot className="h-3 w-3 text-blue-600" />
                           <span className="text-xs font-medium text-blue-600">JARVIS</span>
                         </div>
                       )}
-                      <p className="text-sm whitespace-pre-wrap">{message.text}</p>
+                      <p className="text-sm whitespace-pre-wrap">{msg.text}</p>
                     </div>
                   </div>
                 ))}
-                {isLoading && (
+                {(isLoading || isSpeaking) && (
                   <div className="flex justify-start">
-                    <div className="max-w-[80%] rounded-2xl px-4 py-2 bg-white border border-gray-200 shadow-sm">
-                      <div className="flex items-center space-x-2 mb-1 pb-1 border-b border-gray-200">
+                    <div className="max-w-[80%] w-full py-2 px-4 bg-white border rounded-2xl border-gray-200 shadow-sm">
+                      <div className="flex items-center space-x-2 pb-0">
                         <Bot className="h-3 w-3 text-blue-600" />
-                        <span className="text-xs font-medium text-blue-600">JARVIS</span>
+                        <span className="text-xs font-semibold text-blue-600">JARVIS</span>
                       </div>
                       <div className="flex space-x-1 items-center">
-                        <div
-                          className="h-2 w-2 bg-blue-400 rounded-full animate-bounce"
-                          style={{ animationDelay: "0ms" }}
-                        ></div>
-                        <div
-                          className="h-2 w-2 bg-blue-400 rounded-full animate-bounce"
-                          style={{ animationDelay: "150ms" }}
-                        ></div>
-                        <div
-                          className="h-2 w-2 bg-blue-400 rounded-full animate-bounce"
-                          style={{ animationDelay: "300ms" }}
-                        ></div>
+                        <div className="h-3 w-1 bg-blue-400 animate-wave"></div>
+                        <div className="h-4 w-1 bg-blue-400 animate-wave" style={{ animationDelay: "100ms" }}></div>
+                        <div className="h-5 w-1 bg-blue-400 animate-wave" style={{ animationDelay: "200ms" }}></div>
+                        <div className="h-4 w-1 bg-blue-400 animate-wave" style={{ animationDelay: "300ms" }}></div>
+                        <div className="h-3 w-1 bg-blue-400 animate-wave" style={{ animationDelay: "400ms" }}></div>
                       </div>
                     </div>
                   </div>
@@ -967,67 +1074,130 @@ const handleBeginnerMode = async (speechResult, currentMode) => {
 
               {/* Input Area */}
               <div className="p-6 border-t border-gray-200">
-                <div className="flex items-center justify-between p-4 rounded-xl bg-white border border-gray-200 shadow-sm">
-                  <div className="flex items-center space-x-2 text-sm text-gray-600">
-                    {isListening ? (
-                      <>
-                        <div className="relative">
-                          <div className="absolute inset-0 bg-green-500/20 rounded-full animate-ping"></div>
-                          <Mic className="h-5 w-5 text-green-600" />
-                        </div>
-                        <span>Listening... Say "stop" or "thank you" to end</span>
-                      </>
-                    ) : (
-                      <>
-                        <MicOff className="h-5 w-5 text-red-500" />
-                        <span>Voice recognition paused</span>
-                      </>
-                    )}
-                  </div>
-                  <div className="flex space-x-2">
+                {mode === "doubt" && (
+                  <div className="flex items-center justify-between px-4 py-2 rounded-full bg-white border border-gray-200 shadow-sm">
+                    <div className="flex items-center space-x-2 text-sm text-gray-600">
+                      {isListening && mode === "doubt" ? (
+                        <>
+                          <div className="relative">
+                            <div className="absolute inset-0 bg-green-100 rounded-full animate-ping"></div>
+                            <Mic className="h-5 w-5 text-green-600" />
+                          </div>
+                          <span className="text-sm">Listening...</span>
+                        </>
+                      ) : (
+                        <>
+                          <MicOff className="h-5 w-5 text-red-600" />
+                          <span className="text-sm">Voice recognition paused</span>
+                        </>
+                      )}
+                    </div>
                     <button
-                      onClick={toggleSpeech}
-                      onMouseEnter={() => setShowTooltip("speech")}
-                      onMouseLeave={() => setShowTooltip("")}
-                      className="h-8 w-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-600"
-                    >
-                      {isSpeaking ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
-                    </button>
-                    <button
-                      onClick={isListening ? stopConversation : () => startConversation(mode || "doubt")}
-                      className={`px-4 py-2 rounded-lg text-sm font-medium text-white ${
-                        isListening ? "bg-red-500 hover:bg-red-600" : "bg-blue-600 hover:bg-blue-700"
-                      } transition-colors`}
+                      onClick={() => (isListening ? stopConversation() : startConversation("doubt"))}
+                      className={`px-4 py-2 rounded-lg text-sm font-semibold text-white ${
+                        isListening ? "bg-red-600 hover:bg-red-700" : "bg-blue-600 hover:bg-blue-700"
+                      } transition-all duration-200`}
+                      aria-label={isListening ? "Stop voice conversation" : "Start voice conversation"}
                     >
                       {isListening ? "Stop" : "Start"}
                     </button>
                   </div>
-                </div>
+                )}
+                {mode === "beginner" && subMode === "waiting_for_question" && (
+                  <div className="flex flex-col space-y-3">
+                    <input
+                      type="text"
+                      placeholder="Ask a question about this tool..."
+                      className="w-full px-4 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                      onKeyDown={async (e) => {
+                        if (e.key === "Enter" && e.target.value.trim()) {
+                          setSubMode("resolving_doubt");
+                          const query = e.target.value.trim();
+                          setConversationHistory((prev) => [...prev, { type: "user", text: query }]);
+                          await fetchResponse(query);
+                          e.target.value = "";
+                        }
+                      }}
+                      aria-label="Ask a question about the current tool"
+                    />
+                    {suggestedQuestions[targetRoute]?.length > 0 && (
+                      <div className="flex flex-wrap gap-2">
+                        {suggestedQuestions[targetRoute].map((q, index) => (
+                          <button
+                            key={index}
+                            onClick={() => {
+                              setSubMode("resolving_doubt");
+                              setConversationHistory((prev) => [...prev, { type: "user", text: q }]);
+                              fetchResponse(q);
+                            }}
+                            className="px-3 py-1 bg-blue-100 text-blue-600 rounded-full text-xs hover:bg-blue-200 transition-all duration-200"
+                            aria-label={`Ask suggested question: ${q}`}
+                          >
+                            {q}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    <div className="flex justify-end gap-2">
+                      {selectedOption === "drugDiscovery" && currentToolIndex < drugDiscoverySteps.length - 1 && (
+                        <button
+                          onClick={proceedToNextStep}
+                          disabled={isSpeaking}
+                          className={`flex-1 px-4 py-2 rounded-lg text-sm font-semibold text-white ${
+                            isSpeaking ? "bg-gray-400 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-700"
+                          } transition-all duration-200`}
+                          aria-label="Proceed to next step"
+                        >
+                          Next Step
+                        </button>
+                      )}
+                      {/* <button
+                        onClick={async () => {
+                          const prompt = `Returning to ${selectedOption === "drugDiscovery" ? "step" : "tool"} selection.`;
+                          setConversationHistory((prev) => [...prev, { type: "jarvis", text: prompt }]);
+                          await speakResponse(prompt);
+                          setSubMode(selectedOption === "drugDiscovery" ? "waiting_for_step_selection" : "waiting_for_tool_selection");
+                        }}
+                        disabled={isSpeaking}
+                        className={`flex-1 px-4 py-2 rounded-lg text-sm font-semibold text-white ${
+                          isSpeaking ? "bg-gray-400 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-700"
+                        } transition-all duration-200`}
+                        aria-label={`Select another ${selectedOption === "drugDiscovery" ? "step" : "tool"}`}
+                      >
+                        Select Another {selectedOption === "drugDiscovery" ? "Step" : "Tool"}
+                      </button> */}
+                    </div>
+                  </div>
+                )}
                 <div className="mt-2 text-xs text-center text-gray-500">
-                  Jarvis can assist with molecular structures, drug discovery processes, and AI applications in
-                  pharmaceutical research
+                  Jarvis can assist with molecular structures, drug discovery processes, and medical queries
                 </div>
               </div>
             </div>
           )}
-          <style jsx>{`
-            .custom-scrollbar::-webkit-scrollbar {
-              width: 6px;
-            }
-            .custom-scrollbar::-webkit-scrollbar-track {
-              background: #f1f1f1;
-              border-radius: 10px;
-            }
-            .custom-scrollbar::-webkit-scrollbar-thumb {
-              background: #d1d5db;
-              border-radius: 10px;
-            }
-            .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-              background: #9ca3af;
-            }
-          `}</style>
         </div>
       )}
+      <style>
+        {`
+          @keyframes pulse-scale {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+          }
+          @keyframes wave {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-4px); }
+          }
+          .animate-wave {
+            animation: wave 0.8s infinite;
+          }
+          .animate-ping {
+            animation: ping 1s cubic-bezier(0, 0, 0.2, 1) infinite;
+          }
+          @keyframes ping {
+            75%, 100% { transform: scale(2); opacity: 0; }
+          }
+        `}
+      </style>
     </div>
   );
 }
