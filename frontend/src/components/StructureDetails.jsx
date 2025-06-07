@@ -652,41 +652,44 @@ You are a pharmaceutical chemistry expert tasked with analyzing a drug molecule 
   
     doc.save(`${structure.name}-${activeTab}.pdf`);
   };
-  return (
-    <div>
+   return (
+    <div className="bg-primary text-text-primary p-6 rounded-lg shadow-lg">
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold">{structure.name}</h2>
-        <span className="text-sm text-gray-500">
+        <h2 className="text-2xl font-bold font-heading">{structure.name}</h2>
+        <span className="text-sm text-text-secondary">
           Created: {new Date(structure.created).toLocaleString()}
         </span>
       </div>
 
-      <div className="border-b border-gray-200 mb-6">
+      <div className="border-b border-accent mb-6">
         <nav className="-mb-px flex space-x-8">
           <button
-            className={`pb-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'parent'
-                ? 'border-blue-500 text-blue-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
+            className={`pb-4 px-1 border-b-2 font-medium text-sm font-body ${
+              activeTab === 'parent'
+                ? 'border-accent text-accent'
+                : 'border-transparent text-text-secondary hover:text-accent-secondary hover:border-accent-secondary'
+            }`}
             onClick={() => handleTabSwitch('parent')}
           >
             Parent Structure
           </button>
           <button
-            className={`pb-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'variants'
-                ? 'border-blue-500 text-blue-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
+            className={`pb-4 px-1 border-b-2 font-medium text-sm font-body ${
+              activeTab === 'variants'
+                ? 'border-accent text-accent'
+                : 'border-transparent text-text-secondary hover:text-accent-secondary hover:border-accent-secondary'
+            }`}
             onClick={() => handleTabSwitch('variants')}
           >
             Generated Variants ({structure.generatedStructures?.length || 0})
           </button>
           {selectedVariant && (
             <button
-              className={`pb-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'variant'
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
+              className={`pb-4 px-1 border-b-2 font-medium text-sm font-body ${
+                activeTab === 'variant'
+                  ? 'border-accent text-accent'
+                  : 'border-transparent text-text-secondary hover:text-accent-secondary hover:border-accent-secondary'
+              }`}
               onClick={() => handleTabSwitch('variant')}
             >
               Selected Variant
@@ -697,17 +700,17 @@ You are a pharmaceutical chemistry expert tasked with analyzing a drug molecule 
 
       {activeTab === 'parent' && (
         <div>
-          <div className="bg-gray-50 p-4 rounded-lg mb-6">
-            <h3 className="text-lg font-semibold mb-2">SMILES</h3>
-            <p className="font-mono text-sm break-all">{structure.smiles}</p>
+          <div className="bg-secondary p-4 rounded-lg mb-6">
+            <h3 className="text-lg font-semibold mb-2 font-heading">SMILES</h3>
+            <p className="font-code text-sm break-all bg-primary p-2 rounded">{structure.smiles}</p>
           </div>
 
           {renderMolecule(structure.smiles, parentMolRef)}
 
-          <div className="mt-4   flex justify-center">
+          <div className="mt-4 flex justify-center">
             <button
               onClick={() => setShowParent3D(!showParent3D)}
-              className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded"
+              className="bg-accent hover:bg-accent-secondary text-primary font-bold py-2 px-4 rounded transition-colors duration-300 font-body"
               disabled={!rdkitLoaded}
             >
               {showParent3D ? 'Hide 3D View' : 'Show 3D Visualization'}
@@ -718,22 +721,22 @@ You are a pharmaceutical chemistry expert tasked with analyzing a drug molecule 
             <>
               <div
                 ref={parent3DRef}
-                className="w-full h-96 mt-4 border rounded relative bg-gray-100 flex items-center justify-center"
+                className="w-full h-96 mt-4 border-2 border-accent rounded-lg relative bg-secondary flex items-center justify-center"
               >
                 {!is3DmolLoaded && (
-                  <div className="flex flex-col  items-center">
-                    <ClipLoader color="#3B82F6" size={50} />
-                    <p className="mt-2 text-gray-600">Loading 3D viewer...</p>
+                  <div className="flex flex-col items-center">
+                    <ClipLoader color="#00F5D4" size={50} />
+                    <p className="mt-2 text-text-secondary">Loading 3D viewer...</p>
                   </div>
                 )}
               </div>
               {is3DmolLoaded && (
-                <div className="mt-2">
-                  <div className="flex justify-center flex-wrap gap-3 space-x-4">
+                <div className="mt-4">
+                  <div className="flex justify-center flex-wrap gap-3">
                     <select
                       value={parentStyle}
                       onChange={(e) => setParentStyle(e.target.value)}
-                      className="border rounded p-1"
+                      className="border border-accent rounded p-2 bg-secondary text-text-primary font-body"
                     >
                       <option value="ballstick">Ball & Stick</option>
                       <option value="stick">Stick</option>
@@ -742,31 +745,31 @@ You are a pharmaceutical chemistry expert tasked with analyzing a drug molecule 
                     </select>
                     <button
                       onClick={() => setShowLabels(!showLabels)}
-                      className="bg-gray-500 hover:bg-gray-600 text-white py-1 px-3 rounded"
+                      className="bg-accent-secondary hover:bg-accent text-primary py-2 px-4 rounded transition-colors duration-300 font-body"
                     >
                       {showLabels ? 'Hide Labels' : 'Show Labels'}
                     </button>
                     <button
                       onClick={() => setSpinAnimation(!spinAnimation)}
-                      className="bg-teal-500 hover:bg-teal-600 text-white py-1 px-3 rounded"
+                      className="bg-accent hover:bg-accent-secondary text-primary py-2 px-4 rounded transition-colors duration-300 font-body"
                     >
                       {spinAnimation ? 'Stop Spin' : 'Spin Model'}
                     </button>
                     <button
                       onClick={() => download3DView(parentViewerRef, `${structure.name}-3D`)}
-                      className="bg-purple-500 hover:bg-purple-600 text-white py-1 px-3 rounded"
+                      className="bg-accent-secondary hover:bg-accent text-primary py-2 px-4 rounded transition-colors duration-300 font-body"
                     >
                       Download PNG
                     </button>
                   </div>
                   {highlightedAtom && (
-                    <div className="mt-2 text-center text-sm text-gray-700 bg-yellow-50 p-2 rounded">
-                      <strong>Highlighted Atom:</strong> {highlightedAtom.element} (x: {highlightedAtom.x.toFixed(2)}, y: {highlightedAtom.y.toFixed(2)}, z: {highlightedAtom.z.toFixed(2)})
+                    <div className="mt-4 text-center text-sm bg-secondary text-text-primary p-3 rounded-lg border border-accent">
+                      <strong className="font-heading">Highlighted Atom:</strong> {highlightedAtom.element} (x: {highlightedAtom.x.toFixed(2)}, y: {highlightedAtom.y.toFixed(2)}, z: {highlightedAtom.z.toFixed(2)})
                     </div>
                   )}
                   {aiDescription && (
-                    <div className="mt-4 text-center text-sm text-gray-700 bg-blue-50 p-2 rounded">
-                      <strong>AI Insight:</strong> {aiDescription}
+                    <div className="mt-4 text-center text-sm bg-secondary text-text-primary p-3 rounded-lg border border-accent">
+                      <strong className="font-heading">AI Insight:</strong> {aiDescription}
                     </div>
                   )}
                 </div>
@@ -775,7 +778,7 @@ You are a pharmaceutical chemistry expert tasked with analyzing a drug molecule 
           )}
 
           <div className="mt-6">
-            <h3 className="text-lg font-semibold mb-2">Detailed Information</h3>
+            <h3 className="text-lg font-semibold mb-2 font-heading">Detailed Information</h3>
             <EnhancedGeminiInfo
               information={structure.information}
               isLoading={false}
@@ -786,7 +789,7 @@ You are a pharmaceutical chemistry expert tasked with analyzing a drug molecule 
 
           <div className="mt-6 flex justify-center">
             <button
-              className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded"
+              className="bg-success hover:bg-green-700 text-primary font-bold py-2 px-6 rounded transition-colors duration-300 font-body"
               onClick={exportToPDF}
             >
               Export to PDF
@@ -797,35 +800,35 @@ You are a pharmaceutical chemistry expert tasked with analyzing a drug molecule 
 
       {activeTab === 'variants' && (
         <div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {structure.generatedStructures?.map((variant, index) => (
               <div
                 key={index}
-                className="border border-gray-200 rounded-lg p-4 hover:shadow-md cursor-pointer"
+                className="border-2 border-accent-secondary rounded-lg p-4 hover:shadow-lg cursor-pointer transition-all duration-300 bg-secondary hover:border-accent"
                 onClick={() => handleVariantSelect(variant)}
               >
-                <div className="h-40 flex items-center justify-center">
+                <div className="h-40 flex items-center justify-center bg-primary rounded-lg">
                   {rdkitLoaded && window.RDKit && variant.smiles ? (
                     <div
                       ref={(el) => (variantMolRefs.current[index] = el)}
                       className="w-full h-full"
                     />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-gray-100 rounded">
-                      <p className="text-gray-500 text-xs">Visualization unavailable</p>
+                    <div className="w-full h-full flex items-center justify-center rounded">
+                      <p className="text-text-secondary text-xs">Visualization unavailable</p>
                     </div>
                   )}
                 </div>
-                <div className="mt-2">
-                  <div className="flex justify-between text-sm">
+                <div className="mt-4 space-y-2">
+                  <div className="flex justify-between text-sm font-label">
                     <span className="font-medium">QED:</span>
                     <span>{variant.properties?.qed?.toFixed(3) || 'N/A'}</span>
                   </div>
-                  <div className="flex justify-between text-sm">
+                  <div className="flex justify-between text-sm font-label">
                     <span className="font-medium">LogP:</span>
                     <span>{variant.properties?.logp?.toFixed(3) || 'N/A'}</span>
                   </div>
-                  <div className="flex justify-between text-sm">
+                  <div className="flex justify-between text-sm font-label">
                     <span className="font-medium">Similarity:</span>
                     <span>{(variant.similarity * 100).toFixed(1)}%</span>
                   </div>
@@ -835,7 +838,7 @@ You are a pharmaceutical chemistry expert tasked with analyzing a drug molecule 
           </div>
           <div className="mt-6 flex justify-center">
             <button
-              className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded"
+              className="bg-success hover:bg-green-700 text-primary font-bold py-2 px-6 rounded transition-colors duration-300 font-body"
               onClick={exportToPDF}
             >
               Export to PDF
@@ -847,14 +850,14 @@ You are a pharmaceutical chemistry expert tasked with analyzing a drug molecule 
       {activeTab === 'variant' && (
         <div>
           {!selectedVariant ? (
-            <div className="text-center text-gray-500">
+            <div className="text-center text-text-secondary p-6 bg-secondary rounded-lg">
               <p>No variant selected. Please select a variant from the Generated Variants tab.</p>
             </div>
           ) : (
             <>
-              <div className="bg-gray-50 p-4 rounded-lg mb-6">
-                <h3 className="text-lg font-semibold mb-2">Variant SMILES</h3>
-                <p className="font-mono text-sm break-all">{selectedVariant.smiles || 'N/A'}</p>
+              <div className="bg-secondary p-4 rounded-lg mb-6">
+                <h3 className="text-lg font-semibold mb-2 font-heading">Variant SMILES</h3>
+                <p className="font-code text-sm break-all bg-primary p-2 rounded">{selectedVariant.smiles || 'N/A'}</p>
               </div>
 
               {renderMolecule(selectedVariant.smiles, variantMolRef)}
@@ -862,7 +865,7 @@ You are a pharmaceutical chemistry expert tasked with analyzing a drug molecule 
               <div className="mt-4 flex justify-center">
                 <button
                   onClick={() => setShowVariant3D(!showVariant3D)}
-                  className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded"
+                  className="bg-accent hover:bg-accent-secondary text-primary font-bold py-2 px-4 rounded transition-colors duration-300 font-body"
                   disabled={!rdkitLoaded}
                 >
                   {showVariant3D ? 'Hide 3D View' : 'Show 3D Visualization'}
@@ -873,22 +876,22 @@ You are a pharmaceutical chemistry expert tasked with analyzing a drug molecule 
                 <>
                   <div
                     ref={variant3DRef}
-                    className="w-full h-96 mt-4 border rounded relative bg-gray-100 flex items-center justify-center"
+                    className="w-full h-96 mt-4 border-2 border-accent rounded-lg relative bg-secondary flex items-center justify-center"
                   >
                     {!is3DmolLoaded && (
                       <div className="flex flex-col items-center">
-                        <ClipLoader color="#3B82F6" size={50} />
-                        <p className="mt-2 text-gray-600">Loading 3D viewer...</p>
+                        <ClipLoader color="#00F5D4" size={50} />
+                        <p className="mt-2 text-text-secondary">Loading 3D viewer...</p>
                       </div>
                     )}
                   </div>
                   {is3DmolLoaded && (
-                    <div className="mt-2">
-                      <div className="flex justify-center space-x-4">
+                    <div className="mt-4">
+                      <div className="flex justify-center flex-wrap gap-3">
                         <select
                           value={variantStyle}
                           onChange={(e) => setVariantStyle(e.target.value)}
-                          className="border rounded p-1"
+                          className="border border-accent rounded p-2 bg-secondary text-text-primary font-body"
                         >
                           <option value="ballstick">Ball & Stick</option>
                           <option value="stick">Stick</option>
@@ -897,31 +900,31 @@ You are a pharmaceutical chemistry expert tasked with analyzing a drug molecule 
                         </select>
                         <button
                           onClick={() => setShowLabels(!showLabels)}
-                          className="bg-gray-500 hover:bg-gray-600 text-white py-1 px-3 rounded"
+                          className="bg-accent-secondary hover:bg-accent text-primary py-2 px-4 rounded transition-colors duration-300 font-body"
                         >
                           {showLabels ? 'Hide Labels' : 'Show Labels'}
                         </button>
                         <button
                           onClick={() => setSpinAnimation(!spinAnimation)}
-                          className="bg-teal-500 hover:bg-teal-600 text-white py-1 px-3 rounded"
+                          className="bg-accent hover:bg-accent-secondary text-primary py-2 px-4 rounded transition-colors duration-300 font-body"
                         >
                           {spinAnimation ? 'Stop Spin' : 'Spin Model'}
                         </button>
                         <button
                           onClick={() => download3DView(variantViewerRef, `${structure.name}-variant-3D`)}
-                          className="bg-purple-500 hover:bg-purple-600 text-white py-1 px-3 rounded"
+                          className="bg-accent-secondary hover:bg-accent text-primary py-2 px-4 rounded transition-colors duration-300 font-body"
                         >
                           Download PNG
                         </button>
                       </div>
                       {highlightedAtom && (
-                        <div className="mt-2 text-center text-sm text-gray-700 bg-yellow-50 p-2 rounded">
-                          <strong>Highlighted Atom:</strong> {highlightedAtom.element} (x: {highlightedAtom.x.toFixed(2)}, y: {highlightedAtom.y.toFixed(2)}, z: {highlightedAtom.z.toFixed(2)})
+                        <div className="mt-4 text-center text-sm bg-secondary text-text-primary p-3 rounded-lg border border-accent">
+                          <strong className="font-heading">Highlighted Atom:</strong> {highlightedAtom.element} (x: {highlightedAtom.x.toFixed(2)}, y: {highlightedAtom.y.toFixed(2)}, z: {highlightedAtom.z.toFixed(2)})
                         </div>
                       )}
                       {aiDescription && (
-                        <div className="mt-4 text-center text-sm text-gray-700 bg-blue-50 p-2 rounded">
-                          <strong>AI Insight:</strong> {aiDescription}
+                        <div className="mt-4 text-center text-sm bg-secondary text-text-primary p-3 rounded-lg border border-accent">
+                          <strong className="font-heading">AI Insight:</strong> {aiDescription}
                         </div>
                       )}
                     </div>
@@ -930,18 +933,18 @@ You are a pharmaceutical chemistry expert tasked with analyzing a drug molecule 
               )}
 
               <div className="mt-6">
-                <h3 className="text-lg font-semibold mb-2">Property Comparison</h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-gray-50 p-3 rounded">
-                    <h4 className="text-md font-medium">Parent</h4>
-                    <div className="text-sm">
+                <h3 className="text-lg font-semibold mb-2 font-heading">Property Comparison</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="bg-secondary p-4 rounded-lg border border-accent">
+                    <h4 className="text-md font-medium font-heading">Parent</h4>
+                    <div className="mt-2 space-y-2 font-label">
                       <p><strong>QED:</strong> {structure.properties?.qed?.toFixed(3) || 'N/A'}</p>
                       <p><strong>LogP:</strong> {structure.properties?.logp?.toFixed(3) || 'N/A'}</p>
                     </div>
                   </div>
-                  <div className="bg-gray-50 p-3 rounded">
-                    <h4 className="text-md font-medium">Variant</h4>
-                    <div className="text-sm">
+                  <div className="bg-secondary p-4 rounded-lg border border-accent">
+                    <h4 className="text-md font-medium font-heading">Variant</h4>
+                    <div className="mt-2 space-y-2 font-label">
                       <p><strong>QED:</strong> {selectedVariant.properties?.qed?.toFixed(3) || 'N/A'}</p>
                       <p><strong>LogP:</strong> {selectedVariant.properties?.logp?.toFixed(3) || 'N/A'}</p>
                       <p><strong>Similarity:</strong> {(selectedVariant.similarity * 100).toFixed(1)}%</p>
@@ -951,7 +954,7 @@ You are a pharmaceutical chemistry expert tasked with analyzing a drug molecule 
               </div>
 
               <div className="mt-6">
-                <h3 className="text-lg font-semibold mb-2">Detailed Information</h3>
+                <h3 className="text-lg font-semibold mb-2 font-heading">Detailed Information</h3>
                 <EnhancedGeminiInfo
                   information={variantInfo}
                   variantData={{
@@ -976,7 +979,7 @@ You are a pharmaceutical chemistry expert tasked with analyzing a drug molecule 
 
               <div className="mt-6 flex justify-center">
                 <button
-                  className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded"
+                  className="bg-success hover:bg-green-700 text-primary font-bold py-2 px-6 rounded transition-colors duration-300 font-body"
                   onClick={exportToPDF}
                 >
                   Export to PDF
@@ -988,6 +991,7 @@ You are a pharmaceutical chemistry expert tasked with analyzing a drug molecule 
       )}
     </div>
   );
+
 };
 
 export default StructureDetails;

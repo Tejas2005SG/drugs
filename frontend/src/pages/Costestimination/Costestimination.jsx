@@ -7,7 +7,7 @@ import axios from "axios";
 import { AlertCircle, DollarSign, Clock, Database, X, Info, RefreshCw, LogIn, FileText, ChevronDown, ChevronUp, Download } from "lucide-react";
 import { jsPDF } from "jspdf";
 import domtoimage from "dom-to-image";
-
+import Loader from "../../components/Loader.jsx"
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
 const axiosInstance = axios.create({
   baseURL: API_BASE_URL,
@@ -100,7 +100,7 @@ const CostEstimationForm = () => {
   };
 
   const renderInformation = (info) => {
-    if (!info) return <p style={{ color: "#374151" }}>No additional information available</p>;
+    if (!info) return <p className="text-text-secondary">No additional information available</p>;
 
     const lines = info.split("\n").filter((line) => line.trim() !== "");
     let introParagraph = "";
@@ -122,17 +122,17 @@ const CostEstimationForm = () => {
     if (currentSection) sections.push(currentSection);
 
     return (
-      <div>
-        {introParagraph && <p className="mb-2" style={{ color: "#374151" }}>{introParagraph}</p>}
+      <div className="font-body">
+        {introParagraph && <p className="mb-2 text-text-primary">{introParagraph}</p>}
         {sections.length > 0 && (
           <ul className="list-disc pl-5 space-y-2">
             {sections.map((section, index) => (
-              <li key={index} className="font-semibold" style={{ color: "#1f2937" }}>
+              <li key={index} className="font-semibold text-accent">
                 {section.title}
                 {section.bullets.length > 0 && (
                   <ul className="list-disc pl-5 mt-1 space-y-1">
                     {section.bullets.map((bullet, bulletIndex) => (
-                      <li key={bulletIndex} style={{ color: "#374151" }}>{bullet}</li>
+                      <li key={bulletIndex} className="text-text-primary">{bullet}</li>
                     ))}
                   </ul>
                 )}
@@ -238,30 +238,27 @@ const CostEstimationForm = () => {
     };
 
     initialize();
-  }, [checkAuth]); // Removed 'user' from dependencies to avoid re-running on user change
+  }, [checkAuth]);
 
-  if (checkingAuth || loading) {
-    return (
-      <div className="flex flex-col items-center justify-center h-screen bg-gray-50">
-        <div className="animate-spin mb-4">
-          <RefreshCw size={32} className="text-blue-600" />
-        </div>
-        <p className="text-gray-700 font-medium">Verifying authentication...</p>
-      </div>
-    );
-  }
+  // if (checkingAuth || loading) {
+  //   return (
+  //     <div className="flex flex-col items-center justify-center h-screen bg-primary">
+  //       <Loader />
+  //     </div>
+  //   );
+  // }
 
   if (!user || !user._id) {
     return (
-      <div className="flex flex-col items-center justify-center h-screen bg-gray-50">
-        <div className="text-center max-w-md p-8 bg-white rounded-xl shadow-lg">
-          <LogIn size={48} className="mx-auto text-blue-600 mb-4" />
-          <h2 className="text-2xl font-bold text-gray-800 mb-3">Authentication Required</h2>
-          <p className="text-gray-600 mb-6">
+      <div className="flex flex-col items-center justify-center h-screen bg-primary">
+        <div className="text-center max-w-md p-8 bg-secondary rounded-xl shadow-lg border border-secondary">
+          <LogIn size={48} className="mx-auto text-accent mb-4" />
+          <h2 className="text-2xl font-bold text-text-primary mb-3 font-heading">Authentication Required</h2>
+          <p className="text-text-secondary mb-6 font-body">
             Please log in to access the Drug Cost Estimator tool and view your estimation history.
           </p>
           <button
-            className="w-full px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200 flex items-center justify-center"
+            className="w-full px-4 py-3 bg-accent text-primary font-medium rounded-lg hover:bg-accent/90 transition-colors duration-200 flex items-center justify-center font-heading"
             onClick={() => (window.location.href = "/login")}
           >
             <LogIn size={18} className="mr-2" />
@@ -273,49 +270,49 @@ const CostEstimationForm = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12">
+    <div className="min-h-screen bg-primary py-12">
       <div className="container mx-auto px-4 max-w-4xl">
         <div className="mb-10 text-center">
-          <h1 className="text-4xl font-bold text-gray-800 mb-2">
+          <h1 className="text-4xl font-bold text-text-primary mb-2 font-heading">
             Drug Cost Estimator
-            <p className="text-xs p-1 text-blue-700 font-semibold">(Powered by Gemini)</p>
+            <p className="text-xs p-1 text-accent-secondary font-semibold font-label">(Powered by Gemini)</p>
           </h1>
-          <p className="text-gray-600 max-w-2xl mx-auto">
+          <p className="text-text-secondary max-w-2xl mx-auto font-body">
             Select a SMILES string from your generated molecules to estimate the cost of drug synthesis and production.
           </p>
         </div>
 
         <div className="space-y-8">
           {/* Form Section */}
-          <div className="bg-white p-8 rounded-xl shadow-md transition-all duration-200 hover:shadow-lg">
+          <div className="bg-secondary p-8 rounded-xl shadow-md transition-all duration-200 hover:shadow-lg border border-secondary">
             <div className="flex items-center mb-6">
-              <Database className="h-6 w-6 text-blue-600 mr-2" />
-              <h2 className="text-2xl font-semibold text-gray-800">Estimate New Cost</h2>
+              <Database className="h-6 w-6 text-accent mr-2" />
+              <h2 className="text-2xl font-semibold text-text-primary font-heading">Estimate New Cost</h2>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label htmlFor="smiles" className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="smiles" className="block text-sm font-medium text-text-secondary mb-1 font-body">
                   Select SMILES String
                 </label>
                 <select
                   id="smiles"
                   value={smiles}
                   onChange={(e) => setSmiles(e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                  className="w-full px-4 py-3 border border-secondary bg-primary text-text-primary rounded-lg focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent transition-all duration-200 font-body"
                   disabled={loading || molecules.length === 0}
                 >
                   {molecules.length === 0 ? (
-                    <option value="">No SMILES available</option>
+                    <option value="" className="bg-primary">No SMILES available</option>
                   ) : (
                     [...new Set(molecules.map((m) => m.newSmiles))].map((smilesOption) => (
-                      <option key={smilesOption} value={smilesOption}>
+                      <option key={smilesOption} value={smilesOption} className="bg-primary">
                         {smilesOption}
                       </option>
                     ))
                   )}
                 </select>
-                <p className="mt-1 text-xs text-gray-500">
+                <p className="mt-1 text-xs text-text-secondary font-body">
                   Select a SMILES string from your generated molecules
                 </p>
               </div>
@@ -323,8 +320,8 @@ const CostEstimationForm = () => {
               <button
                 type="submit"
                 disabled={loading || !smiles}
-                className={`w-full px-4 py-3 text-white rounded-lg transition-all duration-200 flex items-center justify-center ${
-                  loading || !smiles ? "bg-gray-400 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-700"
+                className={`w-full px-4 py-3 text-primary rounded-lg transition-all duration-200 flex items-center justify-center font-heading ${
+                  loading || !smiles ? "bg-gray-400 cursor-not-allowed" : "bg-accent hover:bg-accent/90"
                 }`}
               >
                 {loading ? (
@@ -342,10 +339,10 @@ const CostEstimationForm = () => {
             </form>
 
             {error && (
-              <div className="mt-6 bg-red-50 border border-red-300 text-red-700 px-4 py-3 rounded-lg flex justify-between items-center">
+              <div className="mt-6 bg-error/10 border border-error text-text-primary px-4 py-3 rounded-lg flex justify-between items-center font-body">
                 <p>{error}</p>
                 <button
-                  className="text-red-700 underline hover:text-red-900"
+                  className="text-error underline hover:text-error/80"
                   onClick={() => setError(null)}
                 >
                   Dismiss
@@ -356,21 +353,21 @@ const CostEstimationForm = () => {
             {result && (
               <div className="mt-8 animate-fadeIn">
                 <div className="flex items-center mb-4">
-                  <DollarSign className="h-5 w-5 text-green-600 mr-2" />
-                  <h3 className="text-xl font-semibold text-gray-800">Estimation Result</h3>
+                  <DollarSign className="h-5 w-5 text-success mr-2" />
+                  <h3 className="text-xl font-semibold text-text-primary font-heading">Estimation Result</h3>
                 </div>
-                <div className="bg-gradient-to-r from-blue-50 to-green-50 p-6 rounded-lg border border-blue-100">
+                <div className="bg-gradient-to-r from-primary/20 to-secondary/20 p-6 rounded-lg border border-accent/20">
                   <div className="space-y-3">
                     <div>
-                      <p className="text-sm text-gray-500 mb-1">SMILES</p>
-                      <p className="font-mono text-sm bg-white p-2 rounded border border-gray-200 overflow-x-auto">
+                      <p className="text-sm text-text-secondary mb-1 font-body">SMILES</p>
+                      <p className="font-mono text-sm bg-primary p-2 rounded border border-secondary overflow-x-auto font-code">
                         {result.smiles || "N/A"}
                       </p>
                     </div>
 
                     <div>
-                      <p className="text-sm text-gray-500 mb-1">Estimated Cost</p>
-                      <p className="text-3xl font-bold text-green-600">
+                      <p className="text-sm text-text-secondary mb-1 font-body">Estimated Cost</p>
+                      <p className="text-3xl font-bold text-success font-heading">
                         {result.estimatedcost || "N/A"}
                       </p>
                     </div>
@@ -378,18 +375,18 @@ const CostEstimationForm = () => {
                     <div className="space-y-2">
                       <button
                         onClick={toggleResultInfo}
-                        className="flex items-center justify-between w-full p-3 bg-amber-50 hover:bg-amber-100 rounded-lg transition-colors duration-200 border border-amber-200 focus:outline-none focus:ring-2 focus:ring-amber-300 focus:ring-offset-2"
+                        className="flex items-center justify-between w-full p-3 bg-accent-secondary/10 hover:bg-accent-secondary/20 rounded-lg transition-colors duration-200 border border-accent-secondary/30 focus:outline-none focus:ring-2 focus:ring-accent-secondary/50 focus:ring-offset-2 focus:ring-offset-secondary font-body"
                       >
                         <div className="flex items-center space-x-2">
-                          <Info className="h-5 w-5 text-amber-600" />
-                          <span className="text-base font-semibold text-amber-800">
-                            Detailed Analysis <span className="text-sm text-blue-700">(powered by Gemini)</span>
+                          <Info className="h-5 w-5 text-accent-secondary" />
+                          <span className="text-base font-semibold text-text-primary">
+                            Detailed Analysis <span className="text-sm text-accent font-label">(powered by Gemini)</span>
                           </span>
                         </div>
                         {isResultInfoOpen ? (
-                          <ChevronUp className="h-5 w-5 text-amber-600 transform transition-transform duration-300" />
+                          <ChevronUp className="h-5 w-5 text-accent-secondary transform transition-transform duration-300" />
                         ) : (
-                          <ChevronDown className="h-5 w-5 text-amber-600 transform transition-transform duration-300" />
+                          <ChevronDown className="h-5 w-5 text-accent-secondary transform transition-transform duration-300" />
                         )}
                       </button>
 
@@ -397,9 +394,9 @@ const CostEstimationForm = () => {
                         <div className="space-y-4">
                           <div
                             ref={infoRef}
-                            className="p-4 bg-white rounded-lg shadow-lg border border-gray-100 transition-all duration-300"
+                            className="p-4 bg-secondary rounded-lg shadow-lg border border-secondary transition-all duration-300"
                           >
-                            <div className="prose prose-sm text-gray-600 max-w-none">
+                            <div className="prose prose-sm text-text-primary max-w-none font-body">
                               {renderInformation(result.information)}
                             </div>
                           </div>
@@ -407,7 +404,7 @@ const CostEstimationForm = () => {
                           <div className="flex justify-end">
                             <button
                               onClick={exportToPDF}
-                              className="flex items-center px-4 py-2.5 bg-gradient-to-br from-green-500 to-green-600 text-white font-medium rounded-md hover:from-green-600 hover:to-green-700 transition-all duration-200 transform hover:scale-[1.02] shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
+                              className="flex items-center px-4 py-2.5 bg-gradient-to-br from-success to-success/90 text-primary font-medium rounded-md hover:from-success/90 hover:to-success transition-all duration-200 transform hover:scale-[1.02] shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-success focus:ring-offset-2 focus:ring-offset-secondary font-heading"
                             >
                               <Download size={18} className="mr-2 transform transition-transform hover:-translate-y-0.5" />
                               Export Report
@@ -423,16 +420,16 @@ const CostEstimationForm = () => {
           </div>
 
           {/* History Section */}
-          <div className="bg-white p-8 rounded-xl shadow-md transition-all duration-200 hover:shadow-lg">
+          <div className="bg-secondary p-8 rounded-xl shadow-md transition-all duration-200 hover:shadow-lg border border-secondary">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center">
-                <Clock className="h-6 w-6 text-blue-600 mr-2" />
-                <h2 className="text-2xl font-semibold text-gray-800">Estimation History</h2>
+                <Clock className="h-6 w-6 text-accent mr-2" />
+                <h2 className="text-2xl font-semibold text-text-primary font-heading">Estimation History</h2>
               </div>
               <button
                 onClick={fetchHistory}
                 disabled={historyLoading}
-                className="text-blue-600 hover:text-blue-800 transition-colors duration-200"
+                className="text-accent hover:text-accent/80 transition-colors duration-200"
                 title="Refresh history"
               >
                 <RefreshCw size={20} className={historyLoading ? "animate-spin" : ""} />
@@ -441,31 +438,31 @@ const CostEstimationForm = () => {
 
             {historyLoading ? (
               <div className="flex flex-col items-center justify-center py-12">
-                <RefreshCw size={24} className="animate-spin mb-4 text-blue-600" />
-                <p className="text-gray-600">Loading history...</p>
+                <RefreshCw size={24} className="animate-spin mb-4 text-accent" />
+                <p className="text-text-secondary font-body">Loading history...</p>
               </div>
             ) : history.length > 0 ? (
               <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
                 {history.map((item) => (
                   <div
                     key={item._id}
-                    className="border border-gray-200 p-4 rounded-lg hover:border-blue-300 transition-all duration-200 hover:shadow-sm"
+                    className="border border-secondary p-4 rounded-lg hover:border-accent-secondary transition-all duration-200 hover:shadow-sm"
                   >
                     <div className="flex justify-between items-start mb-2">
                       <div className="flex items-center">
-                        <DollarSign size={16} className="text-green-600 mr-1" />
-                        <span className="font-bold text-lg text-green-600">
+                        <DollarSign size={16} className="text-success mr-1" />
+                        <span className="font-bold text-lg text-success font-heading">
                           {item.estimatedcost || "N/A"}
                         </span>
                       </div>
-                      <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+                      <span className="text-xs text-text-secondary bg-primary px-2 py-1 rounded-full font-body">
                         {item.created ? new Date(item.created).toLocaleDateString() : "N/A"}
                       </span>
                     </div>
 
                     <div className="mt-2">
-                      <p className="text-xs text-gray-500 mb-1">SMILES</p>
-                      <p className="font-mono text-sm bg-gray-50 p-2 rounded border border-gray-200 overflow-x-auto">
+                      <p className="text-xs text-text-secondary mb-1 font-body">SMILES</p>
+                      <p className="font-mono text-sm bg-primary p-2 rounded border border-secondary overflow-x-auto font-code">
                         {item.smiles || "N/A"}
                       </p>
                     </div>
@@ -474,25 +471,25 @@ const CostEstimationForm = () => {
                       <div className="mt-3 space-y-2">
                         <button
                           onClick={() => toggleHistoryItem(item._id)}
-                          className="flex items-center justify-between w-full p-2.5 bg-amber-50 hover:bg-amber-100 rounded-md transition-colors duration-200 border border-amber-200 focus:outline-none focus:ring-2 focus:ring-amber-300 focus:ring-offset-1"
+                          className="flex items-center justify-between w-full p-2.5 bg-accent-secondary/10 hover:bg-accent-secondary/20 rounded-md transition-colors duration-200 border border-accent-secondary/30 focus:outline-none focus:ring-2 focus:ring-accent-secondary/50 focus:ring-offset-1 focus:ring-offset-secondary font-body"
                         >
                           <div className="flex items-center space-x-2">
-                            <Info className="h-4 w-4 text-amber-600" />
-                            <span className="text-xs font-medium text-amber-800 uppercase tracking-wide">
-                              Details <span className="text-xs text-blue-700">(powered by Gemini)</span>
+                            <Info className="h-4 w-4 text-accent-secondary" />
+                            <span className="text-xs font-medium text-text-primary uppercase tracking-wide">
+                              Details <span className="text-xs text-accent font-label">(powered by Gemini)</span>
                             </span>
                           </div>
                           {openHistoryItems[item._id] ? (
-                            <ChevronUp className="h-4 w-4 text-amber-600 transform transition-transform duration-300" />
+                            <ChevronUp className="h-4 w-4 text-accent-secondary transform transition-transform duration-300" />
                           ) : (
-                            <ChevronDown className="h-4 w-4 text-amber-600 transform transition-transform duration-300" />
+                            <ChevronDown className="h-4 w-4 text-accent-secondary transform transition-transform duration-300" />
                           )}
                         </button>
 
                         {openHistoryItems[item._id] && (
                           <div className="space-y-3">
-                            <div className="p-3 bg-white rounded-md shadow-sm border border-gray-200 animate-fade-in">
-                              <div className="prose prose-sm text-gray-600 max-w-none">
+                            <div className="p-3 bg-secondary rounded-md shadow-sm border border-secondary animate-fade-in">
+                              <div className="prose prose-sm text-text-primary max-w-none font-body">
                                 {renderInformation(item.information)}
                               </div>
                             </div>
@@ -505,9 +502,9 @@ const CostEstimationForm = () => {
               </div>
             ) : (
               <div className="flex flex-col items-center justify-center py-12 text-center">
-                <Database size={32} className="text-gray-400 mb-4" />
-                <p className="text-gray-500 mb-2">No previous estimations found.</p>
-                <p className="text-sm text-gray-400">
+                <Database size={32} className="text-text-secondary mb-4" />
+                <p className="text-text-secondary mb-2 font-body">No previous estimations found.</p>
+                <p className="text-sm text-text-secondary font-body">
                   Your estimation history will appear here after you submit your first request.
                 </p>
               </div>
@@ -531,17 +528,17 @@ const CostEstimationForm = () => {
         }
         
         .custom-scrollbar::-webkit-scrollbar-track {
-          background: #f1f1f1;
+          background: #172A45;
           border-radius: 10px;
         }
         
         .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: #d1d5db;
+          background: #5E81F4;
           border-radius: 10px;
         }
         
         .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-          background: #9ca3af;
+          background: #00F5D4;
         }
       `}</style>
     </div>

@@ -490,7 +490,7 @@ def predict_reaction_with_rxn(reactant1_smiles, reactant2_smiles):
         return None, 0.0
 
 def predict_reaction_with_rdkit(mol1, mol2, smiles1, smiles2):
-    """Predict reaction using RDKit."""
+    """Predict reaction using RDKit with SMILES validity checks."""
     groups1 = detect_functional_groups(mol1)
     groups2 = detect_functional_groups(mol2)
     applicable_reactions = []
@@ -503,6 +503,7 @@ def predict_reaction_with_rdkit(mol1, mol2, smiles1, smiles2):
     if not applicable_reactions:
         logger.info(f"No applicable RDKit reactions for groups: {groups1}, {groups2}")
         return None, 0.0, None
+    
     for reaction_type, compatibility, priority in applicable_reactions:
         try:
             logger.info(f"Attempting RDKit reaction: {reaction_type} (compatibility: {compatibility:.2f})")
@@ -517,24 +518,49 @@ def predict_reaction_with_rdkit(mol1, mol2, smiles1, smiles2):
             if products and len(products) > 0:
                 product_mols = []
                 seen_smiles = set()
+                valid_products = 0
+                total_products = 0
                 for product_set in products:
                     for prod in product_set:
                         if prod is not None:
+                            total_products += 1
                             try:
                                 prod = standardize_molecule(prod)
                                 if prod:
+                                    # Validate SMILES
                                     smiles = Chem.MolToSmiles(prod, isomericSmiles=True, canonical=True)
-                                    if smiles not in seen_smiles:
-                                        seen_smiles.add(smiles)
-                                        product_mols.append(prod)
-                            except:
+                                    # Re-parse SMILES to check validity
+                                    test_mol = Chem.MolFromSmiles(smiles)
+                                    if test_mol:
+                                        try:
+                                            Chem.SanitizeMol(test_mol)
+                                            # Optional: Check for disconnected fragments
+                                            fragments = Chem.GetMolFrags(test_mol, asMols=True)
+                                            if len(fragments) == 1:  # Single molecule
+                                                if smiles not in seen_smiles:
+                                                    seen_smiles.add(smiles)
+                                                    product_mols.append(prod)
+                                                    valid_products += 1
+                                        except Exception as e:
+                                            logger.debug(f"SMILES sanitization failed for {smiles}: {str(e)}")
+                                            continue
+                                    else:
+                                        logger.debug(f"Invalid SMILES: {smiles}")
+                                        continue
+                            except Exception as e:
+                                logger.debug(f"Product processing error: {str(e)}")
                                 continue
                 if product_mols:
                     product_smiles = '.'.join(Chem.MolToSmiles(mol, isomericSmiles=True)
-                                            for mol in product_mols if mol)
-                    confidence = min(0.95, compatibility + (priority / 10.0))
-                    logger.info(f"Successful RDKit reaction: {reaction_type}, products: {product_smiles}")
+                                              for mol in product_mols if mol)
+                    # Calculate validity score (proportion of valid products)
+                    validity_score = valid_products / total_products if total_products > 0 else 0.0
+                    # Dynamic confidence: combine compatibility, validity, and priority
+                    confidence = min(1.0, (compatibility * 0.5 + validity_score * 0.4 + priority / 50.0))
+                    logger.info(f"Successful RDKit reaction: {reaction_type}, products: {product_smiles}, confidence: {confidence:.3f}, valid_products: {valid_products}/{total_products}")
                     return product_mols, confidence, reaction_type
+                else:
+                    logger.debug(f"RDKit reaction {reaction_type} produced no valid products")
             else:
                 logger.debug(f"RDKit reaction {reaction_type} produced no products")
         except Exception as e:
