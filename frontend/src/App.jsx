@@ -39,7 +39,7 @@ function App() {
 
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="min-h-screen bg-red-400">
       {/* <Navbar /> */}
       <Routes>
         <Route path="/" element={<Homepage />} />
@@ -135,7 +135,7 @@ function App() {
           />
 
           <Route
-            path="toxicityPrediction"
+            path="sideeffect-prediction"
             element={
               <ProtectedRoute>
                 <ToxicityPrediction />
@@ -146,40 +146,40 @@ function App() {
             path="chatbot"
             element={
               <ProtectedRoute>
-                <Chatbot/>
+                <Chatbot />
               </ProtectedRoute>
             }
           />
 
-<Route
-  path="summary"
-  element={
-    <ProtectedRoute>
-      <Summary />
-    </ProtectedRoute>
-  }
-/>
-<Route
-  path="symptom-checker"
-  element={
-    <ProtectedRoute>
-      <SymptomChecker />
-    </ProtectedRoute>
-  }
-/>
-
-
- <Route
-            path="RDkit"
+          <Route
+            path="summary"
             element={
               <ProtectedRoute>
-                <RDkit/>
+                <Summary />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="symptom-checker"
+            element={
+              <ProtectedRoute>
+                <SymptomChecker />
+              </ProtectedRoute>
+            }
+          />
+
+
+          <Route
+            path="newdrug-discovery"
+            element={
+              <ProtectedRoute>
+                <RDkit />
               </ProtectedRoute>
             }
           />
         </Route>
 
-        
+
 
       </Routes>
       {/* <Toaster /> */}

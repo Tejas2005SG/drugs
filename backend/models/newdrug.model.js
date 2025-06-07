@@ -17,7 +17,7 @@ const predictDiseaseSchema = new mongoose.Schema({
       },
       diseaseCautions: {
         type: [String],
-        required : true,
+        required: true,
       },
     },
   ],
@@ -94,10 +94,10 @@ const predictDiseaseSchema = new mongoose.Schema({
       },
     ],
   },
-    userId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
-    },
+  userId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User",
+  },
   createdAt: { type: Date, default: Date.now },
 });
 
@@ -167,7 +167,8 @@ const TargetProteinSchema = new mongoose.Schema({
         type: String,
         required: true,
       },
-      ligandDrugBankID: { // Renamed from ligandUniport to reflect the correct identifier
+      ligandDrugBankID: {
+        // Renamed from ligandUniport to reflect the correct identifier
         type: String,
         required: true,
       },
@@ -175,9 +176,107 @@ const TargetProteinSchema = new mongoose.Schema({
   ],
   userId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
+    ref: "User",
   },
   createdAt: { type: Date, default: Date.now },
 });
 
-export const TargetProtein = mongoose.model("TargetProtein", TargetProteinSchema);
+export const TargetProtein = mongoose.model(
+  "TargetProtein",
+  TargetProteinSchema
+);
+
+// Define the ReactionResponse schema based on your sample data
+const ReactionResponseSchema = new mongoose.Schema({
+  userId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User",
+    required: true,
+  },
+  reactants: [
+    {
+      smiles: String,
+      properties: {
+        smiles: String,
+        molecular_weight: Number,
+        num_atoms: Number,
+        logP: Number,
+        tpsa: Number,
+        num_h_donors: Number,
+        num_h_acceptors: Number,
+        num_rotatable_bonds: Number,
+        has_stereochemistry: Boolean,
+        functional_groups: [String],
+      },
+      admet_properties: [
+        {
+          section: String,
+          properties: [
+            {
+              name: String,
+              prediction: mongoose.Schema.Types.Mixed,
+              units: String,
+            },
+          ],
+        },
+      ],
+    },
+  ],
+  reactionResults: [
+    {
+      reactionType: String,
+      description: String,
+      reactants: [String],
+      reactantGroups: [[String]],
+      products: [
+        {
+          smiles: String,
+          molecular_weight: Number,
+          num_atoms: Number,
+          logP: Number,
+          tpsa: Number,
+          num_h_donors: Number,
+          num_h_acceptors: Number,
+          num_rotatable_bonds: Number,
+          has_stereochemistry: Boolean,
+          functional_groups: [String],
+          admet_properties: [
+            {
+              section: String,
+              properties: [
+                {
+                  name: String,
+                  prediction: mongoose.Schema.Types.Mixed,
+                  units: String,
+                },
+              ],
+            },
+          ],
+        },
+      ],
+      confidence: Number,
+      productSmiles: String,
+    },
+  ],
+  failedReactions: [
+    {
+      reactants: [String],
+      reason: String,
+      reactionType: String,
+    },
+  ],
+  statistics: {
+    mean_mw: Number,
+    std_mw: Number,
+    min_mw: Number,
+    max_mw: Number,
+  },
+  createdAt: Date,
+  processedReactionTypes: mongoose.Schema.Types.Mixed,
+  product_smiles: [String],
+});
+
+export const ReactionResponse = mongoose.model(
+  "ReactionResponse",
+  ReactionResponseSchema
+);

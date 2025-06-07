@@ -9,10 +9,10 @@ import { useAuthStore } from '../../Store/auth.store.js';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
 const axiosInstance = axios.create({
-  baseURL: import.meta.mode==="development" ? API_BASE_URL : '/api',
+  baseURL: import.meta.mode === "development" ? API_BASE_URL : '/api',
   withCredentials: true,
 });
-// baseURL: import.meta.mode === "development" ? "http://localhost:5000/api" : "/api",
+
 const ProteinStructureApp = () => {
   const [structures, setStructures] = useState([]);
   const [selectedStructure, setSelectedStructure] = useState(null);
@@ -80,9 +80,20 @@ const ProteinStructureApp = () => {
       const response = await axiosInstance.post(`/protein/postproteinstructure/${user._id}`, formData);
       setStructures((prev) => [response.data.structure, ...prev]);
       setSelectedStructure(response.data.structure);
-      toast.success('Structure generated successfully!');
+      toast.success('Structure generated successfully!', {
+        style: {
+          background: 'var(--color-success)',
+          color: 'var(--color-primary)',
+        },
+      });
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to generate structure');
+      toast.error(err.response?.data?.message || 'Failed to generate structure', {
+        style: {
+          background: 'var(--color-error)',
+          color: 'white',
+        },
+      });
     } finally {
       setLoading(false);
     }
@@ -94,9 +105,9 @@ const ProteinStructureApp = () => {
 
   if (checkingAuth || (!rdkitLoaded && !error)) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <Spinner />
-        <p className="mt-4 text-gray-600">
+      <div className="flex flex-col items-center justify-center h-screen bg-primary">
+        <Spinner className="text-accent" />
+        <p className="mt-4 text-text-primary font-body">
           {checkingAuth ? 'Verifying authentication...' : 'Initializing molecular viewer...'}
         </p>
       </div>
@@ -105,12 +116,15 @@ const ProteinStructureApp = () => {
 
   if (!user) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="text-center">
-          <p className="text-gray-600">Please log in to access the Protein Structure Generator</p>
+      <div className="flex items-center justify-center h-screen bg-primary">
+        <div className="text-center p-8 bg-secondary rounded-lg shadow-xl max-w-md">
+          <h2 className="text-2xl font-heading text-text-primary mb-4">Access Required</h2>
+          <p className="text-text-secondary font-body mb-6">
+            Please log in to access the Protein Structure Generator
+          </p>
           <button
-            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-            onClick={() => window.location.href = '/login'}
+            className="w-full bg-accent hover:bg-accent/90 text-primary font-heading font-bold py-3 px-6 rounded-lg transition-all duration-200"
+            onClick={() => (window.location.href = '/login')}
           >
             Go to Login
           </button>
@@ -120,54 +134,96 @@ const ProteinStructureApp = () => {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <h1 className="text-3xl text-center font-bold text-gray-800 mb-8">Protein Structure Generator
+    <div className="min-h-screen bg-primary p-4 md:p-8">
+      <div className="max-w-7xl mx-auto">
+        {/* Header */}
+        <header className="text-center mb-8">
+          <h1 className="text-3xl md:text-4xl font-heading font-bold text-accent mb-2">
+            Protein Structure Generator
+          </h1>
+          <p className="text-xs md:text-sm text-accent-secondary font-label font-semibold">
+            (Powered by Gemini and MolMIM Nvidia Model)
+          </p>
+        </header>
 
-      <p className="text-xs  p-1 text-blue-700 font-semibold">(Powered by Gemini and MolMIM Nvidia Model)</p>
-
-      </h1>
-      {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-          <p>{error}</p>
-          <button className="text-red-700 underline ml-2" onClick={() => setError(null)}>
-            Dismiss
-          </button>
-        </div>
-      )}
-      <div className="grid grid-cols-1 gap-8">
-        {/* Section 1: Generate New Structure */}
-        <div>
-          <div className="bg-white p-6 rounded-lg shadow-md">
-            <h2 className="text-xl font-semibold mb-4">Generate New Structure</h2>
-            <StructureForm onSubmit={handleSubmit} loading={loading} />
+        {/* Error Message */}
+        {error && (
+          <div className="bg-error/20 border border-error text-text-primary px-4 py-3 rounded-lg mb-6 flex justify-between items-center">
+            <p className="font-body">{error}</p>
+            <button
+              className="text-text-primary hover:text-accent font-bold ml-4"
+              onClick={() => setError(null)}
+            >
+              ✕
+            </button>
           </div>
-        </div>
+        )}
 
-        {/* Section 2: Select a structure to view details */}
-        <div>
-          <div className="bg-white p-6 rounded-lg shadow-md">
-            <h2 className="text-xl font-semibold mb-4">Structure Details</h2>
-            {selectedStructure ? (
-              <StructureDetails structure={selectedStructure} rdkitLoaded={rdkitLoaded} />
-            ) : (
-              <div className="flex flex-col items-center justify-center h-96">
-                <p className="text-gray-500 mb-4">Select a structure to view details</p>
-                <p className="text-gray-400 text-sm">or generate a new one</p>
+        {/* Main Content Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-1 gap-6">
+          {/* Left Column - Generate Form */}
+          <div className="lg:col-span-1">
+            <div className="bg-secondary p-6 rounded-xl shadow-lg h-full">
+              <h2 className="text-xl font-heading font-semibold text-accent mb-4">
+                Generate New Structure
+              </h2>
+              <StructureForm onSubmit={handleSubmit} loading={loading} />
+            </div>
+          </div>
+
+          {/* Middle Column - Structure Details */}
+          <div className="lg:col-span-1">
+            <div className="bg-secondary p-6 rounded-xl shadow-lg h-full">
+              <h2 className="text-xl font-heading font-semibold text-accent mb-4">
+                Structure Details
+              </h2>
+              {selectedStructure ? (
+                <StructureDetails structure={selectedStructure} rdkitLoaded={rdkitLoaded} />
+              ) : (
+                <div className="flex flex-col items-center justify-center h-96">
+                  <svg
+                    className="w-16 h-16 text-text-secondary mb-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={1.5}
+                      d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"
+                    />
+                  </svg>
+                  <p className="text-text-secondary font-body mb-2">
+                    Select a structure to view details
+                  </p>
+                  <p className="text-text-secondary text-sm font-body">or generate a new one</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Right Column - Saved Structures */}
+          <div className="lg:col-span-1">
+            <div className="bg-secondary p-6 rounded-xl shadow-lg h-full">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-heading font-semibold text-accent">
+                  Saved Structures
+                </h2>
+                {structures.length > 0 && (
+                  <span className="bg-accent-secondary text-primary text-xs font-bold px-2 py-1 rounded-full">
+                    {structures.length}
+                  </span>
+                )}
               </div>
-            )}
-          </div>
-        </div>
-
-        {/* Section 3: Saved Structures */}
-        <div>
-          <div className="bg-white p-6 rounded-lg shadow-md">
-            <h2 className="text-xl font-semibold mb-4">Saved Structures</h2>
-            <StructureList
-              structures={structures}
-              onSelect={selectStructure}
-              selected={selectedStructure}
-              loading={loading}
-            />
+              <StructureList
+                structures={structures}
+                onSelect={selectStructure}
+                selected={selectedStructure}
+                loading={loading}
+              />
+            </div>
           </div>
         </div>
       </div>

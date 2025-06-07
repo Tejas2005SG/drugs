@@ -1,744 +1,362 @@
-import { useEffect,useRef } from "react";
-import { useAuthStore } from "../Store/auth.store.js";
-import { Link } from "react-router-dom";
-import { Home } from "lucide-react";
-import { toast, Toaster } from 'react-hot-toast';
+import React from 'react';
+import { useAuthStore } from '../store/auth.store';
+import { Link } from 'react-router-dom';
+import {
+  Box,
+  Typography,
+  Card,
+  CardContent,
+  Grid,
+  Button,
+  Stack,
+  IconButton,
+  useTheme,
+  Chip,
+  CardActions,
+} from '@mui/material';
+import {
+  Menu as MenuIcon,
+  Home,
+  Message as MessageSquare,
+  Biotech,
+  DirectionsRun as Activity,
+  Layers,
+  AttachMoney,
+  Psychology,
+  TrendingUp,
+  ArrowForward,
+  Description,
+  CenterFocusStrong as Target,
+  Science,
+  FileDownload,
+  KeyboardVoice as RecordVoiceOver,
+  Newspaper,
+  ChevronLeft,
+  Logout,
+  Dashboard,
+  MonetizationOn,
+  Assignment,
+  Warning,
+} from '@mui/icons-material';
+import { Toaster } from 'react-hot-toast';
+
 function DashboardHome() {
   const { user } = useAuthStore();
-  const toastShown = useRef(false);
- useEffect(() => {
-    if (!toastShown.current) {
-      toast(
-        "Our research shows the software needs further training to improve information authenticity, highlighting the need for mentorship.",
-        {
-          position: "top-right",
-          duration: 3000,
-          style: {
-            background: "#fefcbf",
-            color: "#92400e",
-            border: "1px solid #f59e0b",
-          },
-          icon: "⚠️",
-        }
-      );
-      toastShown.current = true;
-    }
-  }, []);
+  const theme = useTheme();
+
+  const quickActions = [
+    {
+      title: 'Alphafold Structure Prediction',
+      description: 'Predict and visualize protein structures with atom and bond',
+      icon: <Science sx={{ fontSize: 28 }} />,
+      link: '/dashboard/getalphafoldstrcture',
+      gradient: 'linear-gradient(135deg, #00C9B7, #00F5D4)',
+    },
+    {
+      title: 'Protein Structure Generation',
+      description: 'Generate and analyze protein structures',
+      icon: <Biotech sx={{ fontSize: 28 }} />,
+      link: '/dashboard/protein-structure',
+      gradient: 'linear-gradient(135deg, #00A8C5, #00D4F5)',
+    },
+    {
+      title: 'New Drug Discovery',
+      description: 'Explore New Drugs Discovery',
+      icon: <Psychology sx={{ fontSize: 28 }} />,
+      link: '/dashboard/protein-structure-mutation',
+      gradient: 'linear-gradient(135deg, #009B95, #00C9B7)',
+    },
+    {
+      title: 'Cost Estimation',
+      description: 'Estimate costs for drug development',
+      icon: <MonetizationOn sx={{ fontSize: 28 }} />,
+      link: '/dashboard/cost-estimation',
+      gradient: 'linear-gradient(135deg, #008B8F, #00A8C5)',
+    },
+    {
+      title: 'AI Research Paper Generator',
+      description: 'Generate research papers using AI',
+      icon: <Assignment sx={{ fontSize: 28 }} />,
+      link: '/dashboard/ai-research-paper-generator',
+      gradient: 'linear-gradient(135deg, #007A7A, #009B95)',
+    },
+    {
+      title: 'AI Driven Target Prediction',
+      description: 'Predict drug targets using AI',
+      icon: <Target sx={{ fontSize: 28 }} />,
+      link: '/dashboard/ai-driven-target-prediction',
+      gradient: 'linear-gradient(135deg, #006666, #008B8F)',
+    },
+    {
+      title: 'AI Naming Suggestions',
+      description: 'Let AI suggest the name for your New Drug',
+      icon: <Psychology sx={{ fontSize: 28 }} />,
+      link: '/dashboard/ai-naming',
+      gradient: 'linear-gradient(135deg, #005151, #007A7A)',
+    },
+    {
+      title: 'Toxicity Prediction',
+      description: 'Get to know about New Drug',
+      icon: <Warning sx={{ fontSize: 28 }} />,
+      link: '/dashboard/toxicityPrediction',
+      gradient: 'linear-gradient(135deg, #003D3D, #006666)',
+    },
+    {
+      title: 'Live News',
+      description: 'Stay updated with the latest news',
+      icon: <Newspaper sx={{ fontSize: 28 }} />,
+      link: '/dashboard/live-news',
+      gradient: 'linear-gradient(135deg, #002A2A, #005151)',
+    },
+  ];
+
   return (
-    <div className="p-6 max-w-7xl mx-auto">
-      {/* Header section */}
-      <div className="bg-gradient-to-r from-blue- 100 to-indigo-100 p-6 rounded-xl mb-6 shadow-sm">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-gray-800">
-              Welcome back, {user?.firstName || "Researcher"}!
-            </h1>
-            <p className="text-gray-600 mt-2">
-              Your drug discovery dashboard is ready for today's research.
-            </p>
-          </div>
-          <div className="flex gap-2">
-            <Link
+    <Box sx={{ 
+      maxWidth: 1400, 
+      mx: 'auto', 
+      p: 3,
+      background: 'radial-gradient(circle at 10% 20%, #0A192F 0%, #0D1B36 100%)',
+      minHeight: '100vh'
+    }}>
+      {/* Header Section */}
+      <Card
+        sx={{
+          mb: 4,
+          background: 'linear-gradient(135deg, #0A192F, #172A45)',
+          border: '1px solid rgba(0, 245, 212, 0.1)',
+          borderRadius: 4,
+          boxShadow: '0 8px 32px rgba(0, 245, 212, 0.1)',
+          backdropFilter: 'blur(8px)',
+          overflow: 'hidden',
+          position: 'relative',
+          '&:before': {
+            content: '""',
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            height: 4,
+            background: 'linear-gradient(90deg, #00F5D4, #5E81F4)',
+          }
+        }}
+      >
+        <CardContent sx={{ p: 4 }}>
+          <Stack
+            direction={{ xs: 'column', md: 'row' }}
+            justifyContent="space-between"
+            alignItems={{ xs: 'flex-start', md: 'center' }}
+            spacing={3}
+          >
+            <Box>
+              <Typography
+                variant="h3"
+                sx={{
+                  fontWeight: 800,
+                  mb: 1,
+                  fontFamily: '"Barlow", sans-serif',
+                  background: 'linear-gradient(135deg, #00F5D4, #5E81F4)',
+                  backgroundClip: 'text',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                  textShadow: '0 2px 10px rgba(0, 245, 212, 0.3)',
+                  letterSpacing: '-0.5px'
+                }}
+              >
+                Welcome back, {user?.firstName || 'Researcher'}!
+              </Typography>
+              <Typography 
+                variant="h6" 
+                sx={{
+                  color: '#A0A0A0',
+                  fontFamily: '"Roboto", sans-serif',
+                  fontWeight: 400,
+                }}
+              >
+                Your drug discovery dashboard is ready for today's research.
+              </Typography>
+            </Box>
+            <Button
+              component={Link}
               to="/"
-              className="inline-flex items-center justify-center px-3 py-2 text-sm font-medium rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition-colors"
+              variant="outlined"
+              startIcon={<Home />}
+              sx={{
+                borderRadius: 3,
+                px: 4,
+                py: 1.5,
+                borderColor: 'rgba(0, 245, 212, 0.3)',
+                color: '#00F5D4',
+                fontFamily: '"Barlow", sans-serif',
+                fontWeight: 500,
+                letterSpacing: '0.5px',
+                transition: 'all 0.3s ease',
+                '&:hover': {
+                  borderColor: '#00F5D4',
+                  backgroundColor: 'rgba(0, 245, 212, 0.1)',
+                  transform: 'translateY(-2px)',
+                  boxShadow: '0 4px 15px rgba(0, 245, 212, 0.2)'
+                },
+              }}
             >
-              <Home className="mr-2" size={18} />
               Back to Home
-            </Link>
-          </div>
-        </div>
-      </div>
+            </Button>
+          </Stack>
+        </CardContent>
+      </Card>
 
-      {/* Quick actions section */}
-      <div className="mb-6">
-        <h2 className="text-xl font-semibold text-gray-800 mb-4">
+      {/* Quick Actions Section */}
+      <Box sx={{ mb: 4 }}>
+        <Typography
+          variant="h4"
+          sx={{
+            fontWeight: 700,
+            color: '#E0E0E0',
+            mb: 3,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 2,
+            fontFamily: '"Barlow", sans-serif',
+            letterSpacing: '-0.25px'
+          }}
+        >
+          <TrendingUp sx={{ 
+            color: '#00F5D4',
+            fontSize: 36
+          }} />
           Quick Actions
-        </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-
-
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all">
-            <div className="p-5">
-              <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-emerald-500 text-white mb-3">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-5 w-5"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"
-                  />
-                </svg>
-              </div>
-              <h3 className="text-lg font-semibold mb-1">
-                Alphafold Structure Prediction
-              </h3>
-              <p className="text-gray-500 text-sm mb-3">
-                Predict and visualize protein structures with atom and bond
-              </p>
-              <Link
-                to="/dashboard/getalphafoldstrcture"
-                className="inline-flex items-center text-blue-600 hover:text-blue-800 font-medium text-sm"
-              >
-                Get Started
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-4 w-4 ml-1"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9 5l7 7-7 7"
-                  />
-                </svg>
-              </Link>
-            </div>
-          </div>
-
-
-
-
-
-          {/* Protein Structure Generation Card */}
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all">
-            <div className="p-5">
-              <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-blue-500 text-white mb-3">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-5 w-5"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
-                  />
-                </svg>
-              </div>
-              <h3 className="text-lg font-semibold mb-1">
-                Protein Structure Generation
-              </h3>
-              <p className="text-gray-500 text-sm mb-3">
-                Generate and analyze protein structures
-              </p>
-              <Link
-                to="/dashboard/protein-structure"
-                className="inline-flex items-center text-blue-600 hover:text-blue-800 font-medium text-sm"
-              >
-                Get Started
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-4 w-4 ml-1"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9 5l7 7-7 7"
-                  />
-                </svg>
-              </Link>
-            </div>
-          </div>
-
-         
-
-          {/* Protein Structure Evolution Card */}
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all">
-            <div className="p-5">
-              <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-emerald-500 text-white mb-3">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-5 w-5"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"
-                  />
-                </svg>
-              </div>
-              <h3 className="text-lg font-semibold mb-1">
-                New Drug Discovery
-              </h3>
-              <p className="text-gray-500 text-sm mb-3">
-                Explore New Drugs Discovery
-              </p>
-              <Link
-                to="/dashboard/protein-structure-mutation"
-                className="inline-flex items-center text-blue-600 hover:text-blue-800 font-medium text-sm"
-              >
-                Get Started
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-4 w-4 ml-1"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9 5l7 7-7 7"
-                  />
-                </svg>
-              </Link>
-            </div>
-          </div>
-
-          {/* Cost Estimation Card */}
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all">
-            <div className="p-5">
-              <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-purple-500 text-white mb-3">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-5 w-5"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                </svg>
-              </div>
-              <h3 className="text-lg font-semibold mb-1">Cost Estimation</h3>
-              <p className="text-gray-500 text-sm mb-3">
-                Estimate costs for drug development
-              </p>
-              <Link
-                to="/dashboard/cost-estimation"
-                className="inline-flex items-center text-blue-600 hover:text-blue-800 font-medium text-sm"
-              >
-                Get Started
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-4 w-4 ml-1"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9 5l7 7-7 7"
-                  />
-                </svg>
-              </Link>
-            </div>
-          </div>
-
+        </Typography>
         
-          {/* AI Research Paper Generator Card */}
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all">
-            <div className="p-5">
-              <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-amber-500 text-white mb-3">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-5 w-5"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
-                  />
-                </svg>
-              </div>
-              <h3 className="text-lg font-semibold mb-1">
-                AI Research Paper Generator
-              </h3>
-              <p className="text-gray-500 text-sm mb-3">
-                Generate research papers using AI
-              </p>
-              <Link
-                to="/dashboard/ai-research-paper-generator"
-                className="inline-flex items-center text-blue-600 hover:text-blue-800 font-medium text-sm"
+        <Grid container spacing={3}>
+          {quickActions.map((action, index) => (
+            <Grid item xs={12} sm={6} lg={4} key={index}>
+              <Card
+                sx={{
+                  height: '100%',
+                  background: 'linear-gradient(135deg, #172A45, #0A192F)',
+                  border: '1px solid rgba(0, 245, 212, 0.1)',
+                  borderRadius: 3,
+                  transition: 'all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+                  cursor: 'pointer',
+                  boxShadow: '0 4px 20px rgba(0, 0, 0, 0.2)',
+                  '&:hover': {
+                    transform: 'translateY(-8px)',
+                    boxShadow: '0 12px 35px rgba(0, 245, 212, 0.25)',
+                    borderColor: 'rgba(0, 245, 212, 0.3)',
+                  },
+                }}
+                component={Link}
+                to={action.link}
+                style={{ textDecoration: 'none' }}
               >
-                Get Started
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-4 w-4 ml-1"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9 5l7 7-7 7"
-                  />
-                </svg>
-              </Link>
-            </div>
-          </div>
-
-          {/* AI Driven Target Prediction Card */}
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all">
-            <div className="p-5">
-              <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-red-500 text-white mb-3">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-5 w-5"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 2a10 10 0 00-7.071 17.071M12 2a10 10 0 017.071 17.071M12 6a6 6 0 00-4.243 10.243M12 6a6 6 0 014.243 10.243M12 10a2 2 0 00-1.414 3.414M12 10a2 2 0 011.414 3.414"
-                  />
-                </svg>
-              </div>
-              <h3 className="text-lg font-semibold mb-1">
-                AI Driven Target Prediction
-              </h3>
-              <p className="text-gray-500 text-sm mb-3">
-                Predict drug targets using AI
-              </p>
-              <Link
-                to="/dashboard/ai-driven-target-prediction"
-                className="inline-flex items-center text-blue-600 hover:text-blue-800 font-medium text-sm"
-              >
-                Get Started
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-4 w-4 ml-1"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9 5l7 7-7 7"
-                  />
-                </svg>
-              </Link>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all">
-            <div className="p-5">
-              <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-green-500 text-white mb-3">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-5 w-5"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z"
-                  />
-                </svg>
-              </div>
-              <h3 className="text-lg font-semibold mb-1">AI Naming Suggestions</h3>
-              <p className="text-gray-500 text-sm mb-3">
-                Let AI suggests the name for your New Drug
-              </p>
-              <Link
-                to="/dashboard/ai-naming"
-                className="inline-flex items-center text-blue-600 hover:text-blue-800 font-medium text-sm"
-              >
-                Get Started
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-4 w-4 ml-1"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9 5l7 7-7 7"
-                  />
-                </svg>
-              </Link>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all">
-            <div className="p-5">
-              <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-green-500 text-white mb-3">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-5 w-5"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z"
-                  />
-                </svg>
-              </div>
-              <h3 className="text-lg font-semibold mb-1">Toxicity Pediction</h3>
-              <p className="text-gray-500 text-sm mb-3">
-                Get to know about New Drug 
-              </p>
-              <Link
-                to="/dashboard/toxicityPrediction"
-                className="inline-flex items-center text-blue-600 hover:text-blue-800 font-medium text-sm"
-              >
-                Get Started
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-4 w-4 ml-1"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9 5l7 7-7 7"
-                  />
-                </svg>
-              </Link>
-            </div>
-          </div>
-
-
-          {/* Live News Card */}
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all">
-            <div className="p-5">
-              <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-green-500 text-white mb-3">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-5 w-5"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z"
-                  />
-                </svg>
-              </div>
-              <h3 className="text-lg font-semibold mb-1">Live News</h3>
-              <p className="text-gray-500 text-sm mb-3">
-                Stay updated with the latest news
-              </p>
-              <Link
-                to="/dashboard/live-news"
-                className="inline-flex items-center text-blue-600 hover:text-blue-800 font-medium text-sm"
-              >
-                Get Started
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-4 w-4 ml-1"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9 5l7 7-7 7"
-                  />
-                </svg>
-              </Link>
-            </div>
-          </div>
-
-          {/* Message Board Card */}
-          {/* <div className="bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all">
-            <div className="p-5">
-              <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-indigo-500 text-white mb-3">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-5 w-5"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
-                  />
-                </svg>
-              </div>
-              <h3 className="text-lg font-semibold mb-1">Message Board</h3>
-              <p className="text-gray-500 text-sm mb-3">Communicate with your team</p>
-              <Link
-                to="/dashboard/message"
-                className="inline-flex items-center text-blue-600 hover:text-blue-800 font-medium text-sm"
-              >
-                Get Started
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-4 w-4 ml-1"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
-              </Link>
-            </div>
-          </div> */}
-        </div>
-      </div>
-
-      {/* Recent activity and resources section */}
-      {/* <div className="grid grid-cols-1 lg:grid-cols-3 gap-6"> */}
-      {/* Recent activity */}
-      {/* <div className="lg:col-span-2 bg-white rounded-xl border border-gray-200 shadow-sm">
-          <div className="p-6 border-b border-gray-100">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold">Recent Activity</h3>
-              <button className="text-sm text-blue-600 hover:text-blue-800 font-medium">View All</button>
-            </div>
-          </div>
-          <div className="p-6">
-            <div className="space-y-4">
-              {[1, 2, 3].map((_, i) => (
-                <div key={i} className="flex items-start gap-4 p-3 rounded-lg hover:bg-gray-50 transition-colors">
-                  <div className="bg-blue-100 p-2 rounded-full">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="h-4 w-4 text-blue-600"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
+                <CardContent sx={{ 
+                  p: 3, 
+                  height: '100%', 
+                  display: 'flex', 
+                  flexDirection: 'column',
+                  position: 'relative',
+                  overflow: 'hidden',
+                  '&:before': {
+                    content: '""',
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    height: 4,
+                    background: action.gradient,
+                  }
+                }}>
+                  <Box
+                    sx={{
+                      width: 56,
+                      height: 56,
+                      borderRadius: 2,
+                      background: action.gradient,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      mb: 2,
+                      color: '#0A192F',
+                      mt: 2,
+                      boxShadow: '0 4px 15px rgba(0, 245, 212, 0.3)'
+                    }}
+                  >
+                    {action.icon}
+                  </Box>
+                  
+                  <Typography
+                    variant="h6"
+                    sx={{
+                      fontWeight: 600,
+                      color: '#E0E0E0',
+                      mb: 1,
+                      lineHeight: 1.3,
+                      fontFamily: '"Barlow", sans-serif',
+                      fontSize: '1.1rem'
+                    }}
+                  >
+                    {action.title}
+                  </Typography>
+                  
+                  <Typography
+                    variant="body2"
+                    sx={{ 
+                      mb: 2, 
+                      flex: 1,
+                      color: '#A0A0A0',
+                      fontFamily: '"Roboto", sans-serif',
+                      lineHeight: 1.5
+                    }}
+                  >
+                    {action.description}
+                  </Typography>
+                  
+                  <Stack direction="row" justifyContent="space-between" alignItems="center">
+                    <Chip
+                      label="Available"
+                      size="small"
+                      sx={{
+                        backgroundColor: 'rgba(112, 224, 0, 0.1)',
+                        color: '#70E000',
+                        fontWeight: 500,
+                        fontFamily: '"Roboto", sans-serif',
+                        fontSize: '0.75rem'
+                      }}
+                    />
+                    <IconButton
+                      size="small"
+                      sx={{
+                        color: '#00F5D4',
+                        backgroundColor: 'rgba(0, 245, 212, 0.1)',
+                        transition: 'all 0.3s ease',
+                        '&:hover': {
+                          backgroundColor: 'rgba(0, 245, 212, 0.2)',
+                          transform: 'translateX(2px)'
+                        },
+                      }}
                     >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
-                      />
-                    </svg>
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-sm font-medium">Protein structure #{1000 + i} generated</p>
-                    <p className="text-xs text-gray-500">2 hour{i > 0 ? "s" : ""} ago</p>
-                  </div>
-                  <button className="px-3 py-1 text-sm rounded-md text-gray-600 hover:bg-gray-100">View</button>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div> */}
+                      <ArrowForward fontSize="small" />
+                    </IconButton>
+                  </Stack>
+                </CardContent>
+              </Card>
+            </Grid>
+          ))}
+        </Grid>
+      </Box>
 
-      {/* Resources */}
-      {/* <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
-          <div className="p-6 border-b border-gray-100">
-            <h3 className="text-lg font-semibold">Resources</h3>
-            <p className="text-sm text-gray-500 mt-1">Helpful guides and documentation</p>
-          </div>
-          <div className="p-6 space-y-4">
-            <div className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-5 w-5 text-blue-600"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
-                />
-              </svg>
-              <div className="flex-1">
-                <p className="text-sm font-medium">Documentation</p>
-                <p className="text-xs text-gray-500">API references and guides</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-5 w-5 text-emerald-600"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
-                />
-              </svg>
-              <div className="flex-1">
-                <p className="text-sm font-medium">Community</p>
-                <p className="text-xs text-gray-500">Join discussions and get help</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-5 w-5 text-purple-600"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"
-                />
-              </svg>
-              <div className="flex-1">
-                <p className="text-sm font-medium">Research Papers</p>
-                <p className="text-xs text-gray-500">Latest publications</p>
-              </div>
-            </div>
-          </div>
-        </div> */}
-      {/* </div> */}
-
-      {/* Stats section */}
-      {/* <div className="mt-6 grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
-          <div className="flex items-center">
-            <div className="p-2 rounded-full bg-blue-50 mr-4">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-6 w-6 text-blue-500"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
-                />
-              </svg>
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Total Structures</p>
-              <p className="text-2xl font-bold">1,284</p>
-            </div>
-          </div>
-        </div>
-        <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
-          <div className="flex items-center">
-            <div className="p-2 rounded-full bg-emerald-50 mr-4">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-6 w-6 text-emerald-500"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"
-                />
-              </svg>
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Success Rate</p>
-              <p className="text-2xl font-bold">94.2%</p>
-            </div>
-          </div>
-        </div>
-        <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
-          <div className="flex items-center">
-            <div className="p-2 rounded-full bg-purple-50 mr-4">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-6 w-6 text-purple-500"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"
-                />
-              </svg>
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Molecules</p>
-              <p className="text-2xl font-bold">3,721</p>
-            </div>
-          </div>
-        </div>
-        <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
-          <div className="flex items-center">
-            <div className="p-2 rounded-full bg-amber-50 mr-4">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-6 w-6 text-amber-500"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Avg. Process Time</p>
-              <p className="text-2xl font-bold">1.8m</p>
-            </div>
-          </div>
-        </div>
-      </div> */}
-    </div>
+      <Toaster 
+        position="bottom-right"
+        toastOptions={{
+          style: {
+            background: '#172A45',
+            color: '#E0E0E0',
+            border: '1px solid rgba(0, 245, 212, 0.3)',
+            borderRadius: '12px',
+            fontFamily: '"Roboto", sans-serif'
+          },
+        }}
+      />
+    </Box>
   );
 }
 

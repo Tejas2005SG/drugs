@@ -69,6 +69,12 @@ const userSchema = new mongoose.Schema(
     NewproteinStructures: [
       { type: mongoose.Schema.Types.ObjectId, ref: "GeneratenewMolecule" },
     ],
+    symptoms: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "predictDiseaseSchema",
+      },
+    ],
   },
   { timestamps: true }
 );
