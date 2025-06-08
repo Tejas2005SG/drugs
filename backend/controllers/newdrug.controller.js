@@ -1472,7 +1472,111 @@ export const predictDisease = async (req, res) => {
       };
 
       // Gemini prompt for DiseaseAnalysis (unchanged)
-      const geminiPrompt = `...`; // Keep your existing Gemini prompt
+      const geminiPrompt = `Prompt Title: AI-Assisted Biomedical Disease Mapping and Target Discovery Using Web-Scraped Evidence
+
+Objective:
+You are an advanced biomedical AI assistant integrated within an AI drug discovery platform. Your task is to analyze a set of symptoms and a predicted disease and produce a *comprehensive biological and molecular analysis. Your analysis should be **deeply researched and backed by web scraping or web search*, using authoritative sources like PubMed, UniProt, KEGG, Reactome, DisGeNET, DrugBank, Ensembl, GO Ontology, Human Cell Atlas, and FDA biomarker databases.
+
+Input:
+- Comma-separated list of patient symptoms: "${symptoms.join(", ")}"
+- Top-matched disease based on local ML model: "${topDisease.disease}"
+
+Your output will be used to:
+- Drive downstream protein-ligand mapping
+- Identify potential targets for AI-based SMILES generation
+- Guide molecular docking and drug design simulations
+
+### MANDATORY TASKS (All Based on Live Web Scraping or Smart Web Search):
+
+For *each of the following categories*, you must:
+
+- *Search and scrape real biomedical sources*
+- *Write long, detailed, medically sound summaries (minimum 2–4 sentences each)*
+- *Always include the source name and exact working URL*
+- If no credible data is found after scraping, say: "No reliable data found after attempted web search." — but only after trying.
+
+### Output Format (JSON, No Markdown or Extra Text):
+
+{
+  "likelyDiseasesOrDisorders": [
+    {
+      "source": "PubMed / WHO / CDC / Mayo Clinic / MedlinePlus",
+      "summary": "Describe diseases or disorders linked to the given symptoms. Include prevalence, etiology, and disease mechanism. Write 2–4 medical-grade sentences summarizing current research.",
+      "url": "Direct source link"
+    }
+  ],
+  "associatedBiologicalPathways": [
+    {
+      "source": "KEGG / Reactome / WikiPathways",
+      "summary": "Describe cellular or metabolic pathways affected by the disease. Include pathway name, function, and how it is disrupted. Minimum 3 lines.",
+      "url": "Exact working link"
+    }
+  ],
+  "affectedBiologicalProcesses": [
+    {
+      "source": "GO Ontology / Reactome / PubMed",
+      "summary": "Explain key biological processes affected—like inflammation, apoptosis, synaptic signaling, etc. Describe how these are impaired or dysregulated in the disease context. Use proper terminology.",
+      "url": "Relevant scientific link"
+    }
+  ],
+  "involvedOrgansAndTissues": [
+    {
+      "source": "Human Protein Atlas / Biomedical Literature",
+      "summary": "List and describe affected organs or tissues. Explain how symptoms map to these body systems (e.g., vestibular apparatus in vertigo). Be anatomical and precise.",
+      "url": "Source link to anatomical/biomedical data"
+    }
+  ],
+  "relevantCellTypes": [
+    {
+      "source": "Human Cell Atlas / Research Articles",
+      "summary": "Name immune, neural, or structural cell types affected. Describe their normal role and what goes wrong in the disease. Include 2+ sentences.",
+      "url": "Working link to source"
+    }
+  ],
+  "molecularCellularMechanismDisruptions": [
+    {
+      "source": "PubMed / Medline / Molecular Biology Databases",
+      "summary": "Describe in detail the molecular mechanisms disrupted (e.g., ion channel malfunction, oxidative stress, neurotransmitter imbalance). Be mechanistic, not vague.",
+      "url": "Precise research link"
+    }
+  ],
+  "associatedGenes": [
+    {
+      "source": "DisGeNET / Ensembl / NCBI Gene / OMIM",
+      "summary": "List genes implicated in the disease. For each, explain gene function and how mutations or dysregulation relate to symptoms or pathogenesis. 2–3 sentences minimum.",
+      "url": "Gene-specific reference link"
+    }
+  ],
+  "knownOrPotentialTargetProteins": [
+    {
+      "source": "UniProt / ChEMBL / DrugBank / STRING DB",
+      "summary": "List known or predicted druggable proteins. For each, explain its function, role in the disease, and why it is therapeutically relevant. Link to official database entry.",
+      "url": "Exact UniProt/DrugBank link"
+    }
+  ],
+  "biomarkers": [
+    {
+      "source": "FDA / PubMed / ClinicalTrials / Biomarker Databases",
+      "summary": "List validated or investigational biomarkers. Describe what is being measured (gene/protein/metabolite), its clinical significance, and current research status.",
+      "url": "Direct link to biomarker data"
+    }
+  ],
+  "relevantTherapeuticClassesOrDrugExamples": [
+    {
+      "source": "DrugBank / RxNorm / Medscape / PubMed",
+      "summary": "Provide examples of drugs or drug classes used to treat the disease. For each, explain its mechanism of action and clinical use. Include generics and brand names if relevant.",
+      "url": "Working medical or pharmacological source"
+    }
+  ]
+}
+
+### FINAL INSTRUCTIONS:
+- All responses MUST be accurate and verifiable with scientific citations.
+- Do NOT use placeholder text like "N/A" unless web search *explicitly fails*.
+- DO NOT hallucinate knowledge—back it up with web content.
+- JSON output only. No extra text, markdown, or explanation outside JSON.
+- This will feed into a biomedical target-ligand pipeline. Scientific precision is critical.
+`;
       const geminiResponse = (await callGemini(geminiPrompt)) || '{}';
 
       diseaseAnalysis = {

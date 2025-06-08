@@ -41,7 +41,11 @@ import {
   Biotech,
   Warning,
   Info,
-  Visibility, Sync, MedicalInformation, MedicalServices
+  Visibility,
+  Sync,
+  MedicalInformation,
+  MedicalServices,
+  GetApp,
 } from "@mui/icons-material"
 import axios from "axios"
 import {
@@ -53,10 +57,12 @@ import {
   Tooltip as ChartTooltip,
   Legend,
 } from "chart.js"
-import { Radar } from "react-chartjs-2"
+import { Chart, Radar } from "react-chartjs-2"
 import toast, { Toaster } from "react-hot-toast"
 import { useAuthStore } from "../../Store/auth.store.js"
 import "./rdkit.css"
+import jsPDF from "jspdf"
+import autoTable from "jspdf-autotable"
 ChartJS.register(RadialLinearScale, PointElement, LineElement, Filler, Legend, ChartTooltip)
 
 const timelineSteps = [
@@ -140,7 +146,7 @@ const RDkit = () => {
 
   // Fetch saved symptoms
   useEffect(() => {
-    if (!userId) return;
+    if (!userId) return
 
     const fetchSavedSymptoms = async () => {
       setSymptomsLoading(true)
@@ -151,8 +157,9 @@ const RDkit = () => {
         })
         const fetchedSymptoms = response.data.symptoms || []
         // Validate saved symptoms
-        const validSymptoms = fetchedSymptoms.filter(group =>
-          Array.isArray(group) && group.length > 0 && group.every(s => typeof s === 'string' && s.trim() !== '')
+        const validSymptoms = fetchedSymptoms.filter(
+          (group) =>
+            Array.isArray(group) && group.length > 0 && group.every((s) => typeof s === "string" && s.trim() !== ""),
         )
         setSavedSymptoms(validSymptoms)
         if (fetchedSymptoms.length !== validSymptoms.length) {
@@ -249,7 +256,7 @@ const RDkit = () => {
         { id: "no-reactions-retry" },
       )
       setTimeout(() => {
-        handleSubmit({ preventDefault: () => { } })
+        handleSubmit({ preventDefault: () => {} })
         setRetryAttempts((prev) => ({ ...prev, noReactions: prev.noReactions + 1 }))
       }, 2000)
     } else if (
@@ -264,13 +271,27 @@ const RDkit = () => {
     }
   }, [reactionResult, retryAttempts.noReactions, loading, maxRetries])
 
-  const validateSymptoms = (symptomList) => {
+   const validateSymptoms = (symptomList) => {
     if (!Array.isArray(symptomList) || symptomList.length === 0) {
-      return { valid: false, message: "Please enter at least three valid symptom." }
+      return { valid: false, message: "Please enter at least three symptoms." }
     }
-    if (symptomList.some(s => typeof s !== 'string' || s.trim() === '')) {
+
+    if (symptomList.length < 3) {
+      return { valid: false, message: "Please enter at least three symptoms to proceed with drug discovery." }
+    }
+
+    if (symptomList.some((s) => typeof s !== "string" || s.trim() === "")) {
       return { valid: false, message: "All symptoms must be non-empty strings." }
     }
+
+    // Check for duplicate symptoms (case-insensitive)
+    const normalizedSymptoms = symptomList.map((s) => s.trim().toLowerCase())
+    const uniqueSymptoms = new Set(normalizedSymptoms)
+
+    if (uniqueSymptoms.size !== symptomList.length) {
+      return { valid: false, message: "Please remove duplicate symptoms. Each symptom should be entered only once." }
+    }
+
     return { valid: true }
   }
 
@@ -315,7 +336,9 @@ const RDkit = () => {
         return
       }
 
-      toast("This process may go for more than 1 Attempt to predict new drug due to complex computations.", { id: "process-info" })
+      toast("This process may go for more than 1 Attempt to predict new drug due to complex computations.", {
+        id: "process-info",
+      })
 
       let diseaseResponse
       try {
@@ -405,7 +428,6 @@ const RDkit = () => {
       setLoading(false)
     }
   }
-
 
   const handleReset = () => {
     setSymptoms([])
@@ -513,8 +535,484 @@ const RDkit = () => {
     }
   }
   const handleExample = (exampleSymptoms) => {
-  setSymptoms(exampleSymptoms);
-};
+    setSymptoms(exampleSymptoms)
+  }
+
+
+  
+  const generatePDF = async () => {
+    const doc = new jsPDF()
+    let yPosition = 20
+    const pageHeight = 280
+    const margin = 20
+
+    // Helper functions
+    const checkPageBreak = (requiredSpace = 20) => {
+      if (yPosition + requiredSpace > pageHeight) {
+        doc.addPage()
+        yPosition = 20
+      }
+    }
+
+    const addTitle = (title, fontSize = 16, color = [0, 100, 200]) => {
+      checkPageBreak(15)
+      doc.setFontSize(fontSize)
+      doc.setTextColor(...color)
+      doc.text(title, margin, yPosition)
+      yPosition += fontSize === 20 ? 15 : 10
+    }
+
+    const addText = (text, fontSize = 12, color = [40, 40, 40], indent = 0) => {
+      checkPageBreak(8)
+      doc.setFontSize(fontSize)
+      doc.setTextColor(...color)
+      const splitText = doc.splitTextToSize(text, 170 - indent)
+      doc.text(splitText, margin + indent, yPosition)
+      yPosition += splitText.length * 6
+    }
+
+    const addTable = (headers, rows) => {
+      checkPageBreak(30)
+      // Simple table implementation without autoTable
+      const startY = yPosition
+      const cellHeight = 8
+      const cellWidth = (170 - margin) / headers.length
+
+      // Draw headers
+      doc.setFontSize(10)
+      doc.setTextColor(255, 255, 255)
+      doc.setFillColor(94, 129, 244)
+      doc.rect(margin, startY, 170 - margin, cellHeight, "F")
+
+      headers.forEach((header, i) => {
+        doc.text(header, margin + i * cellWidth + 2, startY + 6)
+      })
+
+      // Draw rows
+      doc.setTextColor(40, 40, 40)
+      rows.forEach((row, rowIndex) => {
+        const rowY = startY + cellHeight + rowIndex * cellHeight
+        if (rowIndex % 2 === 0) {
+          doc.setFillColor(245, 245, 245)
+          doc.rect(margin, rowY, 170 - margin, cellHeight, "F")
+        }
+
+        row.forEach((cell, cellIndex) => {
+          doc.text(String(cell), margin + cellIndex * cellWidth + 2, rowY + 6)
+        })
+      })
+
+      yPosition = startY + cellHeight + rows.length * cellHeight + 10
+    }
+
+    const addImage = async (base64Image, caption, width = 80, height = 60) => {
+      if (base64Image) {
+        try {
+          checkPageBreak(height + 15)
+          doc.addImage(`data:image/png;base64,${base64Image}`, "PNG", margin, yPosition, width, height)
+          yPosition += height + 5
+          if (caption) {
+            addText(caption, 10, [100, 100, 100])
+          }
+          yPosition += 5
+        } catch (error) {
+          console.warn("Failed to add image to PDF:", error)
+          addText(`[Image: ${caption}]`, 10, [150, 150, 150])
+        }
+      }
+    }
+
+    // Convert ADMET chart to image with dark theme
+    const addAdmetChart = async (chartData, title) => {
+      try {
+        checkPageBreak(120)
+        const canvas = document.createElement("canvas")
+        canvas.width = 500
+        canvas.height = 400
+        const ctx = canvas.getContext("2d")
+
+        // Dark background like the reference image
+        ctx.fillStyle = "#2d3748"
+        ctx.fillRect(0, 0, canvas.width, canvas.height)
+
+        // Create chart with dark theme
+        const chartInstance = new ChartJS(ctx, {
+          type: "radar",
+          data: chartData,
+          options: {
+            responsive: false,
+            animation: false,
+            plugins: {
+              legend: {
+                position: "top",
+                labels: {
+                  color: "#ffffff",
+                  font: { size: 14 },
+                },
+              },
+              title: {
+                display: true,
+                text: title,
+                color: "#ffffff",
+                font: { size: 16 },
+              },
+            },
+            scales: {
+              r: {
+                beginAtZero: true,
+                min: 0,
+                max: 100,
+                ticks: {
+                  color: "#ffffff",
+                  backdropColor: "transparent",
+                },
+                pointLabels: {
+                  color: "#ffffff",
+                  font: { size: 12 },
+                },
+                grid: { color: "#4a5568" },
+                angleLines: { color: "#4a5568" },
+              },
+            },
+            elements: {
+              line: {
+                borderWidth: 3,
+              },
+              point: {
+                radius: 6,
+                borderWidth: 2,
+              },
+            },
+          },
+        })
+
+        await new Promise((resolve) => setTimeout(resolve, 1000))
+        const chartImage = canvas.toDataURL("image/png").split(",")[1]
+        await addImage(chartImage, title, 140, 110)
+
+        chartInstance.destroy()
+        canvas.remove()
+      } catch (error) {
+        console.warn("Failed to add ADMET chart to PDF:", error)
+        addText(`[ADMET Chart: ${title}]`, 10, [150, 150, 150])
+      }
+    }
+
+    // Title Page
+    doc.setFontSize(24)
+    doc.setTextColor(40, 40, 40)
+    doc.text("Drug Discovery Analysis Report", margin, yPosition)
+    yPosition += 20
+
+    doc.setFontSize(14)
+    doc.text(`Generated on: ${new Date().toLocaleString()}`, margin, yPosition)
+    yPosition += 10
+
+    doc.setFontSize(12)
+    doc.text(`User: ${user?.name || "Unknown"}`, margin, yPosition)
+    yPosition += 20
+
+    // INPUT SYMPTOMS SECTION - Add this at the beginning
+    if (symptoms.length > 0) {
+      addTitle("Input Symptoms", 20, [0, 150, 0])
+      addText(`Total Symptoms Entered: ${symptoms.length}`, 12, [40, 40, 40], 5)
+      yPosition += 5
+
+      addTitle("Symptoms List:", 14, [0, 100, 0])
+      symptoms.forEach((symptom, index) => {
+        addText(`${index + 1}. ${symptom}`, 12, [40, 40, 40], 10)
+      })
+
+      // Add validation status
+      const validation = validateSymptoms(symptoms)
+      if (validation.valid) {
+        addText("✓ Symptoms validation: PASSED (3+ unique symptoms)", 11, [0, 150, 0], 5)
+      } else {
+        addText(`✗ Symptoms validation: ${validation.message}`, 11, [200, 0, 0], 5)
+      }
+
+      yPosition += 15
+    }
+
+    // Rest of the PDF sections remain the same...
+    // 1. DISEASE PREDICTION RESULTS
+    if (result?.disease?.predictedDiseases) {
+      addTitle("Disease Prediction Results", 20, [200, 0, 0])
+
+      result.disease.predictedDiseases.forEach((disease, index) => {
+        addTitle(`${index + 1}. ${disease.diseaseName || "Unknown Disease"}`, 16, [0, 150, 0])
+        addText(`Match Confidence: ${disease.DiseaseMatchness || "N/A"}`, 12, [40, 40, 40], 10)
+
+        if (disease.diseaseCautions && disease.diseaseCautions.length > 0) {
+          addText(`Cautions: ${disease.diseaseCautions.join(", ")}`, 11, [200, 0, 0], 10)
+        }
+
+        if (disease.diseaseSymptoms && disease.diseaseSymptoms.length > 0) {
+          addText(`Symptoms: ${disease.diseaseSymptoms.join(", ")}`, 11, [40, 40, 40], 10)
+        }
+
+        if (disease.diseaseTreatments && disease.diseaseTreatments.length > 0) {
+          addText(`Treatments: ${disease.diseaseTreatments.join(", ")}`, 11, [0, 100, 0], 10)
+        }
+
+        if (disease.diseaseDescription) {
+          addText(`Description: ${disease.diseaseDescription}`, 10, [60, 60, 60], 10)
+        }
+
+        yPosition += 10
+      })
+
+      // Detailed Disease Analysis
+      if (
+        result.disease.predictedDiseases[0]?.DiseaseMatchness !== "0%" &&
+        Object.entries(result.disease?.DiseaseAnalysis || {}).length > 0
+      ) {
+        addTitle("Detailed Disease Analysis", 18, [0, 100, 150])
+
+        Object.entries(result.disease.DiseaseAnalysis).forEach(([key, items]) => {
+          addTitle(key.replace(/([A-Z])/g, " $1").trim(), 14, [0, 100, 150])
+
+          items.forEach((item, idx) => {
+            addText(`${idx + 1}. ${item.summary || "No summary available"}`, 11, [40, 40, 40], 15)
+            if (item.source) {
+              addText(`Source: ${item.source}`, 10, [100, 100, 100], 20)
+            }
+            if (item.url) {
+              addText(`URL: ${item.url}`, 10, [0, 0, 200], 20)
+            }
+            yPosition += 5
+          })
+        })
+      }
+    }
+
+    // 2. TARGET PROTEINS
+    if (result?.proteins?.TargetProteins && result.proteins.TargetProteins.length > 0) {
+      checkPageBreak(30)
+      addTitle("Target Proteins", 20, [150, 0, 150])
+
+      result.proteins.TargetProteins.forEach((protein, index) => {
+        addTitle(`${index + 1}. ${protein.proteinName || "Unknown Protein"}`, 16, [150, 0, 150])
+        addText(`Function: ${protein.proteinFunction || "N/A"}`, 12, [40, 40, 40], 10)
+        addText(`UniProt ID: ${protein.proteinUniport || "N/A"}`, 12, [40, 40, 40], 10)
+        addText(`Description: ${protein.ProtienDiscription || "N/A"}`, 12, [40, 40, 40], 10)
+
+        if (protein.proteinDetailedDiscription) {
+          addText(`Detailed Information: ${protein.proteinDetailedDiscription}`, 11, [60, 60, 60], 10)
+        }
+
+        if (protein.proteinStructure) {
+          addText(`Structure: ${protein.proteinStructure}`, 11, [40, 40, 40], 10)
+        }
+
+        if (protein.proteinPathways && protein.proteinPathways.length > 0) {
+          addText(`Pathways: ${protein.proteinPathways.join(", ")}`, 11, [40, 40, 40], 10)
+        }
+
+        if (protein.proteinInteractions && protein.proteinInteractions.length > 0) {
+          addText(`Interactions: ${protein.proteinInteractions.join(", ")}`, 11, [40, 40, 40], 10)
+        }
+
+        yPosition += 15
+      })
+    }
+
+    // 3. TARGET LIGANDS
+    if (result?.proteins?.TargetLigands && result.proteins.TargetLigands.length > 0) {
+      checkPageBreak(30)
+      addTitle("Target Ligands", 20, [200, 100, 0])
+
+      for (const [index, ligand] of result.proteins.TargetLigands.entries()) {
+        addTitle(`${index + 1}. ${ligand.ligandName || "Unknown Ligand"}`, 16, [200, 100, 0])
+        addText(`Function: ${ligand.ligandFunction || "N/A"}`, 12, [40, 40, 40], 10)
+        addText(`DrugBank ID: ${ligand.ligandDrugBankID || "N/A"}`, 12, [40, 40, 40], 10)
+
+        if (ligand.LigandSmile && ligand.LigandSmile !== "Not applicable") {
+          addText(`SMILES: ${ligand.LigandSmile}`, 11, [40, 40, 40], 10)
+
+          // Add molecular structure image
+          if (smilesImages[ligand.LigandSmile]) {
+            await addImage(smilesImages[ligand.LigandSmile], `Structure of ${ligand.ligandName}`)
+          }
+
+          // Add functional groups
+          const functionalGroups = getFunctionalGroups(ligand.LigandSmile)
+          addText(`Functional Groups: ${functionalGroups}`, 11, [40, 40, 40], 10)
+
+          // Add ADMET Properties for ligands
+          if (reactionResult && reactionResult.reactants) {
+            const reactant = reactionResult.reactants.find((r) => r.smiles === ligand.LigandSmile)
+            if (reactant && reactant.admet_properties && reactant.admet_properties.length > 0) {
+              addTitle("ADMET Properties", 14, [0, 100, 100])
+
+              reactant.admet_properties.forEach((section) => {
+                addText(section.section, 12, [0, 80, 80], 15)
+
+                const headers = ["Property", "Prediction", "Units"]
+                const rows = section.properties.map((prop) => [prop.name, prop.prediction, prop.units || "-"])
+
+                addTable(headers, rows)
+              })
+            }
+          }
+        } else {
+          addText("SMILES: Not applicable (Protein)", 11, [150, 150, 150], 10)
+        }
+
+        if (ligand.LigandDiscription) {
+          addText(`Description: ${ligand.LigandDiscription}`, 11, [60, 60, 60], 10)
+        }
+
+        if (ligand.ligandMechanism) {
+          addText(`Mechanism: ${ligand.ligandMechanism}`, 11, [40, 40, 40], 10)
+        }
+
+        if (ligand.ligandSideEffects && ligand.ligandSideEffects.length > 0) {
+          addText(`Side Effects: ${ligand.ligandSideEffects.join(", ")}`, 11, [200, 0, 0], 10)
+        }
+
+        yPosition += 15
+      }
+    }
+
+    // 4. CHEMICAL REACTION RESULTS
+    if (reactionResult?.reactionResults && reactionResult.reactionResults.length > 0) {
+      checkPageBreak(30)
+      addTitle("Chemical Reaction Results", 20, [200, 0, 0])
+
+      for (const [index, reaction] of reactionResult.reactionResults.entries()) {
+        addTitle(`Reaction ${index + 1}: ${reaction.reactionType || "Unknown Reaction"}`, 16, [200, 0, 0])
+        addText(`Confidence: ${(reaction.confidence * 100).toFixed(1)}%`, 12, [40, 40, 40], 10)
+        addText(`Description: ${reaction.description || "No description available"}`, 12, [40, 40, 40], 10)
+        addText(`Reactants: ${reaction.reactants?.join(", ") || "N/A"}`, 12, [40, 40, 40], 10)
+
+        // Products
+        if (reaction.products && reaction.products.length > 0) {
+          const mainProducts = deduplicateProducts(reaction.products.slice(0, 5))
+
+          for (const [prodIndex, product] of mainProducts.entries()) {
+            addTitle(`Product ${prodIndex + 1}`, 14, [0, 150, 0])
+
+            if (product.smiles) {
+              addText(`SMILES: ${product.smiles}`, 11, [40, 40, 40], 15)
+
+              // Add product structure image
+              if (smilesImages[product.smiles]) {
+                await addImage(smilesImages[product.smiles], `Product ${prodIndex + 1} Structure`)
+              }
+            }
+
+            // Molecular properties
+            const properties = [
+              ["Molecular Weight", `${product.molecular_weight?.toFixed(2) || "N/A"} g/mol`],
+              ["LogP", product.logP?.toFixed(2) || "N/A"],
+              ["TPSA", `${product.tpsa?.toFixed(2) || "N/A"} Å²`],
+              ["H-Donors", product.num_h_donors || 0],
+              ["H-Acceptors", product.num_h_acceptors || 0],
+              ["Rotatable Bonds", product.num_rotatable_bonds || 0],
+              ["Aromatic Rings", product.num_aromatic_rings || 0],
+            ]
+
+            addTitle("Molecular Properties", 12, [0, 100, 100])
+            properties.forEach(([prop, value]) => {
+              addText(`${prop}: ${value}`, 10, [40, 40, 40], 20)
+            })
+
+            // Functional Groups
+            if (product.functional_groups && product.functional_groups.length > 0) {
+              addText(`Functional Groups: ${product.functional_groups.join(", ")}`, 11, [40, 40, 40], 15)
+            }
+
+            // Drug-likeness properties
+            if (product.drug_likeness) {
+              addTitle("Drug-Likeness Properties", 12, [0, 100, 100])
+              Object.entries(product.drug_likeness).forEach(([key, value]) => {
+                addText(`${key}: ${value}`, 10, [40, 40, 40], 20)
+              })
+            }
+
+            // ADMET Properties for products
+            if (product.admet_properties && product.admet_properties.length > 0) {
+              addTitle("ADMET Properties", 12, [0, 100, 100])
+
+              product.admet_properties.forEach((section) => {
+                addText(section.section, 11, [0, 80, 80], 20)
+
+                const headers = ["Property", "Prediction", "Units"]
+                const rows = section.properties.map((prop) => [prop.name, prop.prediction, prop.units || "-"])
+
+                addTable(headers, rows)
+              })
+            }
+            yPosition += 10
+          }
+
+          // Add ADMET Radar Chart with dark theme
+          const chartData = prepareAdmetGraphData(index)
+          if (chartData) {
+            await addAdmetChart(chartData, `ADMET Properties Comparison - Reaction ${index + 1}`)
+          }
+        }
+
+        // Reaction Statistics
+        if (reaction.statistics) {
+          addTitle("Reaction Statistics", 14, [100, 0, 100])
+          Object.entries(reaction.statistics).forEach(([key, value]) => {
+            addText(`${key}: ${value}`, 11, [40, 40, 40], 15)
+          })
+        }
+
+        yPosition += 15
+      }
+
+      // Failed Reactions Summary
+      if (reactionResult.failedReactions && reactionResult.failedReactions.length > 0) {
+        checkPageBreak(30)
+        addTitle("Failed Reactions Summary", 16, [200, 0, 0])
+
+        reactionResult.failedReactions.forEach((fail, index) => {
+          addText(`${index + 1}. ${fail.reactionType || "Unknown Reaction"}`, 12, [200, 0, 0], 5)
+          addText(`Reactants: ${fail.reactants?.join(", ") || "N/A"}`, 11, [40, 40, 40], 15)
+          addText(`Reason: ${fail.reason || "Unknown error"}`, 11, [150, 0, 0], 15)
+          yPosition += 8
+        })
+      }
+
+      // Overall Statistics
+      if (reactionResult.statistics) {
+        checkPageBreak(40)
+        addTitle("Overall Reaction Statistics", 16, [100, 0, 100])
+
+        const statsData = [
+          ["Mean Molecular Weight", `${reactionResult.statistics.mean_mw?.toFixed(2) || "N/A"} g/mol`],
+          ["Standard Deviation MW", `${reactionResult.statistics.std_mw?.toFixed(2) || "N/A"} g/mol`],
+          ["Minimum Molecular Weight", `${reactionResult.statistics.min_mw?.toFixed(2) || "N/A"} g/mol`],
+          ["Maximum Molecular Weight", `${reactionResult.statistics.max_mw?.toFixed(2) || "N/A"} g/mol`],
+          ["Total Products Generated", reactionResult.statistics.total_products || 0],
+          ["Successful Reactions", reactionResult.reactionResults?.length || 0],
+          ["Failed Reactions", reactionResult.failedReactions?.length || 0],
+        ]
+
+        const headers = ["Statistic", "Value"]
+        addTable(headers, statsData)
+      }
+    }
+
+    // Footer
+    checkPageBreak(20)
+    doc.setFontSize(10)
+    doc.setTextColor(100, 100, 100)
+    doc.text("Generated by Drug Discovery Pipeline - Complete Analysis Report", margin, yPosition)
+    doc.text(`Total Pages: ${doc.internal.getNumberOfPages()}`, margin, yPosition + 8)
+
+    // Save the PDF
+    const fileName = `Drug_Discovery_Analysis_${new Date().toISOString().split("T")[0]}.pdf`
+    doc.save(fileName)
+    toast.success("Complete PDF report with all data, structures, and ADMET charts generated successfully!", {
+      id: "pdf-success",
+      duration: 4000,
+    })
+  }
 
   return (
     <Box sx={{ minHeight: "100vh", bgcolor: "#0A192F", py: 4, color: "#E0E0E0" }}>
@@ -522,11 +1020,18 @@ const RDkit = () => {
       <Container maxWidth="xl">
         <Paper elevation={2} sx={{ p: 4, mb: 4, borderRadius: 2, bgcolor: "#172A45" }}>
           <Box sx={{ textAlign: "center", mb: 4 }}>
-            <Typography variant="h4" sx={{ fontWeight: 700, color: "#E0E0E0", mb: 1, fontFamily: "'Inter', 'Barlow', sans-serif" }}>
+            <Typography
+              variant="h4"
+              sx={{ fontWeight: 700, color: "#E0E0E0", mb: 1, fontFamily: "'Inter', 'Barlow', sans-serif" }}
+            >
               Drug Discovery Pipeline
             </Typography>
-            <Typography variant="subtitle1" sx={{ color: "#A0A0A0", maxWidth: 800, mx: "auto", fontFamily: "'Roboto', 'Open Sans', sans-serif" }}>
-              Advanced molecular analysis system for symptom-based disease prediction, target identification, and optimized ligand reaction simulation
+            <Typography
+              variant="subtitle1"
+              sx={{ color: "#A0A0A0", maxWidth: 800, mx: "auto", fontFamily: "'Roboto', 'Open Sans', sans-serif" }}
+            >
+              Advanced molecular analysis system for symptom-based disease prediction, target identification, and
+              optimized ligand reaction simulation
             </Typography>
           </Box>
 
@@ -540,9 +1045,16 @@ const RDkit = () => {
                       label="Enter Symptoms"
                       value={symptoms.join(", ")}
                       onChange={(e) => {
-                        const inputValue = e.target.value;
+                        const inputValue = e.target.value
                         if (inputValue.length <= 500) {
-                          setSymptoms(inputValue ? inputValue.split(",").map(s => s.trim()).filter(s => s) : []);
+                          setSymptoms(
+                            inputValue
+                              ? inputValue
+                                  .split(",")
+                                  .map((s) => s.trim())
+                                  .filter((s) => s)
+                              : [],
+                          )
                         }
                       }}
                       placeholder="e.g., fever, cough, fatigue"
@@ -569,58 +1081,66 @@ const RDkit = () => {
                     />
                   </Grid>
                   <Grid item xs={12} md={6}>
-  <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap" }}>
-    <Button
-      type="submit"
-      variant="contained"
-      size="large"
-      disabled={loading || symptoms.join(", ").length > 500}
-      startIcon={loading ? <CircularProgress size={20} /> : <Biotech />}
-      sx={{
-        bgcolor: "#00F5D4",
-        color: "#0A192F",
-        "&:hover": { bgcolor: "#5E81F4" },
-        textTransform: "none",
-        fontFamily: "'Lato', sans-serif",
-        fontWeight: 600,
-      }}
-    >
-      Predict New Drug
-    </Button>
-    <Button
-      variant="outlined"
-      size="large"
-      onClick={handleReset}
-      disabled={loading}
-      sx={{
-        textTransform: "none",
-        borderColor: "#5E81F4",
-        color: "#E0E0E0",
-        "&:hover": { borderColor: "#00F5D4", color: "#00F5D4" },
-        fontFamily: "'Lato', sans-serif",
-        fontWeight: 600,
-      }}
-    >
-      Reset
-    </Button>
-    <Button
-      variant="outlined"
-      size="large"
-      onClick={() => handleExample(["brittle toenails", "cracking knuckles", "ear blockage", "fluttering heartbeat", "sudden confusion"])}
-      disabled={loading}
-      sx={{
-        textTransform: "none",
-        borderColor: "#5E81F4",
-        color: "#E0E0E0",
-        "&:hover": { borderColor: "#00F5D4", color: "#00F5D4" },
-        fontFamily: "'Lato', sans-serif",
-        fontWeight: 600,
-      }}
-    >
-      Example
-    </Button>
-  </Box>
-</Grid>
+                    <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap" }}>
+                      <Button
+                        type="submit"
+                        variant="contained"
+                        size="large"
+                        disabled={loading || symptoms.join(", ").length > 500}
+                        startIcon={loading ? <CircularProgress size={20} /> : <Biotech />}
+                        sx={{
+                          bgcolor: "#00F5D4",
+                          color: "#0A192F",
+                          "&:hover": { bgcolor: "#5E81F4" },
+                          textTransform: "none",
+                          fontFamily: "'Lato', sans-serif",
+                          fontWeight: 600,
+                        }}
+                      >
+                        Predict New Drug
+                      </Button>
+                      <Button
+                        variant="outlined"
+                        size="large"
+                        onClick={handleReset}
+                        disabled={loading}
+                        sx={{
+                          textTransform: "none",
+                          borderColor: "#5E81F4",
+                          color: "#E0E0E0",
+                          "&:hover": { borderColor: "#00F5D4", color: "#00F5D4" },
+                          fontFamily: "'Lato', sans-serif",
+                          fontWeight: 600,
+                        }}
+                      >
+                        Reset
+                      </Button>
+                      <Button
+                        variant="outlined"
+                        size="large"
+                        onClick={() =>
+                          handleExample([
+                            "brittle toenails",
+                            "cracking knuckles",
+                            "ear blockage",
+                            "fluttering heartbeat",
+                            "sudden confusion",
+                          ])
+                        }
+                        disabled={loading}
+                        sx={{
+                          textTransform: "none",
+                          borderColor: "#5E81F4",
+                          color: "#E0E0E0",
+                          "&:hover": { borderColor: "#00F5D4", color: "#00F5D4" },
+                          fontFamily: "'Lato', sans-serif",
+                          fontWeight: 600,
+                        }}
+                      >
+                        Example
+                      </Button>
+                    </Box>
+                  </Grid>
                 </Grid>
               </Box>
             </CardContent>
@@ -649,8 +1169,8 @@ const RDkit = () => {
                   "@keyframes shimmer": {
                     "0%": { transform: "translateX(-100%)" },
                     "100%": { transform: "translateX(100%)" },
-                  }
-                }
+                  },
+                },
               }}
             >
               <CardHeader
@@ -672,8 +1192,8 @@ const RDkit = () => {
                         width: "100%",
                         height: 2,
                         background: "linear-gradient(90deg, #00F5D4 0%, transparent 100%)",
-                        borderRadius: 2
-                      }
+                        borderRadius: 2,
+                      },
                     }}
                   >
                     Processing Pipeline
@@ -685,8 +1205,8 @@ const RDkit = () => {
                         animation: "pulse 2s infinite",
                         "@keyframes pulse": {
                           "0%, 100%": { opacity: 1 },
-                          "50%": { opacity: 0.5 }
-                        }
+                          "50%": { opacity: 0.5 },
+                        },
                       }}
                     >
                       <Sync sx={{ fontSize: 24, color: "#00F5D4", verticalAlign: "middle" }} />
@@ -702,7 +1222,7 @@ const RDkit = () => {
                       fontFamily: "'Roboto', sans-serif",
                       display: "flex",
                       alignItems: "center",
-                      gap: 1
+                      gap: 1,
                     }}
                   >
                     <Box
@@ -714,8 +1234,8 @@ const RDkit = () => {
                         animation: "blink 1.5s infinite",
                         "@keyframes blink": {
                           "0%, 100%": { opacity: 1 },
-                          "50%": { opacity: 0.3 }
-                        }
+                          "50%": { opacity: 0.3 },
+                        },
                       }}
                     />
                     Real-time analysis progress tracking
@@ -731,8 +1251,8 @@ const RDkit = () => {
                     left: "5%",
                     width: "90%",
                     height: 1,
-                    background: "linear-gradient(90deg, transparent 0%, #5E81F4 50%, transparent 100%)"
-                  }
+                    background: "linear-gradient(90deg, transparent 0%, #5E81F4 50%, transparent 100%)",
+                  },
                 }}
               />
 
@@ -762,29 +1282,31 @@ const RDkit = () => {
                         "@keyframes shine": {
                           "0%": { opacity: 0 },
                           "50%": { opacity: 1 },
-                          "100%": { opacity: 0 }
-                        }
-                      }
+                          "100%": { opacity: 0 },
+                        },
+                      },
                     },
                   }}
                 />
 
                 <Grid container spacing={6}>
                   <Grid item xs={12} md={7}>
-                    <Box sx={{
-                      position: "relative",
-                      "&:before": {
-                        content: '""',
-                        position: "absolute",
-                        left: 18,
-                        top: 18,
-                        bottom: 18,
-                        width: 2,
-                        bgcolor: "#5E81F4",
-                        opacity: 0.2,
-                        borderRadius: 2
-                      }
-                    }}>
+                    <Box
+                      sx={{
+                        position: "relative",
+                        "&:before": {
+                          content: '""',
+                          position: "absolute",
+                          left: 18,
+                          top: 18,
+                          bottom: 18,
+                          width: 2,
+                          bgcolor: "#5E81F4",
+                          opacity: 0.2,
+                          borderRadius: 2,
+                        },
+                      }}
+                    >
                       {timelineSteps.map((step, index) => (
                         <Box
                           key={index}
@@ -795,7 +1317,7 @@ const RDkit = () => {
                             position: "relative",
                             transition: "all 0.5s ease",
                             transform: index <= currentStep ? "translateX(0)" : "translateX(-10px)",
-                            opacity: index <= currentStep ? 1 : 0.7
+                            opacity: index <= currentStep ? 1 : 0.7,
                           }}
                         >
                           <Box
@@ -816,39 +1338,43 @@ const RDkit = () => {
                               animation: index === currentStep ? "pulseGlow 2s infinite" : "none",
                               "@keyframes pulseGlow": {
                                 "0%, 100%": { boxShadow: "0 0 15px rgba(0, 245, 212, 0.5)" },
-                                "50%": { boxShadow: "0 0 25px rgba(0, 245, 212, 0.8)" }
-                              }
+                                "50%": { boxShadow: "0 0 25px rgba(0, 245, 212, 0.8)" },
+                              },
                             }}
                           >
                             {index < currentStep ? (
-                              <CheckCircle sx={{
-                                color: "#0A192F",
-                                fontSize: 22,
-                                animation: "bounceIn 0.5s",
-                                "@keyframes bounceIn": {
-                                  "0%": { transform: "scale(0.5)", opacity: 0 },
-                                  "70%": { transform: "scale(1.2)", opacity: 1 },
-                                  "100%": { transform: "scale(1)", opacity: 1 }
-                                }
-                              }} />
+                              <CheckCircle
+                                sx={{
+                                  color: "#0A192F",
+                                  fontSize: 22,
+                                  animation: "bounceIn 0.5s",
+                                  "@keyframes bounceIn": {
+                                    "0%": { transform: "scale(0.5)", opacity: 0 },
+                                    "70%": { transform: "scale(1.2)", opacity: 1 },
+                                    "100%": { transform: "scale(1)", opacity: 1 },
+                                  },
+                                }}
+                              />
                             ) : index === currentStep ? (
                               <CircularProgress
                                 size={22}
                                 sx={{
                                   color: "#0A192F",
                                   "& .MuiCircularProgress-circle": {
-                                    animationDuration: "1.5s"
-                                  }
+                                    animationDuration: "1.5s",
+                                  },
                                 }}
                               />
                             ) : (
-                              <Typography sx={{
-                                color: "#A0A0A0",
-                                fontSize: 16,
-                                fontWeight: 700,
-                                fontFamily: "'Inter', sans-serif",
-                                transition: "all 0.3s ease"
-                              }}>
+                              <Typography
+                                sx={{
+                                  color: "#A0A0A0",
+                                  fontSize: 16,
+                                  fontWeight: 700,
+                                  fontFamily: "'Inter', sans-serif",
+                                  transition: "all 0.3s ease",
+                                }}
+                              >
                                 {index + 1}
                               </Typography>
                             )}
@@ -865,21 +1391,24 @@ const RDkit = () => {
                                 letterSpacing: "0.3px",
                                 position: "relative",
                                 display: "inline-block",
-                                "&:after": index === currentStep ? {
-                                  content: '""',
-                                  position: "absolute",
-                                  bottom: -4,
-                                  left: 0,
-                                  width: "100%",
-                                  height: 2,
-                                  background: "linear-gradient(90deg, #00F5D4 0%, transparent 100%)",
-                                  borderRadius: 2,
-                                  animation: "underlineExpand 0.5s forwards",
-                                  "@keyframes underlineExpand": {
-                                    "0%": { width: 0 },
-                                    "100%": { width: "100%" }
-                                  }
-                                } : {}
+                                "&:after":
+                                  index === currentStep
+                                    ? {
+                                        content: '""',
+                                        position: "absolute",
+                                        bottom: -4,
+                                        left: 0,
+                                        width: "100%",
+                                        height: 2,
+                                        background: "linear-gradient(90deg, #00F5D4 0%, transparent 100%)",
+                                        borderRadius: 2,
+                                        animation: "underlineExpand 0.5s forwards",
+                                        "@keyframes underlineExpand": {
+                                          "0%": { width: 0 },
+                                          "100%": { width: "100%" },
+                                        },
+                                      }
+                                    : {},
                               }}
                             >
                               {step}
@@ -901,8 +1430,8 @@ const RDkit = () => {
                                     animation: "fadeIn 0.5s",
                                     "@keyframes fadeIn": {
                                       "0%": { opacity: 0, transform: "translateY(5px)" },
-                                      "100%": { opacity: 1, transform: "translateY(0)" }
-                                    }
+                                      "100%": { opacity: 1, transform: "translateY(0)" },
+                                    },
                                   }}
                                 >
                                   <Warning sx={{ fontSize: 14 }} />
@@ -928,7 +1457,7 @@ const RDkit = () => {
                                 bgcolor: index < currentStep ? "#00F5D4" : "#0A192F",
                                 transition: "all 0.5s ease",
                                 zIndex: 1,
-                                opacity: index < currentStep ? 0.8 : 0.3
+                                opacity: index < currentStep ? 0.8 : 0.3,
                               }}
                             />
                           )}
@@ -959,7 +1488,7 @@ const RDkit = () => {
                           height: 100,
                           borderRadius: "50%",
                           bgcolor: "rgba(94, 129, 244, 0.1)",
-                          filter: "blur(10px)"
+                          filter: "blur(10px)",
                         },
                         "&:after": {
                           content: '""',
@@ -970,8 +1499,8 @@ const RDkit = () => {
                           height: 80,
                           borderRadius: "50%",
                           bgcolor: "rgba(0, 245, 212, 0.1)",
-                          filter: "blur(10px)"
-                        }
+                          filter: "blur(10px)",
+                        },
                       }}
                     >
                       <CardContent sx={{ textAlign: "center", width: "100%", p: 4, position: "relative", zIndex: 1 }}>
@@ -985,7 +1514,7 @@ const RDkit = () => {
                             display: "flex",
                             justifyContent: "center",
                             alignItems: "flex-end",
-                            gap: 4
+                            gap: 4,
                           }}
                         >
                           {/* Main Flask */}
@@ -997,17 +1526,19 @@ const RDkit = () => {
                               animation: "float 4s ease-in-out infinite",
                               "@keyframes float": {
                                 "0%, 100%": { transform: "translateY(0)" },
-                                "50%": { transform: "translateY(-10px)" }
-                              }
+                                "50%": { transform: "translateY(-10px)" },
+                              },
                             }}
                           >
-                            <Science sx={{
-                              fontSize: 70,
-                              color: "#00F5D4",
-                              filter: "drop-shadow(0 0 8px rgba(0, 245, 212, 0.5))",
-                              position: "relative",
-                              zIndex: 2
-                            }} />
+                            <Science
+                              sx={{
+                                fontSize: 70,
+                                color: "#00F5D4",
+                                filter: "drop-shadow(0 0 8px rgba(0, 245, 212, 0.5))",
+                                position: "relative",
+                                zIndex: 2,
+                              }}
+                            />
                             {/* Bubbles inside main flask */}
                             {[0, 1, 2, 3].map((i) => (
                               <Box
@@ -1025,8 +1556,8 @@ const RDkit = () => {
                                     "0%": { transform: "translateY(0) scale(0.5)", opacity: 0 },
                                     "10%": { opacity: 0.8 },
                                     "90%": { opacity: 0.6 },
-                                    "100%": { transform: "translateY(-80px) scale(1.2)", opacity: 0 }
-                                  }
+                                    "100%": { transform: "translateY(-80px) scale(1.2)", opacity: 0 },
+                                  },
                                 }}
                               />
                             ))}
@@ -1047,8 +1578,8 @@ const RDkit = () => {
                                 animation: "liquidMove 8s infinite alternate",
                                 "@keyframes liquidMove": {
                                   "0%, 100%": { height: "40%", transform: "translateX(-50%) skew(0deg)" },
-                                  "50%": { height: "45%", transform: "translateX(-50%) skew(2deg)" }
-                                }
+                                  "50%": { height: "45%", transform: "translateX(-50%) skew(2deg)" },
+                                },
                               }}
                             />
                           </Box>
@@ -1064,17 +1595,19 @@ const RDkit = () => {
                                 animation: `floatSmall ${4 + i}s ease-in-out infinite ${i * 0.3}s`,
                                 "@keyframes floatSmall": {
                                   "0%, 100%": { transform: "translateY(0)" },
-                                  "50%": { transform: "translateY(-8px)" }
-                                }
+                                  "50%": { transform: "translateY(-8px)" },
+                                },
                               }}
                             >
-                              <Science sx={{
-                                fontSize: 40,
-                                color: i === 1 ? "#5E81F4" : i === 2 ? "#FF4D6D" : "#FFD166",
-                                filter: `drop-shadow(0 0 5px ${i === 1 ? "rgba(94, 129, 244, 0.5)" : i === 2 ? "rgba(255, 77, 109, 0.5)" : "rgba(255, 209, 102, 0.5)"})`,
-                                position: "relative",
-                                zIndex: 2
-                              }} />
+                              <Science
+                                sx={{
+                                  fontSize: 40,
+                                  color: i === 1 ? "#5E81F4" : i === 2 ? "#FF4D6D" : "#FFD166",
+                                  filter: `drop-shadow(0 0 5px ${i === 1 ? "rgba(94, 129, 244, 0.5)" : i === 2 ? "rgba(255, 77, 109, 0.5)" : "rgba(255, 209, 102, 0.5)"})`,
+                                  position: "relative",
+                                  zIndex: 2,
+                                }}
+                              />
                               {/* Liquid in small flasks */}
                               <Box
                                 sx={{
@@ -1084,7 +1617,12 @@ const RDkit = () => {
                                   transform: "translateX(-50%)",
                                   width: "60%",
                                   height: "30%",
-                                  bgcolor: i === 1 ? "rgba(94, 129, 244, 0.2)" : i === 2 ? "rgba(255, 77, 109, 0.2)" : "rgba(255, 209, 102, 0.2)",
+                                  bgcolor:
+                                    i === 1
+                                      ? "rgba(94, 129, 244, 0.2)"
+                                      : i === 2
+                                        ? "rgba(255, 77, 109, 0.2)"
+                                        : "rgba(255, 209, 102, 0.2)",
                                   borderTopLeftRadius: "30px 15px",
                                   borderTopRightRadius: "30px 15px",
                                   borderBottomLeftRadius: "8px",
@@ -1092,8 +1630,8 @@ const RDkit = () => {
                                   animation: `liquidMoveSmall ${6 + i}s infinite alternate ${i * 0.5}s`,
                                   "@keyframes liquidMoveSmall": {
                                     "0%, 100%": { height: "30%", transform: "translateX(-50%) skew(0deg)" },
-                                    "50%": { height: "35%", transform: "translateX(-50%) skew(1deg)" }
-                                  }
+                                    "50%": { height: "35%", transform: "translateX(-50%) skew(1deg)" },
+                                  },
                                 }}
                               />
                             </Box>
@@ -1119,15 +1657,15 @@ const RDkit = () => {
                                 animation: "pulse 2s infinite",
                                 "@keyframes pulse": {
                                   "0%, 100%": { transform: "scale(1)", opacity: 0.8 },
-                                  "50%": { transform: "scale(1.5)", opacity: 0.3 }
-                                }
+                                  "50%": { transform: "scale(1.5)", opacity: 0.3 },
+                                },
                               },
                               "&:before": {
-                                left: "25%"
+                                left: "25%",
                               },
                               "&:after": {
-                                left: "75%"
-                              }
+                                left: "75%",
+                              },
                             }}
                           />
 
@@ -1149,8 +1687,8 @@ const RDkit = () => {
                                   "0%, 100%": { transform: "translate(0, 0)" },
                                   "25%": { transform: "translate(10px, -5px)" },
                                   "50%": { transform: "translate(5px, 5px)" },
-                                  "75%": { transform: "translate(-5px, -3px)" }
-                                }
+                                  "75%": { transform: "translate(-5px, -3px)" },
+                                },
                               }}
                             />
                           ))}
@@ -1172,8 +1710,8 @@ const RDkit = () => {
                                 "@keyframes wave": {
                                   "0%": { transform: "scale(0.5)", opacity: 0.3 },
                                   "70%": { opacity: 0.1 },
-                                  "100%": { transform: "scale(1.8)", opacity: 0 }
-                                }
+                                  "100%": { transform: "scale(1.8)", opacity: 0 },
+                                },
                               }}
                             />
                           ))}
@@ -1198,8 +1736,8 @@ const RDkit = () => {
                               width: "50%",
                               height: 2,
                               bgcolor: "#5E81F4",
-                              borderRadius: 2
-                            }
+                              borderRadius: 2,
+                            },
                           }}
                         >
                           Current Process
@@ -1213,12 +1751,10 @@ const RDkit = () => {
                             display: "flex",
                             alignItems: "center",
                             justifyContent: "center",
-                            px: 2
+                            px: 2,
                           }}
                         >
-                          <Box sx={{ animation: "fadeInOut 2s infinite" }}>
-                            {loadingMessages[currentStep]}
-                          </Box>
+                          <Box sx={{ animation: "fadeInOut 2s infinite" }}>{loadingMessages[currentStep]}</Box>
                         </Typography>
                         <Box sx={{ mt: 3 }}>
                           <Typography
@@ -1228,7 +1764,7 @@ const RDkit = () => {
                               fontFamily: "'Roboto', sans-serif",
                               display: "inline-flex",
                               alignItems: "center",
-                              gap: 1
+                              gap: 1,
                             }}
                           >
                             <Box
@@ -1240,8 +1776,8 @@ const RDkit = () => {
                                 animation: "pulse 1.5s infinite",
                                 "@keyframes pulse": {
                                   "0%, 100%": { transform: "scale(1)", opacity: 1 },
-                                  "50%": { transform: "scale(1.3)", opacity: 0.7 }
-                                }
+                                  "50%": { transform: "scale(1.3)", opacity: 0.7 },
+                                },
                               }}
                             />
                             Processing in real-time
@@ -1252,7 +1788,6 @@ const RDkit = () => {
                   </Grid>
                 </Grid>
               </CardContent>
-
             </Card>
           )}
 
@@ -1278,62 +1813,78 @@ const RDkit = () => {
           <Grid container spacing={4}>
             {/* Available Chemical Reactions Card */}
             <Grid item xs={12} md={6}>
-              <Card variant="outlined" sx={{
-                height: '100%',
-                borderRadius: 2,
-                bgcolor: "#172A45",
-                borderColor: "#5E81F4",
-                display: 'flex',
-                flexDirection: 'column'
-              }}>
+              <Card
+                variant="outlined"
+                sx={{
+                  height: "100%",
+                  borderRadius: 2,
+                  bgcolor: "#172A45",
+                  borderColor: "#5E81F4",
+                  display: "flex",
+                  flexDirection: "column",
+                }}
+              >
                 <CardHeader
                   title={
-                    <Typography variant="h6" sx={{
-                      fontWeight: 600,
-                      color: "#E0E0E0",
-                      fontFamily: "'Inter', 'Barlow', sans-serif",
-                      letterSpacing: 0.5
-                    }}>
+                    <Typography
+                      variant="h6"
+                      sx={{
+                        fontWeight: 600,
+                        color: "#E0E0E0",
+                        fontFamily: "'Inter', 'Barlow', sans-serif",
+                        letterSpacing: 0.5,
+                      }}
+                    >
                       Available Chemical Reactions
                     </Typography>
                   }
                   subheader={
-                    <Typography variant="body2" sx={{
-                      color: "#A0A0A0",
-                      mt: 0.5,
-                      fontFamily: "'Roboto', 'Open Sans', sans-serif",
-                      lineHeight: 1.4
-                    }}>
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        color: "#A0A0A0",
+                        mt: 0.5,
+                        fontFamily: "'Roboto', 'Open Sans', sans-serif",
+                        lineHeight: 1.4,
+                      }}
+                    >
                       Browse supported reaction types and mechanisms
                     </Typography>
                   }
                   sx={{ pb: 1 }}
                 />
-                <Divider sx={{ bgcolor: '#5E81F4', opacity: 0.3, mx: 2 }} />
+                <Divider sx={{ bgcolor: "#5E81F4", opacity: 0.3, mx: 2 }} />
                 <CardContent sx={{ flexGrow: 1, pt: 2 }}>
                   {reactionsLoading ? (
-                    <Box sx={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      height: '100%',
-                      minHeight: 120,
-                      gap: 2
-                    }}>
+                    <Box
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        height: "100%",
+                        minHeight: 120,
+                        gap: 2,
+                      }}
+                    >
                       <CircularProgress size={24} sx={{ color: "#00F5D4" }} />
-                      <Typography variant="subtitle2" sx={{
-                        color: "#E0E0E0",
-                        fontFamily: "'Roboto', 'Open Sans', sans-serif"
-                      }}>
+                      <Typography
+                        variant="subtitle2"
+                        sx={{
+                          color: "#E0E0E0",
+                          fontFamily: "'Roboto', 'Open Sans', sans-serif",
+                        }}
+                      >
                         Loading available reactions...
                       </Typography>
                     </Box>
                   ) : availableReactions.length > 0 ? (
-                    <Box sx={{
-                      display: 'flex',
-                      flexDirection: 'column',
-                      height: '100%'
-                    }}>
+                    <Box
+                      sx={{
+                        display: "flex",
+                        flexDirection: "column",
+                        height: "100%",
+                      }}
+                    >
                       <Button
                         variant="contained"
                         onClick={handleMenuOpen}
@@ -1345,10 +1896,10 @@ const RDkit = () => {
                           textTransform: "none",
                           fontFamily: "'Lato', sans-serif",
                           fontWeight: 600,
-                          alignSelf: 'center',
+                          alignSelf: "center",
                           mt: 9,
                           px: 4,
-                          py: 1.5
+                          py: 1.5,
                         }}
                       >
                         View Available Reactions ({availableReactions.length})
@@ -1363,8 +1914,8 @@ const RDkit = () => {
                             width: "700px",
                             backgroundColor: "#172A45",
                             color: "#E0E0E0",
-                            border: '1px solid #5E81F4',
-                            borderRadius: 8
+                            border: "1px solid #5E81F4",
+                            borderRadius: 8,
                           },
                         }}
                       >
@@ -1376,7 +1927,8 @@ const RDkit = () => {
                               py: 2,
                               bgcolor: "#172A45",
                               "&:hover": { bgcolor: "#0A192F" },
-                              borderBottom: index < availableReactions.length - 1 ? '1px solid rgba(94, 129, 244, 0.2)' : 'none'
+                              borderBottom:
+                                index < availableReactions.length - 1 ? "1px solid rgba(94, 129, 244, 0.2)" : "none",
                             }}
                           >
                             <Box sx={{ width: "100%" }}>
@@ -1401,19 +1953,22 @@ const RDkit = () => {
                                       borderColor: "#5E81F4",
                                       color: "#A0A0A0",
                                       fontFamily: "'Lato', sans-serif",
-                                      '&:hover': {
-                                        bgcolor: 'rgba(94, 129, 244, 0.1)'
-                                      }
+                                      "&:hover": {
+                                        bgcolor: "rgba(94, 129, 244, 0.1)",
+                                      },
                                     }}
                                   />
                                 )}
                               </Box>
-                              <Typography variant="body2" sx={{
-                                mb: 1,
-                                color: "#A0A0A0",
-                                fontFamily: "'Roboto', 'Open Sans', sans-serif",
-                                lineHeight: 1.6
-                              }}>
+                              <Typography
+                                variant="body2"
+                                sx={{
+                                  mb: 1,
+                                  color: "#A0A0A0",
+                                  fontFamily: "'Roboto', 'Open Sans', sans-serif",
+                                  lineHeight: 1.6,
+                                }}
+                              >
                                 {reaction.description}
                               </Typography>
                               <Typography
@@ -1425,7 +1980,7 @@ const RDkit = () => {
                                   borderRadius: 1,
                                   fontSize: "0.85rem",
                                   color: "#E0E0E0",
-                                  borderLeft: '3px solid #00F5D4'
+                                  borderLeft: "3px solid #00F5D4",
                                 }}
                               >
                                 <strong>SMARTS:</strong> {reaction.smarts}
@@ -1440,17 +1995,20 @@ const RDkit = () => {
                       severity="info"
                       icon={<Info sx={{ color: "#5E81F4" }} />}
                       sx={{
-                        bgcolor: '#0A192F',
-                        border: '1px solid #5E81F4',
-                        color: '#E0E0E0',
-                        mt: 2
+                        bgcolor: "#0A192F",
+                        border: "1px solid #5E81F4",
+                        color: "#E0E0E0",
+                        mt: 2,
                       }}
                     >
-                      <Typography variant="body2" sx={{
-                        color: "#A0A0A0",
-                        fontFamily: "'Roboto', 'Open Sans', sans-serif",
-                        lineHeight: 1.6
-                      }}>
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          color: "#A0A0A0",
+                          fontFamily: "'Roboto', 'Open Sans', sans-serif",
+                          lineHeight: 1.6,
+                        }}
+                      >
                         No reactions currently available. Please check your connection or try again later.
                       </Typography>
                     </Alert>
@@ -1462,58 +2020,72 @@ const RDkit = () => {
             {/* Saved Symptom Groups Card */}
             {/* Saved Symptom Groups Card */}
             <Grid item xs={12} md={6}>
-              <Card variant="outlined" sx={{
-                height: '100%',
-                borderRadius: 2,
-                bgcolor: "#172A45",
-                borderColor: "#5E81F4",
-                display: 'flex',
-                flexDirection: 'column'
-              }}>
+              <Card
+                variant="outlined"
+                sx={{
+                  height: "100%",
+                  borderRadius: 2,
+                  bgcolor: "#172A45",
+                  borderColor: "#5E81F4",
+                  display: "flex",
+                  flexDirection: "column",
+                }}
+              >
                 <CardHeader
                   title={
-                    <Typography variant="h6" sx={{
-                      fontWeight: 600,
-                      color: "#E0E0E0",
-                      fontFamily: "'Inter', 'Barlow', sans-serif",
-                      letterSpacing: 0.5
-                    }}>
+                    <Typography
+                      variant="h6"
+                      sx={{
+                        fontWeight: 600,
+                        color: "#E0E0E0",
+                        fontFamily: "'Inter', 'Barlow', sans-serif",
+                        letterSpacing: 0.5,
+                      }}
+                    >
                       Saved Symptom Groups
                     </Typography>
                   }
                   subheader={
-                    <Typography variant="body2" sx={{
-                      color: "#A0A0A0",
-                      mt: 0.5,
-                      fontFamily: "'Roboto', 'Open Sans', sans-serif",
-                      lineHeight: 1.4
-                    }}>
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        color: "#A0A0A0",
+                        mt: 0.5,
+                        fontFamily: "'Roboto', 'Open Sans', sans-serif",
+                        lineHeight: 1.4,
+                      }}
+                    >
                       Select a group of previously used symptoms
                     </Typography>
                   }
                   sx={{ pb: 1 }}
                 />
-                <Divider sx={{ bgcolor: '#5E81F4', opacity: 0.3, mx: 2 }} />
+                <Divider sx={{ bgcolor: "#5E81F4", opacity: 0.3, mx: 2 }} />
                 <CardContent sx={{ flexGrow: 1, pt: 2 }}>
                   {symptomsLoading ? (
-                    <Box sx={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      height: '100%',
-                      minHeight: 120,
-                      gap: 2
-                    }}>
+                    <Box
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        height: "100%",
+                        minHeight: 120,
+                        gap: 2,
+                      }}
+                    >
                       <CircularProgress size={24} sx={{ color: "#00F5D4" }} />
-                      <Typography variant="body2" sx={{
-                        color: "#E0E0E0",
-                        fontFamily: "'Roboto', 'Open Sans', sans-serif"
-                      }}>
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          color: "#E0E0E0",
+                          fontFamily: "'Roboto', 'Open Sans', sans-serif",
+                        }}
+                      >
                         Loading saved symptoms...
                       </Typography>
                     </Box>
                   ) : savedSymptoms.length > 0 ? (
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
                       <FormControl fullWidth>
                         <InputLabel
                           id="saved-symptoms-label"
@@ -1521,8 +2093,8 @@ const RDkit = () => {
                             color: "#A0A0A0",
                             fontFamily: "'Lato', sans-serif",
                             "&.Mui-focused": {
-                              color: "#00F5D4"
-                            }
+                              color: "#00F5D4",
+                            },
                           }}
                         >
                           Select symptom group
@@ -1530,21 +2102,27 @@ const RDkit = () => {
                         <Select
                           labelId="saved-symptoms-label"
                           id="saved-symptoms-select"
-                          value={savedSymptoms.find(group => JSON.stringify(group) === JSON.stringify(symptoms)) || []}
+                          value={
+                            savedSymptoms.find((group) => JSON.stringify(group) === JSON.stringify(symptoms)) || []
+                          }
                           label="Select symptom group"
                           onChange={(e) => handleSymptomGroupSelect(e.target.value)}
-                          renderValue={(selected) => selected.length ? (
-                            <Box sx={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: 1
-                            }}>
-                              <MedicalServices sx={{ fontSize: 18, color: '#00F5D4' }} />
-                              <Typography sx={{ fontFamily: "'Lato', sans-serif" }}>
-                                {selected.join(", ")}
-                              </Typography>
-                            </Box>
-                          ) : "Select a symptom group"}
+                          renderValue={(selected) =>
+                            selected.length ? (
+                              <Box
+                                sx={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: 1,
+                                }}
+                              >
+                                <MedicalServices sx={{ fontSize: 18, color: "#00F5D4" }} />
+                                <Typography sx={{ fontFamily: "'Lato', sans-serif" }}>{selected.join(", ")}</Typography>
+                              </Box>
+                            ) : (
+                              "Select a symptom group"
+                            )
+                          }
                           sx={{
                             bgcolor: "#0A192F",
                             color: "#E0E0E0",
@@ -1552,7 +2130,7 @@ const RDkit = () => {
                             "&:hover .MuiOutlinedInput-notchedOutline": { borderColor: "#00F5D4" },
                             "&.Mui-focused .MuiOutlinedInput-notchedOutline": { borderColor: "#00F5D4" },
                             "& .MuiSvgIcon-root": { color: "#A0A0A0" },
-                            height: '48px'
+                            height: "48px",
                           }}
                         >
                           <MenuItem value={[]} sx={{ bgcolor: "#172A45", "&:hover": { bgcolor: "#0A192F" } }}>
@@ -1565,26 +2143,33 @@ const RDkit = () => {
                               sx={{
                                 bgcolor: "#172A45",
                                 "&:hover": { bgcolor: "#0A192F" },
-                                borderBottom: index < savedSymptoms.length - 1 ? '1px solid rgba(94, 129, 244, 0.2)' : 'none'
+                                borderBottom:
+                                  index < savedSymptoms.length - 1 ? "1px solid rgba(94, 129, 244, 0.2)" : "none",
                               }}
                             >
                               <Box>
-                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
-                                  <MedicalInformation sx={{ fontSize: 20, color: '#5E81F4' }} />
-                                  <Typography variant="subtitle1" sx={{
-                                    fontWeight: 500,
-                                    color: "#E0E0E0",
-                                    fontFamily: "'Inter', 'Barlow', sans-serif"
-                                  }}>
+                                <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 0.5 }}>
+                                  <MedicalInformation sx={{ fontSize: 20, color: "#5E81F4" }} />
+                                  <Typography
+                                    variant="subtitle1"
+                                    sx={{
+                                      fontWeight: 500,
+                                      color: "#E0E0E0",
+                                      fontFamily: "'Inter', 'Barlow', sans-serif",
+                                    }}
+                                  >
                                     Symptom Group {index + 1}
                                   </Typography>
                                 </Box>
-                                <Typography variant="body2" sx={{
-                                  color: "#A0A0A0",
-                                  fontFamily: "'Roboto', 'Open Sans', sans-serif",
-                                  ml: 3.5,
-                                  lineHeight: 1.6
-                                }}>
+                                <Typography
+                                  variant="body2"
+                                  sx={{
+                                    color: "#A0A0A0",
+                                    fontFamily: "'Roboto', 'Open Sans', sans-serif",
+                                    ml: 3.5,
+                                    lineHeight: 1.6,
+                                  }}
+                                >
                                   {symptomGroup.join(", ")}
                                 </Typography>
                               </Box>
@@ -1595,7 +2180,16 @@ const RDkit = () => {
                       <TextField
                         label="Selected Symptoms"
                         value={symptoms.join(", ")}
-                        onChange={(e) => setSymptoms(e.target.value ? e.target.value.split(",").map(s => s.trim()).filter(s => s) : [])}
+                        onChange={(e) =>
+                          setSymptoms(
+                            e.target.value
+                              ? e.target.value
+                                  .split(",")
+                                  .map((s) => s.trim())
+                                  .filter((s) => s)
+                              : [],
+                          )
+                        }
                         fullWidth
                         margin="normal"
                         helperText="Selected symptoms will appear here. Edit to modify."
@@ -1613,12 +2207,12 @@ const RDkit = () => {
                           "& .MuiInputLabel-root": {
                             color: "#A0A0A0",
                             fontFamily: "'Lato', sans-serif",
-                            "&.Mui-focused": { color: "#00F5D4" }
+                            "&.Mui-focused": { color: "#00F5D4" },
                           },
                           "& .MuiFormHelperText-root": {
                             color: "#A0A0A0",
                             fontFamily: "'Roboto', 'Open Sans', sans-serif",
-                            mx: 0
+                            mx: 0,
                           },
                         }}
                       />
@@ -1628,17 +2222,20 @@ const RDkit = () => {
                       severity="info"
                       icon={<Info sx={{ color: "#5E81F4" }} />}
                       sx={{
-                        bgcolor: '#0A192F',
-                        border: '1px solid #5E81F4',
-                        color: '#E0E0E0',
-                        mt: 2
+                        bgcolor: "#0A192F",
+                        border: "1px solid #5E81F4",
+                        color: "#E0E0E0",
+                        mt: 2,
                       }}
                     >
-                      <Typography variant="body2" sx={{
-                        color: "#A0A0A0",
-                        fontFamily: "'Roboto', 'Open Sans', sans-serif",
-                        lineHeight: 1.6
-                      }}>
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          color: "#A0A0A0",
+                          fontFamily: "'Roboto', 'Open Sans', sans-serif",
+                          lineHeight: 1.6,
+                        }}
+                      >
                         No saved symptom groups found. Start by predicting a new drug with symptoms.
                       </Typography>
                     </Alert>
@@ -1655,27 +2252,69 @@ const RDkit = () => {
               <Paper elevation={2} sx={{ borderRadius: 2, bgcolor: "#172A45" }}>
                 <CardHeader
                   title={
-                    <Typography variant="h6" sx={{ fontWeight: 600, color: "#E0E0E0", fontFamily: "'Inter', 'Barlow', sans-serif" }}>
+                    <Typography
+                      variant="h6"
+                      sx={{ fontWeight: 600, color: "#E0E0E0", fontFamily: "'Inter', 'Barlow', sans-serif" }}
+                    >
                       Disease Prediction Results
                     </Typography>
                   }
                   subheader={
-                    <Typography variant="body2" sx={{ color: "#A0A0A0", mt: 0.5, fontFamily: "'Roboto', 'Open Sans', sans-serif" }}>
+                    <Typography
+                      variant="body2"
+                      sx={{ color: "#A0A0A0", mt: 0.5, fontFamily: "'Roboto', 'Open Sans', sans-serif" }}
+                    >
                       AI-powered disease identification and analysis
                     </Typography>
+                  }
+
+
+                  action={
+                    result && (result.disease || result.proteins || reactionResult) ? (
+                      <Button
+                        variant="contained"
+                        onClick={generatePDF}
+                        startIcon={<GetApp />}
+                        sx={{
+                          bgcolor: "#00F5D4",
+                          color: "#0A192F",
+                          "&:hover": { bgcolor: "#5E81F4" },
+                          textTransform: "none",
+                          fontFamily: "'Lato', sans-serif",
+                          fontWeight: 600,
+                        }}
+                      >
+                        Download PDF Report
+                      </Button>
+                    ) : null
                   }
                 />
                 <CardContent>
                   <Box sx={{ mb: 4 }}>
-                    <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 2, color: "#E0E0E0", fontFamily: "'Inter', 'Barlow', sans-serif" }}>
+                    <Typography
+                      variant="subtitle1"
+                      sx={{ fontWeight: 600, mb: 2, color: "#E0E0E0", fontFamily: "'Inter', 'Barlow', sans-serif" }}
+                    >
                       Predicted Diseases
                     </Typography>
                     {result.disease.predictedDiseases?.length > 0 ? (
                       result.disease.predictedDiseases.map((disease, index) => (
-                        <Card key={index} variant="outlined" sx={{ mb: 2, borderRadius: 2, bgcolor: "#0A192F", borderColor: "#5E81F4" }}>
+                        <Card
+                          key={index}
+                          variant="outlined"
+                          sx={{ mb: 2, borderRadius: 2, bgcolor: "#0A192F", borderColor: "#5E81F4" }}
+                        >
                           <CardContent sx={{ p: 2 }}>
                             <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
-                              <Typography variant="subtitle1" sx={{ fontWeight: 600, flex: 1, color: "#E0E0E0", fontFamily: "'Inter', 'Barlow', sans-serif" }}>
+                              <Typography
+                                variant="subtitle1"
+                                sx={{
+                                  fontWeight: 600,
+                                  flex: 1,
+                                  color: "#E0E0E0",
+                                  fontFamily: "'Inter', 'Barlow', sans-serif",
+                                }}
+                              >
                                 {disease.diseaseName || "Unknown Disease"}
                               </Typography>
                               <Chip
@@ -1691,7 +2330,15 @@ const RDkit = () => {
                             </Box>
                             {disease.diseaseCautions && disease.diseaseCautions.length > 0 && (
                               <Box>
-                                <Typography variant="body2" sx={{ fontWeight: 600, mb: 1, color: "#A0A0A0", fontFamily: "'Roboto', 'Open Sans', sans-serif" }}>
+                                <Typography
+                                  variant="body2"
+                                  sx={{
+                                    fontWeight: 600,
+                                    mb: 1,
+                                    color: "#A0A0A0",
+                                    fontFamily: "'Roboto', 'Open Sans', sans-serif",
+                                  }}
+                                >
                                   Cautions:
                                 </Typography>
                                 <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
@@ -1701,7 +2348,11 @@ const RDkit = () => {
                                       label={caution}
                                       size="small"
                                       variant="outlined"
-                                      sx={{ borderColor: "#FF4D6D", color: "#FF4D6D", fontFamily: "'Lato', sans-serif" }}
+                                      sx={{
+                                        borderColor: "#FF4D6D",
+                                        color: "#FF4D6D",
+                                        fontFamily: "'Lato', sans-serif",
+                                      }}
                                     />
                                   ))}
                                 </Box>
@@ -1711,7 +2362,10 @@ const RDkit = () => {
                         </Card>
                       ))
                     ) : (
-                      <Typography variant="body2" sx={{ color: "#A0A0A0", fontFamily: "'Roboto', 'Open Sans', sans-serif" }}>
+                      <Typography
+                        variant="body2"
+                        sx={{ color: "#A0A0A0", fontFamily: "'Roboto', 'Open Sans', sans-serif" }}
+                      >
                         No diseases predicted. Please try different symptoms or try again later.
                       </Typography>
                     )}
@@ -1720,16 +2374,26 @@ const RDkit = () => {
                     <>
                       <Divider sx={{ my: 3, bgcolor: "#5E81F4" }} />
                       <Box>
-                        <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 2, color: "#E0E0E0", fontFamily: "'Inter', 'Barlow', sans-serif" }}>
+                        <Typography
+                          variant="subtitle1"
+                          sx={{ fontWeight: 600, mb: 2, color: "#E0E0E0", fontFamily: "'Inter', 'Barlow', sans-serif" }}
+                        >
                           Detailed Disease Analysis
                         </Typography>
                         {result.disease.predictedDiseases[0]?.DiseaseMatchness === "0%" ? (
-                          <Typography variant="body2" sx={{ color: "#A0A0A0", fontFamily: "'Roboto', 'Open Sans', sans-serif" }}>
+                          <Typography
+                            variant="body2"
+                            sx={{ color: "#A0A0A0", fontFamily: "'Roboto', 'Open Sans', sans-serif" }}
+                          >
                             No such disease is present in the history with all these symptoms.
                           </Typography>
                         ) : Object.entries(result.disease?.DiseaseAnalysis || {}).length > 0 ? (
                           Object.entries(result.disease.DiseaseAnalysis).map(([key, items]) => (
-                            <Card key={key} variant="outlined" sx={{ mb: 2, borderRadius: 2, bgcolor: "#0A192F", borderColor: "#5E81F4" }}>
+                            <Card
+                              key={key}
+                              variant="outlined"
+                              sx={{ mb: 2, borderRadius: 2, bgcolor: "#0A192F", borderColor: "#5E81F4" }}
+                            >
                               <CardContent sx={{ p: 2 }}>
                                 <Box
                                   sx={{
@@ -1751,7 +2415,16 @@ const RDkit = () => {
                                   >
                                     {key.replace(/([A-Z])/g, " $1").trim()}
                                   </Typography>
-                                  <Chip label={items.length} size="small" sx={{ mr: 1, bgcolor: "#5E81F4", color: "#0A192F", fontFamily: "'Lato', sans-serif" }} />
+                                  <Chip
+                                    label={items.length}
+                                    size="small"
+                                    sx={{
+                                      mr: 1,
+                                      bgcolor: "#5E81F4",
+                                      color: "#0A192F",
+                                      fontFamily: "'Lato', sans-serif",
+                                    }}
+                                  />
                                   <IconButton size="small" sx={{ color: "#00F5D4" }}>
                                     {expanded[key] ? <ExpandLess /> : <ExpandMore />}
                                   </IconButton>
@@ -1759,8 +2432,20 @@ const RDkit = () => {
                                 <Collapse in={expanded[key]}>
                                   <Box sx={{ mt: 2 }}>
                                     {items.map((item, idx) => (
-                                      <Paper key={idx} variant="outlined" sx={{ p: 2, mb: 2, bgcolor: "#172A45", borderColor: "#5E81F4" }}>
-                                        <Typography variant="body2" sx={{ fontWeight: 500, mb: 1, color: "#E0E0E0", fontFamily: "'Roboto', 'Open Sans', sans-serif" }}>
+                                      <Paper
+                                        key={idx}
+                                        variant="outlined"
+                                        sx={{ p: 2, mb: 2, bgcolor: "#172A45", borderColor: "#5E81F4" }}
+                                      >
+                                        <Typography
+                                          variant="body2"
+                                          sx={{
+                                            fontWeight: 500,
+                                            mb: 1,
+                                            color: "#E0E0E0",
+                                            fontFamily: "'Roboto', 'Open Sans', sans-serif",
+                                          }}
+                                        >
                                           {item.summary || "No summary available"}
                                         </Typography>
                                         <Box sx={{ display: "flex", alignItems: "center", gap: 2, mt: 2 }}>
@@ -1768,7 +2453,11 @@ const RDkit = () => {
                                             label={`Source: ${item.source || "N/A"}`}
                                             size="small"
                                             variant="outlined"
-                                            sx={{ borderColor: "#5E81F4", color: "#A0A0A0", fontFamily: "'Lato', sans-serif" }}
+                                            sx={{
+                                              borderColor: "#5E81F4",
+                                              color: "#A0A0A0",
+                                              fontFamily: "'Lato', sans-serif",
+                                            }}
                                           />
                                           {item.url && (
                                             <Button
@@ -1776,7 +2465,11 @@ const RDkit = () => {
                                               href={item.url}
                                               target="_blank"
                                               rel="noopener noreferrer"
-                                              sx={{ textTransform: "none", color: "#00F5D4", fontFamily: "'Lato', sans-serif" }}
+                                              sx={{
+                                                textTransform: "none",
+                                                color: "#00F5D4",
+                                                fontFamily: "'Lato', sans-serif",
+                                              }}
                                             >
                                               View Source
                                             </Button>
@@ -1790,7 +2483,10 @@ const RDkit = () => {
                             </Card>
                           ))
                         ) : (
-                          <Typography variant="body2" sx={{ color: "#A0A0A0", fontFamily: "'Roboto', 'Open Sans', sans-serif" }}>
+                          <Typography
+                            variant="body2"
+                            sx={{ color: "#A0A0A0", fontFamily: "'Roboto', 'Open Sans', sans-serif" }}
+                          >
                             No detailed analysis available.
                           </Typography>
                         )}
@@ -1805,12 +2501,18 @@ const RDkit = () => {
               <Paper elevation={2} sx={{ borderRadius: 2, bgcolor: "#172A45" }}>
                 <CardHeader
                   title={
-                    <Typography variant="h6" sx={{ fontWeight: 600, color: "#E0E0E0", fontFamily: "'Inter', 'Barlow', sans-serif" }}>
+                    <Typography
+                      variant="h6"
+                      sx={{ fontWeight: 600, color: "#E0E0E0", fontFamily: "'Inter', 'Barlow', sans-serif" }}
+                    >
                       Target Proteins
                     </Typography>
                   }
                   subheader={
-                    <Typography variant="body2" sx={{ color: "#A0A0A0", mt: 0.5, fontFamily: "'Roboto', 'Open Sans', sans-serif" }}>
+                    <Typography
+                      variant="body2"
+                      sx={{ color: "#A0A0A0", mt: 0.5, fontFamily: "'Roboto', 'Open Sans', sans-serif" }}
+                    >
                       Identified protein targets for therapeutic intervention
                     </Typography>
                   }
@@ -1818,22 +2520,51 @@ const RDkit = () => {
                 <CardContent>
                   {result.proteins.TargetProteins.length > 0 ? (
                     result.proteins.TargetProteins.map((protein, index) => (
-                      <Card key={index} variant="outlined" sx={{ mb: 2, borderRadius: 2, bgcolor: "#0A192F", borderColor: "#5E81F4" }}>
+                      <Card
+                        key={index}
+                        variant="outlined"
+                        sx={{ mb: 2, borderRadius: 2, bgcolor: "#0A192F", borderColor: "#5E81F4" }}
+                      >
                         <CardContent sx={{ p: 2 }}>
-                          <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 2, color: "#E0E0E0", fontFamily: "'Inter', 'Barlow', sans-serif" }}>
+                          <Typography
+                            variant="subtitle1"
+                            sx={{
+                              fontWeight: 600,
+                              mb: 2,
+                              color: "#E0E0E0",
+                              fontFamily: "'Inter', 'Barlow', sans-serif",
+                            }}
+                          >
                             {protein.proteinName || "Unknown Protein"}
                           </Typography>
                           <Grid container spacing={2}>
                             <Grid item xs={12} sm={6}>
-                              <Typography variant="body2" sx={{ fontWeight: 600, color: "#A0A0A0", fontFamily: "'Roboto', 'Open Sans', sans-serif" }}>
+                              <Typography
+                                variant="body2"
+                                sx={{
+                                  fontWeight: 600,
+                                  color: "#A0A0A0",
+                                  fontFamily: "'Roboto', 'Open Sans', sans-serif",
+                                }}
+                              >
                                 Function:
                               </Typography>
-                              <Typography variant="body2" sx={{ mb: 1, color: "#E0E0E0", fontFamily: "'Roboto', 'Open Sans', sans-serif" }}>
+                              <Typography
+                                variant="body2"
+                                sx={{ mb: 1, color: "#E0E0E0", fontFamily: "'Roboto', 'Open Sans', sans-serif" }}
+                              >
                                 {protein.proteinFunction || "N/A"}
                               </Typography>
                             </Grid>
                             <Grid item xs={12} sm={6}>
-                              <Typography variant="body2" sx={{ fontWeight: 600, color: "#A0A0A0", fontFamily: "'Roboto', 'Open Sans', sans-serif" }}>
+                              <Typography
+                                variant="body2"
+                                sx={{
+                                  fontWeight: 600,
+                                  color: "#A0A0A0",
+                                  fontFamily: "'Roboto', 'Open Sans', sans-serif",
+                                }}
+                              >
                                 UniProt ID:
                               </Typography>
                               <Chip
@@ -1843,19 +2574,39 @@ const RDkit = () => {
                               />
                             </Grid>
                             <Grid item xs={12}>
-                              <Typography variant="body2" sx={{ fontWeight: 600, color: "#A0A0A0", fontFamily: "'Roboto', 'Open Sans', sans-serif" }}>
+                              <Typography
+                                variant="body2"
+                                sx={{
+                                  fontWeight: 600,
+                                  color: "#A0A0A0",
+                                  fontFamily: "'Roboto', 'Open Sans', sans-serif",
+                                }}
+                              >
                                 Description:
                               </Typography>
-                              <Typography variant="body2" sx={{ mb: 1, color: "#E0E0E0", fontFamily: "'Roboto', 'Open Sans', sans-serif" }}>
+                              <Typography
+                                variant="body2"
+                                sx={{ mb: 1, color: "#E0E0E0", fontFamily: "'Roboto', 'Open Sans', sans-serif" }}
+                              >
                                 {protein.ProtienDiscription || "N/A"}
                               </Typography>
                             </Grid>
                             <Grid item xs={12}>
-                              <Typography variant="body2" sx={{ fontWeight: 600, color: "#A0A0A0", fontFamily: "'Roboto', 'Open Sans', sans-serif" }}>
+                              <Typography
+                                variant="body2"
+                                sx={{
+                                  fontWeight: 600,
+                                  color: "#A0A0A0",
+                                  fontFamily: "'Roboto', 'Open Sans', sans-serif",
+                                }}
+                              >
                                 Detailed Information:
                               </Typography>
-                              <Typography variant="body2" sx={{ color: "#E0E0E0", fontFamily: "'Roboto', 'Open Sans', sans-serif" }}>
-                                {protein.proteinDetailedDiscription || "N/A"}
+                              <Typography
+                                variant="body2"
+                                sx={{ color: "#E0E0E0", fontFamily: "'Roboto', 'Open Sans', sans-serif" }}
+                              >
+                                {protein.ProtienDetailedDiscription || "N/A"}
                               </Typography>
                             </Grid>
                           </Grid>
@@ -1863,7 +2614,10 @@ const RDkit = () => {
                       </Card>
                     ))
                   ) : (
-                    <Typography variant="body2" sx={{ color: "#A0A0A0", fontFamily: "'Roboto', 'Open Sans', sans-serif" }}>
+                    <Typography
+                      variant="body2"
+                      sx={{ color: "#A0A0A0", fontFamily: "'Roboto', 'Open Sans', sans-serif" }}
+                    >
                       No target proteins identified.
                     </Typography>
                   )}
@@ -1875,12 +2629,18 @@ const RDkit = () => {
               <Paper elevation={2} sx={{ borderRadius: 2, bgcolor: "#172A45" }}>
                 <CardHeader
                   title={
-                    <Typography variant="h6" sx={{ fontWeight: 600, color: "#E0E0E0", fontFamily: "'Inter', 'Barlow', sans-serif" }}>
+                    <Typography
+                      variant="h6"
+                      sx={{ fontWeight: 600, color: "#E0E0E0", fontFamily: "'Inter', 'Barlow', sans-serif" }}
+                    >
                       Target Ligands
                     </Typography>
                   }
                   subheader={
-                    <Typography variant="body2" sx={{ color: "#A0A0A0", mt: 0.5, fontFamily: "'Roboto', 'Open Sans', sans-serif" }}>
+                    <Typography
+                      variant="body2"
+                      sx={{ color: "#A0A0A0", mt: 0.5, fontFamily: "'Roboto', 'Open Sans', sans-serif" }}
+                    >
                       Therapeutic compounds and molecular ligands
                     </Typography>
                   }
@@ -1888,28 +2648,61 @@ const RDkit = () => {
                 <CardContent>
                   {result.proteins.TargetLigands.length > 0 ? (
                     result.proteins.TargetLigands.map((ligand, index) => (
-                      <Card key={index} variant="outlined" sx={{ mb: 2, borderRadius: 2, bgcolor: "#0A192F", borderColor: "#5E81F4" }}>
+                      <Card
+                        key={index}
+                        variant="outlined"
+                        sx={{ mb: 2, borderRadius: 2, bgcolor: "#0A192F", borderColor: "#5E81F4" }}
+                      >
                         <CardContent sx={{ p: 2 }}>
                           <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
-                            <Typography variant="subtitle1" sx={{ fontWeight: 600, flex: 1, color: "#E0E0E0", fontFamily: "'Inter', 'Barlow', sans-serif" }}>
+                            <Typography
+                              variant="subtitle1"
+                              sx={{
+                                fontWeight: 600,
+                                flex: 1,
+                                color: "#E0E0E0",
+                                fontFamily: "'Inter', 'Barlow', sans-serif",
+                              }}
+                            >
                               {ligand.ligandName || "Unknown Ligand"}
                             </Typography>
                             {ligand.LigandSmile === "Not applicable" && (
-                              <Chip label="Protein" size="small" sx={{ bgcolor: "#FF4D6D", color: "#0A192F", fontFamily: "'Lato', sans-serif" }} />
+                              <Chip
+                                label="Protein"
+                                size="small"
+                                sx={{ bgcolor: "#FF4D6D", color: "#0A192F", fontFamily: "'Lato', sans-serif" }}
+                              />
                             )}
                           </Box>
 
                           <Grid container spacing={2}>
                             <Grid item xs={12} sm={6}>
-                              <Typography variant="body2" sx={{ fontWeight: 600, color: "#A0A0A0", fontFamily: "'Roboto', 'Open Sans', sans-serif" }}>
+                              <Typography
+                                variant="body2"
+                                sx={{
+                                  fontWeight: 600,
+                                  color: "#A0A0A0",
+                                  fontFamily: "'Roboto', 'Open Sans', sans-serif",
+                                }}
+                              >
                                 Function:
                               </Typography>
-                              <Typography variant="body2" sx={{ mb: 1, color: "#E0E0E0", fontFamily: "'Roboto', 'Open Sans', sans-serif" }}>
+                              <Typography
+                                variant="body2"
+                                sx={{ mb: 1, color: "#E0E0E0", fontFamily: "'Roboto', 'Open Sans', sans-serif" }}
+                              >
                                 {ligand.ligandFunction || "N/A"}
                               </Typography>
                             </Grid>
                             <Grid item xs={12} sm={6}>
-                              <Typography variant="body2" sx={{ fontWeight: 600, color: "#A0A0A0", fontFamily: "'Roboto', 'Open Sans', sans-serif" }}>
+                              <Typography
+                                variant="body2"
+                                sx={{
+                                  fontWeight: 600,
+                                  color: "#A0A0A0",
+                                  fontFamily: "'Roboto', 'Open Sans', sans-serif",
+                                }}
+                              >
                                 DrugBank ID:
                               </Typography>
                               <Chip
@@ -1919,7 +2712,14 @@ const RDkit = () => {
                               />
                             </Grid>
                             <Grid item xs={12}>
-                              <Typography variant="body2" sx={{ fontWeight: 600, color: "#A0A0A0", fontFamily: "'Roboto', 'Open Sans', sans-serif" }}>
+                              <Typography
+                                variant="body2"
+                                sx={{
+                                  fontWeight: 600,
+                                  color: "#A0A0A0",
+                                  fontFamily: "'Roboto', 'Open Sans', sans-serif",
+                                }}
+                              >
                                 SMILES:
                               </Typography>
                               <Paper
@@ -1938,10 +2738,17 @@ const RDkit = () => {
                               </Paper>
                             </Grid>
                             {ligand.LigandSmile &&
-                              ligand.LigandSmile !== "Not applicable" &&
-                              smilesImages[ligand.LigandSmile] ? (
+                            ligand.LigandSmile !== "Not applicable" &&
+                            smilesImages[ligand.LigandSmile] ? (
                               <Grid item xs={12}>
-                                <Typography variant="body2" sx={{ fontWeight: 600, color: "#A0A0A0", fontFamily: "'Roboto', 'Open Sans', sans-serif" }}>
+                                <Typography
+                                  variant="body2"
+                                  sx={{
+                                    fontWeight: 600,
+                                    color: "#A0A0A0",
+                                    fontFamily: "'Roboto', 'Open Sans', sans-serif",
+                                  }}
+                                >
                                   Structure:
                                 </Typography>
                                 <img
@@ -1952,10 +2759,20 @@ const RDkit = () => {
                               </Grid>
                             ) : (
                               <Grid item xs={12}>
-                                <Typography variant="body2" sx={{ fontWeight: 600, color: "#A0A0A0", fontFamily: "'Roboto', 'Open Sans', sans-serif" }}>
+                                <Typography
+                                  variant="body2"
+                                  sx={{
+                                    fontWeight: 600,
+                                    color: "#A0A0A0",
+                                    fontFamily: "'Roboto', 'Open Sans', sans-serif",
+                                  }}
+                                >
                                   Structure:
                                 </Typography>
-                                <Typography variant="caption" sx={{ color: "#A0A0A0", fontFamily: "'Roboto', 'Open Sans', sans-serif" }}>
+                                <Typography
+                                  variant="caption"
+                                  sx={{ color: "#A0A0A0", fontFamily: "'Roboto', 'Open Sans', sans-serif" }}
+                                >
                                   {ligand.LigandSmile === "Not applicable"
                                     ? "Structure not applicable (Protein)"
                                     : "Unable to load structure image"}
@@ -1963,24 +2780,51 @@ const RDkit = () => {
                               </Grid>
                             )}
                             <Grid item xs={12}>
-                              <Typography variant="body2" sx={{ fontWeight: 600, color: "#A0A0A0", fontFamily: "'Roboto', 'Open Sans', sans-serif" }}>
+                              <Typography
+                                variant="body2"
+                                sx={{
+                                  fontWeight: 600,
+                                  color: "#A0A0A0",
+                                  fontFamily: "'Roboto', 'Open Sans', sans-serif",
+                                }}
+                              >
                                 Functional Groups:
                               </Typography>
-                              <Typography variant="body2" sx={{ mb: 1, color: "#E0E0E0", fontFamily: "'Roboto', 'Open Sans', sans-serif" }}>
+                              <Typography
+                                variant="body2"
+                                sx={{ mb: 1, color: "#E0E0E0", fontFamily: "'Roboto', 'Open Sans', sans-serif" }}
+                              >
                                 {getFunctionalGroups(ligand.LigandSmile)}
                               </Typography>
                             </Grid>
                             <Grid item xs={12}>
-                              <Typography variant="body2" sx={{ fontWeight: 600, color: "#A0A0A0", fontFamily: "'Roboto', 'Open Sans', sans-serif" }}>
+                              <Typography
+                                variant="body2"
+                                sx={{
+                                  fontWeight: 600,
+                                  color: "#A0A0A0",
+                                  fontFamily: "'Roboto', 'Open Sans', sans-serif",
+                                }}
+                              >
                                 Description:
                               </Typography>
-                              <Typography variant="body2" sx={{ color: "#E0E0E0", fontFamily: "'Roboto', 'Open Sans', sans-serif" }}>
+                              <Typography
+                                variant="body2"
+                                sx={{ color: "#E0E0E0", fontFamily: "'Roboto', 'Open Sans', sans-serif" }}
+                              >
                                 {ligand.LigandDiscription || "N/A"}
                               </Typography>
                             </Grid>
                             {ligand.LigandSmile !== "Not applicable" && reactionResult && reactionResult.reactants && (
                               <Grid item xs={12}>
-                                <Typography variant="body2" sx={{ fontWeight: 600, color: "#A0A0A0", fontFamily: "'Roboto', 'Open Sans', sans-serif" }}>
+                                <Typography
+                                  variant="body2"
+                                  sx={{
+                                    fontWeight: 600,
+                                    color: "#A0A0A0",
+                                    fontFamily: "'Roboto', 'Open Sans', sans-serif",
+                                  }}
+                                >
                                   ADMET Properties:
                                 </Typography>
                                 {(() => {
@@ -1990,11 +2834,26 @@ const RDkit = () => {
                                     !reactant.admet_properties ||
                                     reactant.admet_properties.length === 0
                                   ) {
-                                    return <Typography variant="body2" sx={{ color: "#A0A0A0", fontFamily: "'Roboto', 'Open Sans', sans-serif" }}>Not available</Typography>
+                                    return (
+                                      <Typography
+                                        variant="body2"
+                                        sx={{ color: "#A0A0A0", fontFamily: "'Roboto', 'Open Sans', sans-serif" }}
+                                      >
+                                        Not available
+                                      </Typography>
+                                    )
                                   }
                                   return reactant.admet_properties.map((section, secIdx) => (
                                     <Box key={secIdx} sx={{ mt: 2 }}>
-                                      <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1, color: "#E0E0E0", fontFamily: "'Inter', 'Barlow', sans-serif" }}>
+                                      <Typography
+                                        variant="subtitle2"
+                                        sx={{
+                                          fontWeight: 600,
+                                          mb: 1,
+                                          color: "#E0E0E0",
+                                          fontFamily: "'Inter', 'Barlow', sans-serif",
+                                        }}
+                                      >
                                         {section.section}
                                       </Typography>
                                       <TableContainer
@@ -2103,7 +2962,16 @@ const RDkit = () => {
                           </Grid>
 
                           {ligand.LigandSmile === "Not applicable" && (
-                            <Alert severity="warning" sx={{ mt: 2, bgcolor: "#FF4D6D", color: "#0A192F", fontFamily: "'Roboto', 'Open Sans', sans-serif" }} icon={<Warning />}>
+                            <Alert
+                              severity="warning"
+                              sx={{
+                                mt: 2,
+                                bgcolor: "#FF4D6D",
+                                color: "#0A192F",
+                                fontFamily: "'Roboto', 'Open Sans', sans-serif",
+                              }}
+                              icon={<Warning />}
+                            >
                               <Typography variant="body2">
                                 This ligand is a protein and cannot be processed for chemical reactions.
                               </Typography>
@@ -2113,7 +2981,10 @@ const RDkit = () => {
                       </Card>
                     ))
                   ) : (
-                    <Typography variant="body2" sx={{ color: "#A0A0A0", fontFamily: "'Roboto', 'Open Sans', sans-serif" }}>
+                    <Typography
+                      variant="body2"
+                      sx={{ color: "#A0A0A0", fontFamily: "'Roboto', 'Open Sans', sans-serif" }}
+                    >
                       No target ligands identified.
                     </Typography>
                   )}
@@ -2125,36 +2996,82 @@ const RDkit = () => {
               <Paper elevation={2} sx={{ borderRadius: 2, bgcolor: "#172A45" }}>
                 <CardHeader
                   title={
-                    <Typography variant="h6" sx={{ fontWeight: 600, color: "#E0E0E0", fontFamily: "'Inter', 'Barlow', sans-serif" }}>
+                    <Typography
+                      variant="h6"
+                      sx={{ fontWeight: 600, color: "#E0E0E0", fontFamily: "'Inter', 'Barlow', sans-serif" }}
+                    >
                       Chemical Reaction Results
                     </Typography>
                   }
                   subheader={
-                    <Typography variant="body2" sx={{ color: "#A0A0A0", mt: 0.5, fontFamily: "'Roboto', 'Open Sans', sans-serif" }}>
+                    <Typography
+                      variant="body2"
+                      sx={{ color: "#A0A0A0", mt: 0.5, fontFamily: "'Roboto', 'Open Sans', sans-serif" }}
+                    >
                       Computational chemistry analysis and product generation
                     </Typography>
                   }
+                  // action={
+                  //   result && (result.disease || result.proteins || reactionResult) ? (
+                  //     <Button
+                  //       variant="contained"
+                  //       onClick={generatePDF}
+                  //       startIcon={<GetApp />}
+                  //       sx={{
+                  //         bgcolor: "#00F5D4",
+                  //         color: "#0A192F",
+                  //         "&:hover": { bgcolor: "#5E81F4" },
+                  //         textTransform: "none",
+                  //         fontFamily: "'Lato', sans-serif",
+                  //         fontWeight: 600,
+                  //       }}
+                  //     >
+                  //       Download PDF Report
+                  //     </Button>
+                  //   ) : null
+                  // }
                 />
                 <CardContent>
                   <Grid container spacing={3}>
                     <Grid item xs={12}>
-                      <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 2, color: "#E0E0E0", fontFamily: "'Inter', 'Barlow', sans-serif" }}>
+                      <Typography
+                        variant="subtitle1"
+                        sx={{ fontWeight: 600, mb: 2, color: "#E0E0E0", fontFamily: "'Inter', 'Barlow', sans-serif" }}
+                      >
                         Successful Reactions
                       </Typography>
                       {reactionResult.reactionResults.length === 0 ? (
                         <Alert severity="info" icon={<Info sx={{ color: "#5E81F4" }} />}>
-                          <Typography variant="body2" sx={{ color: "#A0A0A0", fontFamily: "'Roboto', 'Open Sans', sans-serif" }}>
-                            No successful reactions found. {retryAttempts.noReactions < maxRetries ? "Retrying automatically..." : "Please try different symptoms or check the backend."}
+                          <Typography
+                            variant="body2"
+                            sx={{ color: "#A0A0A0", fontFamily: "'Roboto', 'Open Sans', sans-serif" }}
+                          >
+                            No successful reactions found.{" "}
+                            {retryAttempts.noReactions < maxRetries
+                              ? "Retrying automatically..."
+                              : "Please try different symptoms or check the backend."}
                           </Typography>
                         </Alert>
                       ) : (
                         reactionResult.reactionResults.map((reaction, index) => {
                           const mainProducts = deduplicateProducts(reaction.products.slice(0, 1))
                           return (
-                            <Card key={index} variant="outlined" sx={{ mb: 3, borderRadius: 2, bgcolor: "#0A192F", borderColor: "#5E81F4" }}>
+                            <Card
+                              key={index}
+                              variant="outlined"
+                              sx={{ mb: 3, borderRadius: 2, bgcolor: "#0A192F", borderColor: "#5E81F4" }}
+                            >
                               <CardContent sx={{ p: 2 }}>
                                 <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
-                                  <Typography variant="subtitle1" sx={{ fontWeight: 600, flex: 1, color: "#E0E0E0", fontFamily: "'Inter', 'Barlow', sans-serif" }}>
+                                  <Typography
+                                    variant="subtitle1"
+                                    sx={{
+                                      fontWeight: 600,
+                                      flex: 1,
+                                      color: "#E0E0E0",
+                                      fontFamily: "'Inter', 'Barlow', sans-serif",
+                                    }}
+                                  >
                                     {reaction.reactionType || "Unknown Reaction"}
                                   </Typography>
                                   <Tooltip title={`Confidence: ${(reaction.confidence * 100).toFixed(1)}%`}>
@@ -2171,21 +3088,36 @@ const RDkit = () => {
                                         color: "#0A192F",
                                         fontWeight: 500,
                                         fontFamily: "'Lato', sans-serif",
-                                        mr: 1 // Add some right margin
+                                        mr: 1, // Add some right margin
                                       }}
                                     />
                                   </Tooltip>
-                                  <IconButton size="small" onClick={() => handleToggle(`reaction-${index}`)} sx={{ color: "#00F5D4" }}>
+                                  <IconButton
+                                    size="small"
+                                    onClick={() => handleToggle(`reaction-${index}`)}
+                                    sx={{ color: "#00F5D4" }}
+                                  >
                                     {expanded[`reaction-${index}`] ? <ExpandLess /> : <ExpandMore />}
                                   </IconButton>
                                 </Box>
 
-                                <Typography variant="body2" sx={{ mb: 2, color: "#A0A0A0", fontFamily: "'Roboto', 'Open Sans', sans-serif" }}>
+                                <Typography
+                                  variant="body2"
+                                  sx={{ mb: 2, color: "#A0A0A0", fontFamily: "'Roboto', 'Open Sans', sans-serif" }}
+                                >
                                   {reaction.description || "No description available"}
                                 </Typography>
 
                                 <Box sx={{ mb: 2 }}>
-                                  <Typography variant="body2" sx={{ fontWeight: 600, mb: 1, color: "#A0A0A0", fontFamily: "'Roboto', 'Open Sans', sans-serif" }}>
+                                  <Typography
+                                    variant="body2"
+                                    sx={{
+                                      fontWeight: 600,
+                                      mb: 1,
+                                      color: "#A0A0A0",
+                                      fontFamily: "'Roboto', 'Open Sans', sans-serif",
+                                    }}
+                                  >
                                     Reactants:
                                   </Typography>
                                   <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
@@ -2195,7 +3127,11 @@ const RDkit = () => {
                                           label={reactant}
                                           size="small"
                                           variant="outlined"
-                                          sx={{ fontFamily: "'Fira Code', monospace", borderColor: "#5E81F4", color: "#E0E0E0" }}
+                                          sx={{
+                                            fontFamily: "'Fira Code', monospace",
+                                            borderColor: "#5E81F4",
+                                            color: "#E0E0E0",
+                                          }}
                                         />
                                       </Box>
                                     ))}
@@ -2204,21 +3140,47 @@ const RDkit = () => {
 
                                 <Collapse in={expanded[`reaction-${index}`]}>
                                   <Divider sx={{ my: 2, bgcolor: "#5E81F4" }} />
-                                  <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 2, color: "#E0E0E0", fontFamily: "'Inter', 'Barlow', sans-serif" }}>
+                                  <Typography
+                                    variant="subtitle2"
+                                    sx={{
+                                      fontWeight: 600,
+                                      mb: 2,
+                                      color: "#E0E0E0",
+                                      fontFamily: "'Inter', 'Barlow', sans-serif",
+                                    }}
+                                  >
                                     Main Product
                                   </Typography>
                                   <Grid container spacing={2}>
                                     {mainProducts.map((product, prodIndex) => (
                                       <Grid item xs={12} key={prodIndex}>
-                                        <Paper variant="outlined" sx={{ p: 2, borderRadius: 2, bgcolor: "#172A45", borderColor: "#5E81F4" }}>
+                                        <Paper
+                                          variant="outlined"
+                                          sx={{ p: 2, borderRadius: 2, bgcolor: "#172A45", borderColor: "#5E81F4" }}
+                                        >
                                           <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
-                                            <Typography variant="subtitle2" sx={{ fontWeight: 600, flex: 1, color: "#E0E0E0", fontFamily: "'Inter', 'Barlow', sans-serif" }}>
+                                            <Typography
+                                              variant="subtitle2"
+                                              sx={{
+                                                fontWeight: 600,
+                                                flex: 1,
+                                                color: "#E0E0E0",
+                                                fontFamily: "'Inter', 'Barlow', sans-serif",
+                                              }}
+                                            >
                                               Product {prodIndex + 1}
                                             </Typography>
                                           </Box>
                                           <Grid container spacing={2}>
                                             <Grid item xs={12} md={6}>
-                                              <Typography variant="caption" sx={{ fontWeight: 600, color: "#A0A0A0", fontFamily: "'Roboto', 'Open Sans', sans-serif" }}>
+                                              <Typography
+                                                variant="caption"
+                                                sx={{
+                                                  fontWeight: 600,
+                                                  color: "#A0A0A0",
+                                                  fontFamily: "'Roboto', 'Open Sans', sans-serif",
+                                                }}
+                                              >
                                                 SMILES:
                                               </Typography>
                                               <Paper
@@ -2247,45 +3209,110 @@ const RDkit = () => {
                                                   />
                                                 </Box>
                                               ) : (
-                                                <Typography variant="caption" sx={{ color: "#A0A0A0", fontFamily: "'Roboto', 'Open Sans', sans-serif" }}>
+                                                <Typography
+                                                  variant="caption"
+                                                  sx={{
+                                                    color: "#A0A0A0",
+                                                    fontFamily: "'Roboto', 'Open Sans', sans-serif",
+                                                  }}
+                                                >
                                                   Unable to load structure image
                                                 </Typography>
                                               )}
                                             </Grid>
                                             <Grid item xs={6} md={3}>
-                                              <Typography variant="caption" sx={{ fontWeight: 600, color: "#A0A0A0", fontFamily: "'Roboto', 'Open Sans', sans-serif" }}>
+                                              <Typography
+                                                variant="caption"
+                                                sx={{
+                                                  fontWeight: 600,
+                                                  color: "#A0A0A0",
+                                                  fontFamily: "'Roboto', 'Open Sans', sans-serif",
+                                                }}
+                                              >
                                                 Molecular Weight:
                                               </Typography>
-                                              <Typography variant="body2" sx={{ color: "#E0E0E0", fontFamily: "'Roboto', 'Open Sans', sans-serif" }}>
+                                              <Typography
+                                                variant="body2"
+                                                sx={{
+                                                  color: "#E0E0E0",
+                                                  fontFamily: "'Roboto', 'Open Sans', sans-serif",
+                                                }}
+                                              >
                                                 {product.molecular_weight?.toFixed(2) || "N/A"} g/mol
                                               </Typography>
                                             </Grid>
                                             <Grid item xs={6} md={3}>
-                                              <Typography variant="caption" sx={{ fontWeight: 600, color: "#A0A0A0", fontFamily: "'Roboto', 'Open Sans', sans-serif" }}>
+                                              <Typography
+                                                variant="caption"
+                                                sx={{
+                                                  fontWeight: 600,
+                                                  color: "#A0A0A0",
+                                                  fontFamily: "'Roboto', 'Open Sans', sans-serif",
+                                                }}
+                                              >
                                                 LogP:
                                               </Typography>
-                                              <Typography variant="body2" sx={{ color: "#E0E0E0", fontFamily: "'Roboto', 'Open Sans', sans-serif" }}>
+                                              <Typography
+                                                variant="body2"
+                                                sx={{
+                                                  color: "#E0E0E0",
+                                                  fontFamily: "'Roboto', 'Open Sans', sans-serif",
+                                                }}
+                                              >
                                                 {product.logP?.toFixed(2) || "N/A"}
                                               </Typography>
                                             </Grid>
                                             <Grid item xs={6} md={3}>
-                                              <Typography variant="caption" sx={{ fontWeight: 600, color: "#A0A0A0", fontFamily: "'Roboto', 'Open Sans', sans-serif" }}>
+                                              <Typography
+                                                variant="caption"
+                                                sx={{
+                                                  fontWeight: 600,
+                                                  color: "#A0A0A0",
+                                                  fontFamily: "'Roboto', 'Open Sans', sans-serif",
+                                                }}
+                                              >
                                                 TPSA:
                                               </Typography>
-                                              <Typography variant="body2" sx={{ color: "#E0E0E0", fontFamily: "'Roboto', 'Open Sans', sans-serif" }}>
+                                              <Typography
+                                                variant="body2"
+                                                sx={{
+                                                  color: "#E0E0E0",
+                                                  fontFamily: "'Roboto', 'Open Sans', sans-serif",
+                                                }}
+                                              >
                                                 {product.tpsa?.toFixed(2) || "N/A"} Å²
                                               </Typography>
                                             </Grid>
                                             <Grid item xs={6} md={3}>
-                                              <Typography variant="caption" sx={{ fontWeight: 600, color: "#A0A0A0", fontFamily: "'Roboto', 'Open Sans', sans-serif" }}>
+                                              <Typography
+                                                variant="caption"
+                                                sx={{
+                                                  fontWeight: 600,
+                                                  color: "#A0A0A0",
+                                                  fontFamily: "'Roboto', 'Open Sans', sans-serif",
+                                                }}
+                                              >
                                                 H-Donors/Acceptors:
                                               </Typography>
-                                              <Typography variant="body2" sx={{ color: "#E0E0E0", fontFamily: "'Roboto', 'Open Sans', sans-serif" }}>
+                                              <Typography
+                                                variant="body2"
+                                                sx={{
+                                                  color: "#E0E0E0",
+                                                  fontFamily: "'Roboto', 'Open Sans', sans-serif",
+                                                }}
+                                              >
                                                 {product.num_h_donors || 0}/{product.num_h_acceptors || 0}
                                               </Typography>
                                             </Grid>
                                             <Grid item xs={12}>
-                                              <Typography variant="caption" sx={{ fontWeight: 600, color: "#A0A0A0", fontFamily: "'Roboto', 'Open Sans', sans-serif" }}>
+                                              <Typography
+                                                variant="caption"
+                                                sx={{
+                                                  fontWeight: 600,
+                                                  color: "#A0A0A0",
+                                                  fontFamily: "'Roboto', 'Open Sans', sans-serif",
+                                                }}
+                                              >
                                                 Functional Groups:
                                               </Typography>
                                               <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5, mt: 0.5 }}>
@@ -2296,11 +3323,22 @@ const RDkit = () => {
                                                       label={group}
                                                       size="small"
                                                       variant="outlined"
-                                                      sx={{ fontSize: "0.7rem", borderColor: "#5E81F4", color: "#E0E0E0", fontFamily: "'Lato', sans-serif" }}
+                                                      sx={{
+                                                        fontSize: "0.7rem",
+                                                        borderColor: "#5E81F4",
+                                                        color: "#E0E0E0",
+                                                        fontFamily: "'Lato', sans-serif",
+                                                      }}
                                                     />
                                                   ))
                                                 ) : (
-                                                  <Typography variant="body2" sx={{ color: "#A0A0A0", fontFamily: "'Roboto', 'Open Sans', sans-serif" }}>
+                                                  <Typography
+                                                    variant="body2"
+                                                    sx={{
+                                                      color: "#A0A0A0",
+                                                      fontFamily: "'Roboto', 'Open Sans', sans-serif",
+                                                    }}
+                                                  >
                                                     None identified
                                                   </Typography>
                                                 )}
@@ -2310,13 +3348,26 @@ const RDkit = () => {
                                               <Grid item xs={12}>
                                                 <Typography
                                                   variant="caption"
-                                                  sx={{ fontWeight: 600, color: "#A0A0A0", mt: 2, fontFamily: "'Roboto', 'Open Sans', sans-serif" }}
+                                                  sx={{
+                                                    fontWeight: 600,
+                                                    color: "#A0A0A0",
+                                                    mt: 2,
+                                                    fontFamily: "'Roboto', 'Open Sans', sans-serif",
+                                                  }}
                                                 >
                                                   ADMET Properties:
                                                 </Typography>
                                                 {product.admet_properties.map((section, secIdx) => (
                                                   <Box key={secIdx} sx={{ mt: 2 }}>
-                                                    <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1, color: "#E0E0E0", fontFamily: "'Inter', 'Barlow', sans-serif" }}>
+                                                    <Typography
+                                                      variant="subtitle2"
+                                                      sx={{
+                                                        fontWeight: 600,
+                                                        mb: 1,
+                                                        color: "#E0E0E0",
+                                                        fontFamily: "'Inter', 'Barlow', sans-serif",
+                                                      }}
+                                                    >
                                                       {section.section}
                                                     </Typography>
                                                     <TableContainer
@@ -2428,7 +3479,15 @@ const RDkit = () => {
                                   </Grid>
 
                                   <Box sx={{ mt: 4 }}>
-                                    <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 2, color: "#E0E0E0", fontFamily: "'Inter', 'Barlow', sans-serif" }}>
+                                    <Typography
+                                      variant="subtitle2"
+                                      sx={{
+                                        fontWeight: 600,
+                                        mb: 2,
+                                        color: "#E0E0E0",
+                                        fontFamily: "'Inter', 'Barlow', sans-serif",
+                                      }}
+                                    >
                                       ADMET Properties Comparison
                                     </Typography>
                                     {prepareAdmetGraphData(index) ? (
@@ -2488,12 +3547,14 @@ const RDkit = () => {
                                         />
                                       </Box>
                                     ) : (
-                                      <Typography variant="body2" sx={{ color: "#A0A0A0", fontFamily: "'Roboto', 'Open Sans', sans-serif" }}>
+                                      <Typography
+                                        variant="body2"
+                                        sx={{ color: "#A0A0A0", fontFamily: "'Roboto', 'Open Sans', sans-serif" }}
+                                      >
                                         No ADMET data available for comparison.
                                       </Typography>
                                     )}
                                   </Box>
-
                                 </Collapse>
                               </CardContent>
                             </Card>
@@ -2506,7 +3567,10 @@ const RDkit = () => {
                       <Card variant="outlined" sx={{ borderRadius: 2, bgcolor: "#172A45", borderColor: "#5E81F4" }}>
                         <CardHeader
                           title={
-                            <Typography variant="subtitle1" sx={{ fontWeight: 600, color: "#E0E0E0", fontFamily: "'Inter', 'Barlow', sans-serif" }}>
+                            <Typography
+                              variant="subtitle1"
+                              sx={{ fontWeight: 600, color: "#E0E0E0", fontFamily: "'Inter', 'Barlow', sans-serif" }}
+                            >
                               Over all Statistics
                             </Typography>
                           }
@@ -2514,34 +3578,74 @@ const RDkit = () => {
                         <CardContent sx={{ pt: 0 }}>
                           <Grid container spacing={2}>
                             <Grid item xs={3}>
-                              <Typography variant="caption" sx={{ fontWeight: 600, color: "#A0A0A0", fontFamily: "'Roboto', 'Open Sans', sans-serif" }}>
+                              <Typography
+                                variant="caption"
+                                sx={{
+                                  fontWeight: 600,
+                                  color: "#A0A0A0",
+                                  fontFamily: "'Roboto', 'Open Sans', sans-serif",
+                                }}
+                              >
                                 Mean MW:
                               </Typography>
-                              <Typography variant="h6" sx={{ fontWeight: 600, color: "#E0E0E0", fontFamily: "'Inter', 'Barlow', sans-serif" }}>
+                              <Typography
+                                variant="h6"
+                                sx={{ fontWeight: 600, color: "#E0E0E0", fontFamily: "'Inter', 'Barlow', sans-serif" }}
+                              >
                                 {reactionResult.statistics?.mean_mw?.toFixed(2) || "N/A"}
                               </Typography>
                             </Grid>
                             <Grid item xs={3}>
-                              <Typography variant="caption" sx={{ fontWeight: 600, color: "#A0A0A0", fontFamily: "'Roboto', 'Open Sans', sans-serif" }}>
+                              <Typography
+                                variant="caption"
+                                sx={{
+                                  fontWeight: 600,
+                                  color: "#A0A0A0",
+                                  fontFamily: "'Roboto', 'Open Sans', sans-serif",
+                                }}
+                              >
                                 Std MW:
                               </Typography>
-                              <Typography variant="h6" sx={{ fontWeight: 600, color: "#E0E0E0", fontFamily: "'Inter', 'Barlow', sans-serif" }}>
+                              <Typography
+                                variant="h6"
+                                sx={{ fontWeight: 600, color: "#E0E0E0", fontFamily: "'Inter', 'Barlow', sans-serif" }}
+                              >
                                 {reactionResult.statistics?.std_mw?.toFixed(2) || "N/A"}
                               </Typography>
                             </Grid>
                             <Grid item xs={3}>
-                              <Typography variant="caption" sx={{ fontWeight: 600, color: "#A0A0A0", fontFamily: "'Roboto', 'Open Sans', sans-serif" }}>
+                              <Typography
+                                variant="caption"
+                                sx={{
+                                  fontWeight: 600,
+                                  color: "#A0A0A0",
+                                  fontFamily: "'Roboto', 'Open Sans', sans-serif",
+                                }}
+                              >
                                 Min MW:
                               </Typography>
-                              <Typography variant="h6" sx={{ fontWeight: 600, color: "#E0E0E0", fontFamily: "'Inter', 'Barlow', sans-serif" }}>
+                              <Typography
+                                variant="h6"
+                                sx={{ fontWeight: 600, color: "#E0E0E0", fontFamily: "'Inter', 'Barlow', sans-serif" }}
+                              >
                                 {reactionResult.statistics?.min_mw?.toFixed(2) || "N/A"}
                               </Typography>
                             </Grid>
                             <Grid item xs={3}>
-                              <Typography variant="caption" sx={{ fontWeight: 600, color: "#A0A0A0", fontFamily: "'Roboto', 'Open Sans', sans-serif" }}>
+                              <Typography
+                                variant="caption"
+                                sx={{
+                                  fontWeight: 600,
+                                  color: "#A0A0A0",
+                                  fontFamily: "'Roboto', 'Open Sans', sans-serif",
+                                }}
+                              >
                                 Max MW:
                               </Typography>
-                              <Typography variant="h6" sx={{ fontWeight: 600, color: "#E0E0E0", fontFamily: "'Inter', 'Barlow', sans-serif" }}>
+                              <Typography
+                                variant="h6"
+                                sx={{ fontWeight: 600, color: "#E0E0E0", fontFamily: "'Inter', 'Barlow', sans-serif" }}
+                              >
                                 {reactionResult.statistics?.max_mw?.toFixed(2) || "N/A"}
                               </Typography>
                             </Grid>
@@ -2551,26 +3655,50 @@ const RDkit = () => {
                     </Grid>
 
                     <Grid item xs={12}>
-                      <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 2, color: "#E0E0E0", fontFamily: "'Inter', 'Barlow', sans-serif" }}>
+                      <Typography
+                        variant="subtitle1"
+                        sx={{ fontWeight: 600, mb: 2, color: "#E0E0E0", fontFamily: "'Inter', 'Barlow', sans-serif" }}
+                      >
                         Failed Reactions
                       </Typography>
                       {reactionResult.failedReactions.length === 0 ? (
                         <Alert severity="success" icon={<CheckCircle sx={{ color: "#70E000" }} />}>
-                          <Typography variant="body2" sx={{ color: "#A0A0A0", fontFamily: "'Roboto', 'Open Sans', sans-serif" }}>
+                          <Typography
+                            variant="body2"
+                            sx={{ color: "#A0A0A0", fontFamily: "'Roboto', 'Open Sans', sans-serif" }}
+                          >
                             All reactions completed successfully!
                           </Typography>
                         </Alert>
                       ) : (
                         reactionResult.failedReactions.map((fail, index) => (
-                          <Card key={index} variant="outlined" sx={{ mb: 2, borderRadius: 2, bgcolor: "#0A192F", borderColor: "#5E81F4" }}>
+                          <Card
+                            key={index}
+                            variant="outlined"
+                            sx={{ mb: 2, borderRadius: 2, bgcolor: "#0A192F", borderColor: "#5E81F4" }}
+                          >
                             <CardContent sx={{ p: 2 }}>
-                              <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1, color: "#E0E0E0", fontFamily: "'Inter', 'Barlow', sans-serif" }}>
+                              <Typography
+                                variant="subtitle2"
+                                sx={{
+                                  fontWeight: 600,
+                                  mb: 1,
+                                  color: "#E0E0E0",
+                                  fontFamily: "'Inter', 'Barlow', sans-serif",
+                                }}
+                              >
                                 {fail.reactionType || "Unknown Reaction"}
                               </Typography>
-                              <Typography variant="body2" sx={{ mb: 1, color: "#A0A0A0", fontFamily: "'Roboto', 'Open Sans', sans-serif" }}>
+                              <Typography
+                                variant="body2"
+                                sx={{ mb: 1, color: "#A0A0A0", fontFamily: "'Roboto', 'Open Sans', sans-serif" }}
+                              >
                                 Reactants: {fail.reactants?.join(", ") || "N/A"}
                               </Typography>
-                              <Typography variant="body2" sx={{ color: "#FF4D6D", fontFamily: "'Roboto', 'Open Sans', sans-serif" }}>
+                              <Typography
+                                variant="body2"
+                                sx={{ color: "#FF4D6D", fontFamily: "'Roboto', 'Open Sans', sans-serif" }}
+                              >
                                 Reason: {fail.reason || "Unknown error"}
                               </Typography>
                             </CardContent>
@@ -2589,4 +3717,4 @@ const RDkit = () => {
   )
 }
 
-export default RDkit;
+export default RDkit
