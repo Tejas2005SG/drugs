@@ -1,10 +1,19 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import { toast } from "react-hot-toast";
 import { useAuthStore } from "../../Store/auth.store.js";
+import { motion, AnimatePresence } from "framer-motion";
+import "./name.css";
 
-// Utility to truncate long SMILES strings
-const truncateSmiles = (smiles, maxLength = 20) => {
+// Utility to handle long SMILES strings with wrapping
+const formatSmiles = (smiles) => {
+  if (!smiles) return "";
+  return smiles.match(/.{1,60}(?=\s|$)/g)?.join('\n') || "";
+};
+
+// Utility to truncate SMILES strings for display
+const truncateSmiles = (smiles, maxLength = 30) => {
+  if (!smiles) return "";
   if (smiles.length <= maxLength) return smiles;
   return `${smiles.substring(0, maxLength)}...`;
 };
@@ -17,16 +26,42 @@ const axiosInstance = axios.create({
 
 const AINamingSuggestion = () => {
   const [activeTab, setActiveTab] = useState("generate");
-  const [molecules, setMolecules] = useState([]);
-  const [selectedTitle, setSelectedTitle] = useState("");
+  const [symptomGroupIndex, setSymptomGroupIndex] = useState("");
   const [selectedSmiles, setSelectedSmiles] = useState("");
+  const [symptomGroups, setSymptomGroups] = useState([]);
+  const [productSmilesGroups, setProductSmilesGroups] = useState([]);
   const [suggestedNames, setSuggestedNames] = useState([]);
   const [savedNames, setSavedNames] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [fallbackMessage, setFallbackMessage] = useState(null);
-
+  const [copiedText, setCopiedText] = useState(null);
+  const [showAcceptModal, setShowAcceptModal] = useState(false);
+  const [selectedCandidate, setSelectedCandidate] = useState(null);
+  const dropdownRef = useRef(null);
   const { user, checkAuth, checkingAuth } = useAuthStore();
+  const [isSmilesDropdownOpen, setIsSmilesDropdownOpen] = useState(false);
+
+  // Custom toast theme
+  const toastOptions = {
+    style: {
+      background: '#172A45', // secondary
+      color: '#E0E0E0', // text-primary
+      border: '1px solid #5E81F4', // accent-secondary
+      borderRadius: '8px',
+      padding: '12px',
+      fontFamily: 'Roboto, Open Sans, sans-serif', // body font
+    },
+    success: {
+      style: {
+        borderColor: '#70E000', // success
+      },
+      iconTheme: {
+        primary: '#70E000', // success
+        secondary: '#E0E0E0', // text-primary
+      },
+    },
+  };
 
   useEffect(() => {
     const initialize = async () => {
@@ -35,27 +70,32 @@ const AINamingSuggestion = () => {
         setError("Authentication failed. Please log in.");
         return;
       }
-      await fetchAllMolecules();
+      await fetchSymptomsAndProducts();
       await fetchSavedNames();
     };
     initialize();
   }, [checkAuth]);
 
-  const fetchAllMolecules = async () => {
+  const fetchSymptomsAndProducts = async () => {
     if (!user?._id) return;
 
     setLoading(true);
     try {
-      const response = await axiosInstance.get("/protein/generatednewmolecule");
-      const fetchedMolecules = response.data.molecules || [];
-      setMolecules(fetchedMolecules);
-      if (fetchedMolecules.length > 0 && !selectedTitle && !selectedSmiles) {
-        setSelectedTitle(fetchedMolecules[0].newmoleculetitle);
-        setSelectedSmiles(fetchedMolecules[0].newSmiles);
+      const response = await axiosInstance.get(`/getdata/getsymptoms-product/${user._id}`);
+      const { symptoms, productSmiles } = response.data;
+      setSymptomGroups(symptoms || []);
+      setProductSmilesGroups(productSmiles || []);
+      if (symptoms?.length > 0) {
+        setSymptomGroupIndex("0");
+        if (productSmiles?.[0]?.length > 0) {
+          setSelectedSmiles(productSmiles[0][0]);
+        }
       }
     } catch (err) {
-      console.error("Error fetching molecules:", err);
-      setError(err.response?.data?.message || "Failed to fetch molecules");
+      console.error("Error fetching symptoms and products:", err);
+      setError(err.response?.data?.message || "Failed to fetch symptoms and products");
+      setSymptomGroups([]);
+      setProductSmilesGroups([]);
     } finally {
       setLoading(false);
     }
@@ -65,19 +105,27 @@ const AINamingSuggestion = () => {
     if (!user?._id) return;
 
     try {
-      const response = await axiosInstance.get("/protein/saved-drug-names");
-      setSavedNames(response.data.drugNames || []);
+      const response = await axiosInstance.get("/drugname/saved-drug-names");
+      const drugNames = response.data.drugNames || [];
+      console.log("Fetched saved drug names:", drugNames);
+      const storedSymptomGroups = JSON.parse(localStorage.getItem(`symptomGroups_${user._id}`) || "{}");
+      const updatedDrugNames = drugNames.map((drugName) => ({
+        ...drugName,
+        symptomsGrp: storedSymptomGroups[drugName._id] || drugName.symptoms || "N/A",
+      }));
+      setSavedNames(updatedDrugNames);
     } catch (err) {
       console.error("Error fetching saved names:", err);
       setError(err.response?.data?.message || "Failed to fetch saved names");
     }
   };
 
-  const checkIfNameExists = async (title, smiles) => {
+  const checkIfNameExists = async (smiles) => {
     try {
-      const response = await axiosInstance.get("/protein/check-saved-drug-name", {
-        params: { moleculeTitle: title, smiles },
+      const response = await axiosInstance.get("/drugname/check-saved-drug-name", {
+        params: { smiles },
       });
+      console.log("Check saved name response:", response.data);
       return response.data.exists;
     } catch (err) {
       console.error("Error checking saved name:", err);
@@ -86,16 +134,20 @@ const AINamingSuggestion = () => {
   };
 
   const handleGenerateName = async () => {
-    if (!selectedTitle || !selectedSmiles) {
-      toast.error("Please select both a title and SMILES string");
+    if (symptomGroupIndex === "" || !selectedSmiles) {
+      toast.error("Please select both a symptom group and SMILES string", toastOptions);
       return;
     }
 
-    const nameExists = await checkIfNameExists(selectedTitle, selectedSmiles);
+    const symptoms = symptomGroups[symptomGroupIndex]?.join(", ") || "";
+    const nameExists = await checkIfNameExists(selectedSmiles);
     if (nameExists) {
-      const savedName = savedNames.find((n) => n.moleculeTitle === selectedTitle && n.smiles === selectedSmiles);
+      const savedName = savedNames.find((n) => n.smiles === selectedSmiles);
       if (savedName?.status === "accepted") {
-        toast("An accepted drug name already exists for this molecule.", { type: "info" });
+        toast("An accepted drug name already exists for this SMILES.", {
+          ...toastOptions,
+          type: "info",
+        });
         setActiveTab("saved");
         return;
       }
@@ -107,77 +159,98 @@ const AINamingSuggestion = () => {
     setFallbackMessage(null);
 
     try {
-      const response = await axiosInstance.post(`/protein/generate-drug-name/${user._id}`, {
-        moleculeTitle: selectedTitle,
+      const response = await axiosInstance.post(`/drugname/generate-drug-name/${user._id}`, {
         smiles: selectedSmiles,
+        symptoms,
       });
+      console.log("Generate drug name response:", response.data);
 
       if (response.status === 409) {
-        toast("An accepted drug name already exists. Redirecting to Saved Names.", { type: "info" });
+        toast("An accepted drug name already exists. Redirecting to Saved Names.", {
+          ...toastOptions,
+          type: "info",
+        });
         setActiveTab("saved");
         return;
       }
 
       setSuggestedNames(response.data.allCandidates);
       setFallbackMessage(response.data.fallback);
-      toast.success("Drug names generated successfully!");
+      toast.success("Drug names generated successfully!", toastOptions);
+
+      const storedSymptomGroups = JSON.parse(localStorage.getItem(`symptomGroups_${user._id}`) || "{}");
+      storedSymptomGroups[response.data.drugName._id || `temp_${Date.now()}`] = symptoms;
+      localStorage.setItem(`symptomGroups_${user._id}`, JSON.stringify(storedSymptomGroups));
     } catch (err) {
       console.error("Error generating drug name:", err);
       setError(err.response?.data?.message || "Failed to generate drug name");
-      toast.error("Failed to generate drug name");
+      toast.error("Failed to generate drug name", toastOptions);
     } finally {
       setLoading(false);
     }
   };
 
   const handleAcceptName = async (candidate) => {
-    const confirm = window.confirm(
-      `By accepting "${candidate.name}", this name will become the final title for this molecule across the database and cannot be changed later. Proceed?`
-    );
-    if (!confirm) return;
+    setSelectedCandidate(candidate);
+    setShowAcceptModal(true);
+  };
 
+  const confirmAcceptName = async () => {
+    if (!selectedCandidate) return;
+
+    const symptoms = symptomGroupIndex !== "" ? symptomGroups[symptomGroupIndex]?.join(", ") || "" : "";
     setLoading(true);
-    try {
-      const response = await axiosInstance.post(`/protein/accept-drug-name/${user._id}`, {
-        moleculeTitle: selectedTitle,
-        smiles: selectedSmiles,
-        selectedName: candidate.name,
-        rationale: candidate.rationale,
-        compliance: candidate.compliance,
-      });
+    setShowAcceptModal(false);
 
-      toast.success("Drug name accepted and molecule title updated!");
+    try {
+      const response = await axiosInstance.post(`/drugname/accept-drug-name/${user._id}`, {
+        smiles: selectedSmiles,
+        symptoms,
+        selectedName: selectedCandidate.name,
+        rationale: selectedCandidate.rationale,
+        compliance: selectedCandidate.compliance,
+      });
+      console.log("Accept drug name response:", response.data);
+
+      const storedSymptomGroups = JSON.parse(localStorage.getItem(`symptomGroups_${user._id}`) || "{}");
+      storedSymptomGroups[response.data.drugName._id || selectedCandidate.name] = symptoms;
+      localStorage.setItem(`symptomGroups_${user._id}`, JSON.stringify(storedSymptomGroups));
+
       setSuggestedNames([]);
-      setSelectedTitle(candidate.name); // Update local state
-      await fetchAllMolecules(); // Refresh molecule list
-      await fetchSavedNames(); // Refresh saved names
+      setSymptomGroupIndex("");
+      setSelectedSmiles("");
+      await fetchSymptomsAndProducts();
+      await fetchSavedNames();
     } catch (err) {
       console.error("Error accepting drug name:", err);
       setError(err.response?.data?.message || "Failed to accept drug name");
-      toast.error("Failed to accept drug name");
+      toast.error("Failed to accept drug name", toastOptions);
     } finally {
       setLoading(false);
+      setSelectedCandidate(null);
     }
   };
 
   const handleRejectName = () => {
     setSuggestedNames([]);
-    toast.success("Generated names rejected. You can generate new ones.");
   };
 
   const handleTabChange = async (tab) => {
     if (activeTab === "generate" && suggestedNames.length > 0) {
-      // Save as pending if switching tabs without accepting/rejecting
       try {
-        await axiosInstance.post(`/protein/save-pending-drug-name/${user._id}`, {
-          moleculeTitle: selectedTitle,
+        const symptoms = symptomGroups[symptomGroupIndex]?.join(", ") || "";
+        const response = await axiosInstance.post(`/drugname/save-pending-drug-name/${user._id}`, {
           smiles: selectedSmiles,
+          symptoms,
           candidates: suggestedNames,
         });
-        toast("Generated names saved as pending.", { type: "info" });
+        console.log("Save pending drug name response:", response.data);
+        const storedSymptomGroups = JSON.parse(localStorage.getItem(`symptomGroups_${user._id}`) || "{}");
+        storedSymptomGroups[response.data.drugName._id || `temp_${Date.now()}`] = symptoms;
+        localStorage.setItem(`symptomGroups_${user._id}`, JSON.stringify(storedSymptomGroups));
       } catch (err) {
         console.error("Error saving pending drug name:", err);
-        toast.error("Failed to save pending drug name");
+        toast.error("Failed to save pending drug name", toastOptions);
       }
     }
     setActiveTab(tab);
@@ -194,226 +267,366 @@ const AINamingSuggestion = () => {
     return "Unknown";
   };
 
-  const isComplianceFail = (compliance) => {
-    const text = getComplianceText(compliance).toLowerCase();
-    return text.includes("fail");
+  const copyToClipboard = (text) => {
+    navigator.clipboard.writeText(text);
+    setCopiedText(text);
+    setTimeout(() => setCopiedText(null), 2000);
+  };
+
+  const toggleSmilesDropdown = () => {
+    if (!loading && symptomGroupIndex && productSmilesGroups[symptomGroupIndex]?.length > 0) {
+      setIsSmilesDropdownOpen(!isSmilesDropdownOpen);
+    }
+  };
+
+  const handleSmilesSelect = (smiles) => {
+    setSelectedSmiles(smiles);
+    setIsSmilesDropdownOpen(false);
   };
 
   if (checkingAuth) {
-    return <div className="text-center py-10 text-gray-600">Verifying authentication...</div>;
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-primary">
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="text-center py-10 text-accent"
+        >
+          Verifying authentication...
+        </motion.div>
+      </div>
+    );
   }
 
   if (!user) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-100">
-        <div className="text-center p-6 bg-white rounded-lg shadow-lg max-w-md w-full">
-          <p className="text-gray-600 mb-4">Please log in to access AI Naming Suggestion</p>
-          <button
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors w-full sm:w-auto"
+      <div className="flex items-center justify-center min-h-screen bg-primary">
+        <motion.div
+          initial={{ scale: 0.9, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          className="text-center p-6 bg-secondary rounded-lg shadow-lg max-w-md w-full"
+        >
+          <p className="text-text-secondary mb-4">Please log in to access AI Naming Suggestion</p>
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            className="px-4 py-2 bg-accent text-primary rounded-lg hover:bg-accent transition-colors w-full sm:w-auto font-medium"
             onClick={() => (window.location.href = "/login")}
           >
             Go to Login
-          </button>
-        </div>
+          </motion.button>
+        </motion.div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 py-6 px-4 sm:py-8 sm:px-6 lg:py-12 lg:px-8">
-      <div className="max-w-5xl mx-auto">
-        <h1 className="text-3xl sm:text-4xl font-bold text-blue-700 mb-6 sm:mb-10 text-center">
-          AI Drug Naming Suggestion
-          <p className="text-xs sm:text-sm p-1 text-blue-700 font-semibold">(Powered by Gemini)</p>
-        </h1>
+    <div className="min-h-screen py-6 px-4 sm:py-8 sm:px-6 lg:py-12 lg:px-8 bg-primary">
+      <div className="max-w-6xl mx-auto">
+        <motion.div
+          initial={{ y: -20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ duration: 0.5 }}
+          className="text-center mb-8 sm:mb-12"
+        >
+          <h1 className="text-3xl sm:text-4xl font-bold text-accent mb-2">
+            AI Drug Naming Suggestion
+          </h1>
+          <p className="text-sm text-accent-secondary font-mono">(POWERED BY GEMINI)</p>
+        </motion.div>
 
-        <div className="flex flex-col sm:flex-row justify-center mb-4 sm:mb-8 space-y-2 sm:space-y-0 sm:space-x-4">
+        <div className="flex flex-col sm:flex-row justify-center mb-6 sm:mb-10 space-y-2 sm:space-y-0 sm:space-x-4">
           {["generate", "saved"].map((tab) => (
-            <button
+            <motion.button
               key={tab}
-              className={`px-4 sm:px-6 py-2 rounded-lg font-medium text-sm sm:text-base transition-all duration-300 ${
-                activeTab === tab
-                  ? "bg-blue-600 text-white shadow-md"
-                  : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-              }`}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className={`px-6 py-3 rounded-lg font-medium transition-all duration-300 ${activeTab === tab
+                ? "bg-accent text-primary shadow-lg"
+                : "bg-secondary text-text-primary hover:bg-opacity-80"
+                }`}
               onClick={() => handleTabChange(tab)}
             >
               {tab === "generate" && "Generate Drug Name"}
               {tab === "saved" && "Saved Names"}
-            </button>
+            </motion.button>
           ))}
         </div>
 
-        <div className="bg-white p-4 sm:p-6 lg:p-8 rounded-xl shadow-lg border border-gray-200">
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.2 }}
+          className="bg-secondary p-6 sm:p-8 rounded-xl shadow-lg border border-gray-700"
+        >
           {activeTab === "generate" && (
             <>
-              <h2 className="text-xl sm:text-2xl font-semibold text-blue-700 mb-4 sm:mb-6">Generate Drug Name</h2>
+              <h2 className="text-xl sm:text-2xl font-semibold text-accent mb-6">Generate Drug Name</h2>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 mb-4 sm:mb-6">
-                <div>
-                  <label className="block text-sm sm:text-base font-medium text-gray-700 mb-2">
-                    Select Molecule Title
-                  </label>
-                  <select
-                    value={selectedTitle}
-                    onChange={(e) => setSelectedTitle(e.target.value)}
-                    className="w-full p-2 sm:p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all text-sm sm:text-base"
-                    disabled={loading || molecules.length === 0}
-                  >
-                    {molecules.length === 0 ? (
-                      <option value="">No titles available</option>
-                    ) : (
-                      [...new Set(molecules.map((m) => m.newmoleculetitle))].map((title) => (
-                        <option key={title} value={title}>
-                          {title}
-                        </option>
-                      ))
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-text-secondary mb-2">
+                      Select Symptom Group
+                    </label>
+                    <select
+                      value={symptomGroupIndex}
+                      onChange={(e) => {
+                        setSymptomGroupIndex(e.target.value);
+                        setSelectedSmiles(productSmilesGroups[e.target.value]?.[0] || "");
+                      }}
+                      className="w-full p-3 bg-primary border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent text-text-primary font-mono"
+                      disabled={loading || symptomGroups.length === 0}
+                    >
+                      {symptomGroups.length === 0 ? (
+                        <option value="">No symptom groups available</option>
+                      ) : (
+                        symptomGroups.map((group, index) => (
+                          <option key={index} value={index}>
+                            {group.join(", ")}
+                          </option>
+                        ))
+                      )}
+                    </select>
+                  </div>
+
+                  <div className="relative" ref={dropdownRef}>
+                    <label className="block text-sm font-medium text-text-secondary mb-2">
+                      Select SMILES String
+                    </label>
+                    <div
+                      className={`w-full p-3 bg-primary border border-gray-600 rounded-lg text-text-primary font-mono flex justify-between items-center cursor-pointer ${loading || !symptomGroupIndex || productSmilesGroups[symptomGroupIndex]?.length === 0
+                        ? "opacity-50 cursor-not-allowed"
+                        : "hover:bg-gray-700"
+                        }`}
+                      onClick={toggleSmilesDropdown}
+                    >
+                      <span className="truncate">
+                        {selectedSmiles ? truncateSmiles(selectedSmiles) : "Select a SMILES string"}
+                      </span>
+                      <svg
+                        className={`w-4 h-4 transform transition-transform ${isSmilesDropdownOpen ? "rotate-180" : ""}`}
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </div>
+                    {isSmilesDropdownOpen && (
+                      <div className="absolute z-10 w-full mt-1 bg-primary border border-gray-600 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                        {productSmilesGroups[symptomGroupIndex]?.length === 0 ? (
+                          <div className="p-3 text-text-secondary">No SMILES available</div>
+                        ) : (
+                          productSmilesGroups[symptomGroupIndex]?.map((smiles, index) => (
+                            <div
+                              key={index}
+                              className="p-3 text-text-primary font-mono hover:bg-gray-700 cursor-pointer group relative"
+                              onClick={() => handleSmilesSelect(smiles)}
+                            >
+                              <span className="truncate block">{truncateSmiles(smiles)}</span>
+                              <div className="absolute left-0 top-full mt-1 hidden group-hover:block bg-gray-800 text-white text-xs rounded p-2 z-20 max-w-md whitespace-pre-wrap">
+                                {smiles}
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
                     )}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm sm:text-base font-medium text-gray-700 mb-2">
-                    Select SMILES String
-                  </label>
-                  <select
-                    value={selectedSmiles}
-                    onChange={(e) => setSelectedSmiles(e.target.value)}
-                    className="w-full p-2 sm:p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all text-sm sm:text-base"
-                    disabled={loading || molecules.length === 0}
+                  </div>
+
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={handleGenerateName}
+                    disabled={loading || symptomGroupIndex === "" || !selectedSmiles}
+                    className={`w-full py-3 px-6 rounded-lg transition-all duration-300 ${loading || symptomGroupIndex === "" || !selectedSmiles
+                      ? "bg-gray-600 cursor-not-allowed"
+                      : "bg-accent hover:bg-accent-secondary text-primary"
+                      } font-medium`}
                   >
-                    {molecules.length === 0 ? (
-                      <option value="">No SMILES available</option>
+                    {loading ? (
+                      <span className="flex items-center justify-center">
+                        <svg
+                          className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
+                          xmlns="http://www.w3.org/2000/svg"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                        >
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path
+                            className="opacity-75"
+                            fill="currentColor"
+                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                          ></path>
+                        </svg>
+                        Generating...
+                      </span>
                     ) : (
-                      [...new Set(molecules.map((m) => m.newSmiles))].map((smiles) => (
-                        <option key={smiles} value={smiles}>
-                          {truncateSmiles(smiles)}
-                        </option>
-                      ))
+                      "Start Prediction"
                     )}
-                  </select>
+                  </motion.button>
                 </div>
+
+                {selectedSmiles && (
+                  <div className="bg-primary p-4 rounded-lg border border-gray-600">
+                    <div className="flex justify-between items-center mb-3">
+                      <h3 className="text-lg font-medium text-accent">Selected SMILES</h3>
+                      <motion.button
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => copyToClipboard(selectedSmiles)}
+                        className="text-xs bg-accent-secondary text-primary px-2 py-1 rounded"
+                      >
+                        {copiedText === selectedSmiles ? "Copied!" : "Copy"}
+                      </motion.button>
+                    </div>
+                    <div className="bg-gray-900 p-3 rounded font-mono text-sm text-green-400 whitespace-pre-wrap overflow-y-auto max-h-60">
+                      {selectedSmiles}
+                    </div>
+                  </div>
+                )}
               </div>
 
-              <button
-                onClick={handleGenerateName}
-                disabled={loading || !selectedTitle || !selectedSmiles}
-                className="w-full py-2 sm:py-3 px-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-all duration-300 text-sm sm:text-base"
-              >
-                {loading ? "Generating Names..." : "Start Prediction"}
-              </button>
-
               {error && (
-                <div className="mt-4 sm:mt-6 bg-red-50 border border-red-300 text-red-700 px-4 py-3 rounded-lg flex justify-between items-center">
-                  <p className="text-sm sm:text-base">{error}</p>
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="mt-4 bg-error bg-opacity-20 border border-error rounded-lg p-4 flex justify-between items-center"
+                >
+                  <p className="text-text-primary">{error}</p>
                   <button
-                    className="text-red-700 underline hover:text-red-900 text-sm sm:text-base"
+                    className="text-error underline hover:text-opacity-80"
                     onClick={() => setError(null)}
                   >
                     Dismiss
                   </button>
-                </div>
+                </motion.div>
               )}
 
-              {suggestedNames.length > 0 && (
-                <div className="mt-6 sm:mt-8 bg-blue-50 p-4 sm:p-6 rounded-xl border border-blue-200 animate-fadeIn">
-                  <h3 className="text-lg sm:text-xl font-semibold text-blue-700 mb-4">Suggested Drug Names</h3>
-                  <div className="space-y-4 sm:space-y-6">
-                    {suggestedNames.map((candidate) => (
-                      <div
-                        key={candidate.rank}
-                        className="border-b border-gray-200 pb-2 sm:pb-4 last:border-b-0"
-                      >
-                        <div className="flex items-center mb-2">
-                          <span className="text-sm sm:text-base font-medium text-gray-600 mr-2">
-                            Rank {candidate.rank}:
-                          </span>
-                          <p className="text-lg sm:text-xl font-bold text-blue-600">{candidate.name}</p>
-                        </div>
-                        <div>
-                          <p className="text-sm sm:text-base text-gray-600">Structural Rationale</p>
-                          <p className="text-gray-700">{candidate.rationale}</p>
-                        </div>
-                        <div>
-                          <p className="text-sm sm:text-base text-gray-600">Compliance Status</p>
-                          {/* <p
-                            className={`text-gray-700 ${
-                              isComplianceFail(candidate.compliance) ? "text-red-600" : "text-green-600"
-                            }`}
-                          >
-                            {getComplianceText(candidate.compliance)}
-                          </p> */}
-                        </div>
-                        <div className="mt-2 sm:mt-4 flex space-x-2 sm:space-x-4">
-                          <button
-                            onClick={() => handleAcceptName(candidate)}
-                            className="px-3 sm:px-4 py-1 sm:py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm sm:text-base"
-                            disabled={loading}
-                          >
-                            Accept
-                          </button>
-                          <button
-                            onClick={handleRejectName}
-                            className="px-3 sm:px-4 py-1 sm:py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm sm:text-base"
-                            disabled={loading}
-                          >
-                            Reject
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  {fallbackMessage && (
-                    <div className="mt-4 sm:mt-6 bg-yellow-50 p-3 sm:p-4 rounded-lg border border-yellow-200">
-                      <p className="text-yellow-700 font-medium text-sm sm:text-base">Fallback Notice:</p>
-                      <p className="text-yellow-600 text-sm sm:text-base">{fallbackMessage}</p>
+              <AnimatePresence>
+                {suggestedNames.length > 0 && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -20 }}
+                    className="mt-8 bg-primary p-6 rounded-xl border border-gray-600"
+                  >
+                    <h3 className="text-xl font-semibold text-accent mb-6">Suggested Drug Names</h3>
+                    <div className="space-y-6">
+                      {suggestedNames.map((candidate) => (
+                        <motion.div
+                          key={candidate.rank}
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          transition={{ delay: candidate.rank * 0.1 }}
+                          className="border-b border-gray-600 pb-6 last:border-b-0"
+                        >
+                          <div className="flex items-center mb-3">
+                            <span className="text-sm font-medium text-text-secondary mr-3">
+                              Rank {candidate.rank}:
+                            </span>
+                            <h4 className="text-xl font-bold text-accent">{candidate.name}</h4>
+                          </div>
+                          <div className="mb-3">
+                            <p className="text-sm text-text-secondary mb-1">Structural Rationale</p>
+                            <p className="text-text-primary bg-gray-800 p-3 rounded font-mono text-sm">{candidate.rationale}</p>
+                          </div>
+                          <div className="flex space-x-4">
+                            <motion.button
+                              whileHover={{ scale: 1.05 }}
+                              whileTap={{ scale: 0.95 }}
+                              onClick={() => handleAcceptName(candidate)}
+                              className="px-4 py-2 bg-success text-primary rounded-lg hover:bg-opacity-90 transition-colors font-medium"
+                              disabled={loading}
+                            >
+                              Accept
+                            </motion.button>
+                            <motion.button
+                              whileHover={{ scale: 1.05 }}
+                              whileTap={{ scale: 0.95 }}
+                              onClick={handleRejectName}
+                              className="px-4 py-2 bg-error text-primary rounded-lg hover:bg-opacity-90 transition-colors font-medium"
+                              disabled={loading}
+                            >
+                              Reject
+                            </motion.button>
+                          </div>
+                        </motion.div>
+                      ))}
                     </div>
-                  )}
-                </div>
-              )}
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </>
           )}
 
           {activeTab === "saved" && (
             <>
-              <h2 className="text-xl sm:text-2xl font-semibold text-blue-700 mb-4 sm:mb-6">Saved Drug Names</h2>
+              <h2 className="text-xl sm:text-2xl font-semibold text-accent mb-6">Saved Drug Names</h2>
               {savedNames.length > 0 ? (
-                <div className="space-y-4 sm:space-y-6">
-                  {savedNames.map((drugName) => (
-                    <div
-                      key={drugName._id}
-                      className="bg-blue-50 p-4 sm:p-6 rounded-xl border border-blue-200 transition-all duration-200 hover:shadow-md"
-                    >
-                      <h3 className="text-lg sm:text-xl font-semibold text-gray-800 mb-2 sm:mb-4">
-                        {drugName.moleculeTitle} (SMILES: {truncateSmiles(drugName.smiles)})
-                      </h3>
-                      <div className="space-y-2 sm:space-y-3">
-                        <div>
-                          <p className="text-sm sm:text-base text-gray-600">Suggested Name</p>
-                          <p className="text-lg sm:text-xl font-bold text-blue-600">{drugName.suggestedName}</p>
+                <div className="space-y-6">
+                  <AnimatePresence>
+                    {savedNames.map((drugName) => (
+                      <motion.div
+                        key={drugName._id}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, x: -20 }}
+                        className="bg-primary p-6 rounded-xl border border-gray-600 transition-all duration-200 hover:shadow-lg"
+                      >
+                        <div className="flex justify-between items-start mb-4">
+                          <div>
+                            <h3 className="text-lg font-semibold text-accent mb-1">
+                              {drugName.suggestedName}
+                            </h3>
+                            <span
+                              className={`text-xs px-2 py-1 rounded ${drugName.status === "accepted"
+                                ? "bg-success bg-opacity-20 text-success"
+                                : "bg-accent-secondary bg-opacity-20 text-accent-secondary"
+                                }`}
+                            >
+                              {drugName.status.charAt(0).toUpperCase() + drugName.status.slice(1)}
+                            </span>
+                          </div>
+                          <span className="text-xs text-text-secondary">
+                            {new Date(drugName.createdAt).toLocaleDateString()}
+                          </span>
                         </div>
-                        <div>
-                          <p className="text-sm sm:text-base text-gray-600">Naming Details</p>
-                          <p className="text-gray-700">{drugName.namingDetails}</p>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                          <div>
+                            <p className="text-sm text-text-secondary mb-1">Symptom Group</p>
+                            <p className="text-text-primary">{drugName.symptomsGrp}</p>
+                          </div>
+                          <div>
+                            <p className="text-sm text-text-secondary mb-1">SMILES</p>
+                            <div className="flex items-center">
+                              <div className="bg-gray-900 p-2 rounded font-mono text-xs text-green-400 overflow-x-auto max-w-xs">
+                                {truncateSmiles(drugName.smiles)}
+                              </div>
+                              <motion.button
+                                whileHover={{ scale: 1.1 }}
+                                whileTap={{ scale: 0.9 }}
+                                onClick={() => copyToClipboard(drugName.smiles)}
+                                className="ml-2 text-xs bg-accent-secondary text-primary px-2 py-1 rounded"
+                              >
+                                {copiedText === drugName.smiles ? "Copied!" : "Copy"}
+                              </motion.button>
+                            </div>
+                          </div>
                         </div>
-                        <div>
-                          <p className="text-sm sm:text-base text-gray-600">Status</p>
-                          <p
-                            className={`text-gray-700 ${
-                              drugName.status === "accepted" ? "text-green-600" : "text-yellow-600"
-                            } text-sm sm:text-base`}
-                          >
-                            {drugName.status.charAt(0).toUpperCase() + drugName.status.slice(1)}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-sm sm:text-base text-gray-600">Created</p>
-                          <p className="text-gray-700 text-sm sm:text-base">
-                            {new Date(drugName.createdAt).toLocaleString()}
+                        <div className="mb-4">
+                          <p className="text-sm text-text-secondary mb-1">Naming Details</p>
+                          <p className="text-text-primary bg-gray-800 p-3 rounded font-mono text-sm whitespace-pre-wrap">
+                            {drugName.namingDetails}
                           </p>
                         </div>
                         {drugName.status === "pending" && (
-                          <div className="mt-2 sm:mt-4 flex space-x-2 sm:space-x-4">
-                            <button
+                          <div className="flex space-x-4">
+                            <motion.button
+                              whileHover={{ scale: 1.05 }}
+                              whileTap={{ scale: 0.95 }}
                               onClick={() =>
                                 handleAcceptName({
                                   name: drugName.suggestedName,
@@ -421,51 +634,87 @@ const AINamingSuggestion = () => {
                                   compliance: drugName.namingDetails.split(" | Compliance: ")[1],
                                 })
                               }
-                              className="px-3 sm:px-4 py-1 sm:py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm sm:text-base"
+                              className="px-4 py-2 bg-success text-primary rounded-lg hover:bg-opacity-90 transition-colors font-medium"
                               disabled={loading}
                             >
                               Accept
-                            </button>
-                            <button
+                            </motion.button>
+                            <motion.button
+                              whileHover={{ scale: 1.05 }}
+                              whileTap={{ scale: 0.95 }}
                               onClick={async () => {
-                                await axiosInstance.delete(`/protein/delete-drug-name/${drugName._id}`);
-                                toast.success("Pending name rejected and removed.");
+                                await axiosInstance.delete(`/drugname/delete-drug-name/${drugName._id}`);
                                 await fetchSavedNames();
                               }}
-                              className="px-3 sm:px-4 py-1 sm:py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm sm:text-base"
+                              className="px-4 py-2 bg-error text-primary rounded-lg hover:bg-opacity-90 transition-colors font-medium"
                               disabled={loading}
                             >
                               Reject
-                            </button>
+                            </motion.button>
                           </div>
                         )}
-                      </div>
-                    </div>
-                  ))}
+                      </motion.div>
+                    ))}
+                  </AnimatePresence>
                 </div>
               ) : (
-                <p className="text-gray-600 text-center text-sm sm:text-base">No saved drug names found.</p>
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="text-center py-10"
+                >
+                  <p className="text-text-secondary">No saved drug names found.</p>
+                </motion.div>
               )}
             </>
           )}
-        </div>
-      </div>
+        </motion.div>
 
-      <style jsx>{`
-        .animate-fadeIn {
-          animation: fadeIn 0.5s ease-in-out;
-        }
-        @keyframes fadeIn {
-          from {
-            opacity: 0;
-            transform: translateY(10px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-      `}</style>
+        {/* Accept Confirmation Modal */}
+        <AnimatePresence>
+          {showAcceptModal && selectedCandidate && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+            >
+              <motion.div
+                initial={{ scale: 0.9, y: 20 }}
+                animate={{ scale: 1, y: 0 }}
+                exit={{ scale: 0.9, y: 20 }}
+                className="bg-secondary p-6 rounded-xl shadow-lg max-w-md w-full border border-gray-700"
+              >
+                <h3 className="text-xl font-semibold text-accent mb-4">Confirm Acceptance</h3>
+                <p className="text-text-primary mb-6">
+                  By accepting "<span className="font-bold">{selectedCandidate.name}</span>", this name will become the final title for this SMILES across the database and cannot be changed later. Proceed?
+                </p>
+                <div className="flex justify-end space-x-4">
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => {
+                      setShowAcceptModal(false);
+                      setSelectedCandidate(null);
+                    }}
+                    className="px-4 py-2 bg-error text-primary rounded-lg hover:bg-opacity-90 transition-colors font-medium"
+                  >
+                    Cancel
+                  </motion.button>
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={confirmAcceptName}
+                    className="px-4 py-2 bg-success text-primary rounded-lg hover:bg-opacity-90 transition-colors font-medium"
+                  >
+                    Confirm
+                  </motion.button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
     </div>
   );
 };

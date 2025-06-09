@@ -75,6 +75,12 @@ const userSchema = new mongoose.Schema(
         ref: "predictDiseaseSchema",
       },
     ],
+    productsmiles:[ 
+    {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Productsmiles",
+      },
+    ]
   },
   { timestamps: true }
 );

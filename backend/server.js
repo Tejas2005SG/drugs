@@ -15,6 +15,8 @@ import toxicityRoutes from "./routes/toxicity.routes.js"
 import summaryRoutes from "./routes/summary.routes.js";
 import noteRoutes from "./routes/note.routes.js";
 import newdrugRoutes from "./routes/newdrug.routes.js";
+import getsymptomproductRoutes from "./routes/getsymptomproduct.routes.js";
+import drugNameRoutes from "./routes/drugnaming.routes.js";
 // import jarvisRoutes from "./routes/jarvis.routes.js"
 dotenv.config();
 
@@ -75,7 +77,8 @@ app.use("/api/summary", summaryRoutes);
 app.use("/api/toxicity", toxicityRoutes);
 app.use("/api/notes", noteRoutes);
 app.use("/api/newdrug", newdrugRoutes);
-
+app.use("/api/getdata", getsymptomproductRoutes);
+app.use("/api/drugname", drugNameRoutes)
 // app.use("/api/jarvis",jarvisRoutes);
 
 if (process.env.NODE_ENV === "production") {

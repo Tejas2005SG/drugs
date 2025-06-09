@@ -7,7 +7,6 @@ import OpenAI from 'openai';
 import ResearchPaper from '../models/researchPapers.model.js';
 import GeneratedResearchPaper from '../models/GeneratedResearchPaper.js';
 import { SavedSearch } from '../models/savedSearch.model.js';
-import drugName from '../models/drugName.js';
 
 dotenv.config();
 
@@ -1210,105 +1209,266 @@ export const proxyGeminiRequest = async (req, res) => {
   }
 };
 
-  export const saveResearchPapers = async (req, res) => {
-    const { userId, molecule, papers } = req.body;
-    try {
-      await ResearchPaper.findOneAndUpdate(
-        { userId, "molecule.title": molecule.title, "molecule.smiles": molecule.smiles },
-        { userId, molecule, papers, createdAt: new Date() },
-        { upsert: true, new: true }
-      );
-      res.status(200).json({ message: "Papers saved successfully" });
-    } catch (err) {
-      res.status(500).json({ message: "Failed to save papers", error: err.message });
-    }
-  };
 
-  export const getSavedResearchPapers = async (req, res) => {
-    const userId = req.user._id;
-    try {
-      const savedPapers = await ResearchPaper.find({
+
+
+
+
+
+// AI driven controllers for research papers
+
+  // export const saveResearchPapers = async (req, res) => {
+  //   const { userId, molecule, papers } = req.body;
+  //   try {
+  //     await ResearchPaper.findOneAndUpdate(
+  //       { userId, "molecule.title": molecule.title, "molecule.smiles": molecule.smiles },
+  //       { userId, molecule, papers, createdAt: new Date() },
+  //       { upsert: true, new: true }
+  //     );
+  //     res.status(200).json({ message: "Papers saved successfully" });
+  //   } catch (err) {
+  //     res.status(500).json({ message: "Failed to save papers", error: err.message });
+  //   }
+  // };
+
+  // export const getSavedResearchPapers = async (req, res) => {
+  //   const userId = req.user._id;
+  //   try {
+  //     const savedPapers = await ResearchPaper.find({
+  //       userId,
+  //       "molecule.title": { $exists: true },
+  //       "molecule.smiles": { $exists: true },
+  //     });
+  //     res.status(200).json({ papers: savedPapers || [] });
+  //   } catch (err) {
+  //     res.status(500).json({ message: "Failed to fetch saved papers", error: err.message });
+  //   }
+  // };
+
+  // export const checkSavedPapers = async (req, res) => {
+  //   const userId = req.user._id;
+  //   const { title, smiles } = req.query;
+  //   try {
+  //     const exists = await ResearchPaper.findOne({
+  //       userId,
+  //       "molecule.title": title,
+  //       "molecule.smiles": smiles,
+  //     });
+  //     res.status(200).json({ exists: !!exists });
+  //   } catch (err) {
+  //     res.status(500).json({ message: "Failed to check saved papers", error: err.message });
+  //   }
+  // };
+
+
+  // export const saveGeneratedResearchPaper = async (req, res) => {
+  //   const { userId, molecule, paper } = req.body;
+  //   try {
+  //     const newGeneratedPaper = new GeneratedResearchPaper({
+  //       userId,
+  //       molecule,
+  //       paper,
+  //     });
+  //     await newGeneratedPaper.save();
+  //     res.status(200).json({ message: "Generated research paper saved successfully" });
+  //   } catch (err) {
+  //     res.status(500).json({ message: "Failed to save generated research paper", error: err.message });
+  //   }
+  // };
+
+
+  // // Retrieve saved generated research papers
+  // export const getSavedGeneratedResearchPapers = async (req, res) => {
+  //   const userId = req.user._id;
+  //   try {
+  //     const savedPapers = await GeneratedResearchPaper.find({
+  //       userId,
+  //       "molecule.title": { $exists: true },
+  //       "molecule.smiles": { $exists: true },
+  //     });
+  //     res.status(200).json({ papers: savedPapers || [] });
+  //   } catch (err) {
+  //     res.status(500).json({ message: "Failed to fetch saved generated papers", error: err.message });
+  //   }
+  // };
+
+
+  // export const checkSavedGeneratedPapers = async (req, res) => {
+  //   const userId = req.user._id; // Assuming authMiddleware sets req.user
+  //   const { title, smiles } = req.query;
+
+  //   if (!title || !smiles) {
+  //     return res.status(400).json({ message: "Title and SMILES are required" });
+  //   }
+
+  //   try {
+  //     const exists = await GeneratedResearchPaper.findOne({
+  //       userId,
+  //       "molecule.title": title,
+  //       "molecule.smiles": smiles,
+  //     });
+  //     res.status(200).json({ exists: !!exists });
+  //   } catch (err) {
+  //     console.error("Error checking saved generated papers:", err);
+  //     res.status(500).json({ message: "Failed to check saved generated papers", error: err.message });
+  //   }
+  // };
+
+
+ // Import the updated SavedSearch model
+
+// // Save related research papers
+export const saveResearchPapers = async (req, res) => {
+  const { userId, molecule, papers } = req.body;
+  try {
+    // Check if a document already exists for this user and molecule
+    const existingDoc = await SavedSearch.findOne({
+      userId,
+      "molecule.symptoms": molecule.symptoms,
+      "molecule.smiles": molecule.smiles,
+    });
+
+    if (existingDoc) {
+      // Update the existing document by appending or replacing the research papers
+      existingDoc.research = papers; // Replace existing papers
+      existingDoc.createdAt = new Date();
+      await existingDoc.save();
+    } else {
+      // Create a new document
+      const newDoc = new SavedSearch({
         userId,
-        "molecule.title": { $exists: true },
-        "molecule.smiles": { $exists: true },
+        molecule,
+        research: papers,
       });
-      res.status(200).json({ papers: savedPapers || [] });
-    } catch (err) {
-      res.status(500).json({ message: "Failed to fetch saved papers", error: err.message });
+      await newDoc.save();
     }
-  };
 
-  export const checkSavedPapers = async (req, res) => {
-    const userId = req.user._id;
-    const { title, smiles } = req.query;
-    try {
-      const exists = await ResearchPaper.findOne({
-        userId,
-        "molecule.title": title,
-        "molecule.smiles": smiles,
-      });
-      res.status(200).json({ exists: !!exists });
-    } catch (err) {
-      res.status(500).json({ message: "Failed to check saved papers", error: err.message });
-    }
-  };
+    res.status(200).json({ message: "Papers saved successfully" });
+  } catch (err) {
+    console.error("Error saving research papers:", err);
+    res.status(500).json({ message: "Failed to save papers", error: err.message });
+  }
+};
 
+// Fetch saved research papers
+export const getSavedResearchPapers = async (req, res) => {
+  const userId = req.user._id;
+  try {
+    const savedPapers = await SavedSearch.find({
+      userId,
+      research: { $exists: true, $ne: [] }, // Ensure research array exists and is not empty
+    });
+    console.log("Fetched saved research papers:", savedPapers); // Debugging log
+    res.status(200).json({ papers: savedPapers || [] });
+  } catch (err) {
+    console.error("Error fetching saved papers:", err);
+    res.status(500).json({ message: "Failed to fetch saved papers", error: err.message });
+  }
+};
 
-  export const saveGeneratedResearchPaper = async (req, res) => {
-    const { userId, molecule, paper } = req.body;
-    try {
-      const newGeneratedPaper = new GeneratedResearchPaper({
+// Check if saved papers exist for a given molecule
+export const checkSavedPapers = async (req, res) => {
+  const userId = req.user._id;
+  const { symptoms, smiles } = req.query;
+  try {
+    const exists = await SavedSearch.exists({
+      userId,
+      "molecule.symptoms": symptoms,
+      "molecule.smiles": smiles,
+      research: { $exists: true, $ne: [] },
+    });
+    console.log("Check saved papers result:", exists); // Debugging log
+    res.status(200).json({ exists: !!exists });
+  } catch (err) {
+    console.error("Error checking saved papers:", err);
+    res.status(500).json({ message: "Failed to check saved papers", error: err.message });
+  }
+};
+
+// Save a generated research paper
+export const saveGeneratedResearchPaper = async (req, res) => {
+  const { userId, molecule, paper } = req.body;
+  try {
+    // Check if a document already exists for this user and molecule
+    const existingDoc = await SavedSearch.findOne({
+      userId,
+      "molecule.symptoms": molecule.symptoms,
+      "molecule.smiles": molecule.smiles,
+    });
+
+    if (existingDoc) {
+      // Update the existing document by adding the generated paper
+      existingDoc.paper = paper;
+      existingDoc.createdAt = new Date();
+      await existingDoc.save();
+    } else {
+      // Create a new document
+      const newDoc = new SavedSearch({
         userId,
         molecule,
         paper,
       });
-      await newGeneratedPaper.save();
-      res.status(200).json({ message: "Generated research paper saved successfully" });
-    } catch (err) {
-      res.status(500).json({ message: "Failed to save generated research paper", error: err.message });
-    }
-  };
-
-
-  // Retrieve saved generated research papers
-  export const getSavedGeneratedResearchPapers = async (req, res) => {
-    const userId = req.user._id;
-    try {
-      const savedPapers = await GeneratedResearchPaper.find({
-        userId,
-        "molecule.title": { $exists: true },
-        "molecule.smiles": { $exists: true },
-      });
-      res.status(200).json({ papers: savedPapers || [] });
-    } catch (err) {
-      res.status(500).json({ message: "Failed to fetch saved generated papers", error: err.message });
-    }
-  };
-
-
-  export const checkSavedGeneratedPapers = async (req, res) => {
-    const userId = req.user._id; // Assuming authMiddleware sets req.user
-    const { title, smiles } = req.query;
-
-    if (!title || !smiles) {
-      return res.status(400).json({ message: "Title and SMILES are required" });
+      await newDoc.save();
     }
 
-    try {
-      const exists = await GeneratedResearchPaper.findOne({
-        userId,
-        "molecule.title": title,
-        "molecule.smiles": smiles,
-      });
-      res.status(200).json({ exists: !!exists });
-    } catch (err) {
-      console.error("Error checking saved generated papers:", err);
-      res.status(500).json({ message: "Failed to check saved generated papers", error: err.message });
-    }
-  };
+    res.status(200).json({ message: "Generated research paper saved successfully" });
+  } catch (err) {
+    console.error("Error saving generated research paper:", err);
+    res.status(500).json({ message: "Failed to save generated research paper", error: err.message });
+  }
+};
+
+// Fetch saved generated research papers
+export const getSavedGeneratedResearchPapers = async (req, res) => {
+  const userId = req.user._id;
+  try {
+    const savedPapers = await SavedSearch.find({
+      userId,
+      paper: { $exists: true }, // Ensure paper field exists
+    });
+    console.log("Fetched saved generated papers:", savedPapers); // Debugging log
+    res.status(200).json({ papers: savedPapers || [] });
+  } catch (err) {
+    console.error("Error fetching saved generated papers:", err);
+    res.status(500).json({ message: "Failed to fetch saved generated papers", error: err.message });
+  }
+};
+
+// Check if a generated paper exists for a given molecule
+export const checkSavedGeneratedPapers = async (req, res) => {
+  const userId = req.user._id;
+  const { symptoms, smiles } = req.query;
+
+  if (!symptoms || !smiles) {
+    return res.status(400).json({ message: "Symptoms and SMILES are required" });
+  }
+
+  try {
+    const exists = await SavedSearch.exists({
+      userId,
+      "molecule.symptoms": symptoms,
+      "molecule.smiles": smiles,
+      paper: { $exists: true },
+    });
+    console.log("Check saved generated papers result:", exists); // Debugging log
+    res.status(200).json({ exists: !!exists });
+  } catch (err) {
+    console.error("Error checking saved generated papers:", err);
+    res.status(500).json({ message: "Failed to check saved generated papers", error: err.message });
+  }
+};
+
+
+
+
+
+
+
+
+
+
 
   // AI driven controllers
-
   export const convertFileToSmiles = async (req, res) => {
     try {
       if (!req.file) {
@@ -1433,246 +1593,8 @@ export const proxyGeminiRequest = async (req, res) => {
 
 
 
-  // ai-naming
-  // src/controllers/proteinstructure.controller.js
 
 
-  export const generateDrugName = async (req, res) => {
-    try {
-      const { id } = req.params; // User ID
-      const { moleculeTitle, smiles } = req.body;
 
-      if (!id || !moleculeTitle || !smiles) {
-        return res.status(400).json({ message: "User ID, molecule title, and SMILES are required" });
-      }
 
-      // Check if the name already exists for this molecule
-      const existingName = await drugName.findOne({ userId: id, moleculeTitle, smiles });
-      if (existingName) {
-        return res.status(409).json({ 
-          message: "Drug name already generated for this molecule. Check Saved Names.",
-          redirectTo: "savedNames",
-        });
-      }
 
-      // Fetch the molecule details from GeneratenewMolecule
-      const molecule = await GeneratenewMolecule.findOne({ userId: id, newmoleculetitle: moleculeTitle, newSmiles: smiles });
-      if (!molecule) {
-        return res.status(404).json({ message: "Molecule not found" });
-      }
-
-      const prompt = `
-        Analyze the provided SMILES structure and generate 3 candidate drug names that meet these requirements:
-
-        1. **Structural Accuracy**  
-          - Include IUPAC-recognized stems reflecting:  
-            * Functional groups (e.g., '-mab' for monoclonal antibodies, '-tinib' for kinase inhibitors)  
-            * Molecular topology (e.g., 'cyclo-' for cyclic structures, 'naphtha-' for naphthalene-like)  
-            * Pharmacological class indicators (e.g., '-vir' for antivirals, '-zole' for antifungals)  
-
-        2. **Ethical & Regulatory Compliance**  
-          - Avoid:  
-            * Cultural insensitivities/linguistic offensiveness in 10 major languages (English, Spanish, Mandarin, Hindi, Arabic, French, Russian, German, Japanese, Portuguese)  
-            * Phonetic similarities to existing drugs (cross-reference FDA Orange Book)  
-            * Therapeutic misrepresentation (e.g., no 'cure-' prefixes)  
-
-        3. **Validation Requirements**  
-          - Check name availability via OpenFDA API (simulated access, assume a basic uniqueness check)  
-          - Confirm ≤50% phonetic similarity to existing names using Levenshtein distance  
-          - Verify no trademark conflicts in USPTO database (simulated check)  
-
-        4. **Output Format**  
-          | Rank | Name Candidate | Structural Rationale | Compliance Status |  
-          |------|----------------|----------------------|-------------------|  
-          | 1    | [Name]         | [Matching features]  | [Pass/Fail flags] |  
-
-        Molecule Details:  
-        - SMILES: "${molecule.newSmiles}"  
-        - Title: "${molecule.newmoleculetitle}"  
-        - IUPAC Name: "${molecule.newIupacName}"  
-        - Conversion Details: "${molecule.conversionDetails}"  
-        - Potential Diseases: "${molecule.potentialDiseases}"  
-        - Additional Information: "${molecule.information}"  
-
-        **Fallback Protocol**  
-        If no compliant names meet criteria:  
-        a) Propose modified stems with structural justification  
-        b) Suggest pharmacological class alternatives  
-        c) Flag need for human pharmaceutical linguist review  
-
-        Return the response in JSON format:  
-        {
-          "candidates": [
-            {
-              "rank": 1,
-              "name": "CandidateName1",
-              "rationale": "Explanation of structural features and naming",
-              "compliance": "Pass/Fail with details"
-            },
-            {
-              "rank": 2,
-              "name": "CandidateName2",
-              "rationale": "Explanation",
-              "compliance": "Pass/Fail with details"
-            },
-            {
-              "rank": 3,
-              "name": "CandidateName3",
-              "rationale": "Explanation",
-              "compliance": "Pass/Fail with details"
-            }
-          ],
-          "fallback": "Optional message if fallback protocol triggered"
-        }
-      `;
-
-      const geminiResponse = await axios.post(
-        `${GEMINI_API_URL}?key=${GEMINI_API_KEY}`,
-        { contents: [{ parts: [{ text: prompt }] }] },
-        { headers: { "Content-Type": "application/json" } }
-      );
-
-      const geminiContent = geminiResponse.data.candidates?.[0]?.content?.parts?.[0]?.text;
-      if (!geminiContent) {
-        throw new Error("No content returned from Gemini API");
-      }
-
-      const jsonMatch = geminiContent.match(/{[\s\S]*}/);
-      if (!jsonMatch) {
-        throw new Error("No valid JSON found in Gemini response");
-      }
-
-      const { candidates, fallback } = JSON.parse(jsonMatch[0]);
-
-      if (!candidates || candidates.length === 0) {
-        return res.status(500).json({ 
-          message: "No valid drug name candidates generated",
-          fallback: fallback || "No fallback provided",
-        });
-      }
-
-      // Select the top-ranked candidate (Rank 1) to save
-      const topCandidate = candidates.find(c => c.rank === 1);
-
-      const newDrugName = new drugName({
-        moleculeTitle,
-        smiles,
-        suggestedName: topCandidate.name,
-        namingDetails: `${topCandidate.rationale} | Compliance: ${topCandidate.compliance}`,
-        userId: id,
-      });
-      await newDrugName.save();
-
-      res.status(201).json({
-        message: "Drug name generated and saved successfully",
-        drugName: newDrugName,
-        allCandidates: candidates, // Return all candidates for frontend display
-        fallback: fallback || null,
-      });
-    } catch (error) {
-      console.error("Error generating drug name:", error);
-      res.status(500).json({ message: "Server error while generating drug name", error: error.message });
-    }
-  };
-
-  export const acceptDrugName = async (req, res) => {
-    try {
-      const { id } = req.params;
-      const { moleculeTitle, smiles, selectedName, rationale, compliance } = req.body;
-  
-      if (!id || !moleculeTitle || !smiles || !selectedName) {
-        return res.status(400).json({ message: "User ID, molecule title, SMILES, and selected name are required" });
-      }
-  
-      const existingAcceptedName = await drugName.findOne({ userId: id, moleculeTitle, smiles, status: "accepted" });
-      if (existingAcceptedName) {
-        return res.status(409).json({ message: "An accepted name already exists for this molecule" });
-      }
-  
-      await GeneratenewMolecule.updateMany(
-        { userId: id, newmoleculetitle: moleculeTitle, newSmiles: smiles },
-        { $set: { newmoleculetitle: selectedName } }
-      );
-  
-      const drugNameEntry = await drugName.findOneAndUpdate(
-        { userId: id, moleculeTitle, smiles },
-        {
-          moleculeTitle,
-          smiles,
-          suggestedName: selectedName,
-          namingDetails: `${rationale} | Compliance: ${compliance}`,
-          userId: id,
-          status: "accepted",
-        },
-        { upsert: true, new: true }
-      );
-  
-      res.status(200).json({
-        message: "Drug name accepted and molecule title updated successfully",
-        drugName: drugNameEntry,
-      });
-    } catch (error) {
-      console.error("Error accepting drug name:", error);
-      res.status(500).json({ message: "Server error while accepting drug name", error: error.message });
-    }
-  };
-  
-  export const savePendingDrugName = async (req, res) => {
-    try {
-      const { id } = req.params;
-      const { moleculeTitle, smiles, candidates } = req.body;
-  
-      if (!id || !moleculeTitle || !smiles || !candidates) {
-        return res.status(400).json({ message: "User ID, molecule title, SMILES, and candidates are required" });
-      }
-  
-      const topCandidate = candidates.find(c => c.rank === 1);
-      const existingPendingName = await drugName.findOne({ userId: id, moleculeTitle, smiles, status: "pending" });
-  
-      if (!existingPendingName) {
-        const newDrugName = new drugName({
-          moleculeTitle,
-          smiles,
-          suggestedName: topCandidate.name,
-          namingDetails: `${topCandidate.rationale} | Compliance: ${topCandidate.compliance}`,
-          userId: id,
-          status: "pending",
-        });
-        await newDrugName.save();
-        res.status(201).json({ message: "Pending drug name saved successfully", drugName: newDrugName });
-      } else {
-        res.status(200).json({ message: "Pending drug name already exists", drugName: existingPendingName });
-      }
-    } catch (error) {
-      console.error("Error saving pending drug name:", error);
-      res.status(500).json({ message: "Server error while saving pending drug name", error: error.message });
-    }
-  };
-  
-  export const getSavedDrugNames = async (req, res) => {
-    try {
-      const userId = req.user._id;
-      const savedNames = await drugName.find({ userId }).sort({ createdAt: -1 });
-      res.status(200).json({ drugNames: savedNames });
-    } catch (error) {
-      console.error("Error fetching saved drug names:", error);
-      res.status(500).json({ message: "Server error while fetching saved drug names", error: error.message });
-    }
-  };
-  
-  export const checkSavedDrugName = async (req, res) => {
-    try {
-      const userId = req.user._id;
-      const { moleculeTitle, smiles } = req.query;
-  
-      if (!moleculeTitle || !smiles) {
-        return res.status(400).json({ message: "Molecule title and SMILES are required" });
-      }
-  
-      const exists = await drugName.findOne({ userId, moleculeTitle, smiles });
-      res.status(200).json({ exists: !!exists });
-    } catch (error) {
-      console.error("Error checking saved drug name:", error);
-      res.status(500).json({ message: "Server error while checking saved drug name", error: error.message });
-    }
-  };

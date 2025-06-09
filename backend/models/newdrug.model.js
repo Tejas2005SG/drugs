@@ -5,6 +5,10 @@ const predictDiseaseSchema = new mongoose.Schema({
     type: [String],
     required: true,
   },
+   productSmileId:{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "ReactionResponse",
+  },
   predictedDiseases: [
     {
       diseaseName: {
@@ -98,6 +102,7 @@ const predictDiseaseSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: "User",
   },
+
   createdAt: { type: Date, default: Date.now },
 });
 
@@ -187,49 +192,36 @@ export const TargetProtein = mongoose.model(
 );
 
 // Define the ReactionResponse schema based on your sample data
-const ReactionResponseSchema = new mongoose.Schema({
-  userId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "User",
-    required: true,
-  },
-  reactants: [
-    {
-      smiles: String,
-      properties: {
-        smiles: String,
-        molecular_weight: Number,
-        num_atoms: Number,
-        logP: Number,
-        tpsa: Number,
-        num_h_donors: Number,
-        num_h_acceptors: Number,
-        num_rotatable_bonds: Number,
-        has_stereochemistry: Boolean,
-        functional_groups: [String],
-      },
-      admet_properties: [
-        {
-          section: String,
-          properties: [
-            {
-              name: String,
-              prediction: mongoose.Schema.Types.Mixed,
-              units: String,
-            },
-          ],
+const ReactionResponseSchema = new mongoose.Schema(
+  {
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: [true, "User ID is required"],
+      validate: {
+        validator: async function (value) {
+          const user = await User.findById(value);
+          return !!user;
         },
-      ],
+        message: "User ID must reference an existing User",
+      },
     },
-  ],
-  reactionResults: [
-    {
-      reactionType: String,
-      description: String,
-      reactants: [String],
-      reactantGroups: [[String]],
-      products: [
-        {
+    symptomsId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "PredictDisease",
+      validate: {
+        validator: async function (value) {
+          if (!value) return true; // Allow null/undefined if not required
+          const predictDisease = await PredictDisease.findById(value);
+          return !!predictDisease;
+        },
+        message: "Symptoms ID must reference an existing PredictDisease document",
+      },
+    },
+    reactants: [
+      {
+        smiles: String,
+        properties: {
           smiles: String,
           molecular_weight: Number,
           num_atoms: Number,
@@ -240,41 +232,82 @@ const ReactionResponseSchema = new mongoose.Schema({
           num_rotatable_bonds: Number,
           has_stereochemistry: Boolean,
           functional_groups: [String],
-          admet_properties: [
-            {
-              section: String,
-              properties: [
-                {
-                  name: String,
-                  prediction: mongoose.Schema.Types.Mixed,
-                  units: String,
-                },
-              ],
-            },
-          ],
         },
-      ],
-      confidence: Number,
-      productSmiles: String,
+        admet_properties: [
+          {
+            section: String,
+            properties: [
+              {
+                name: String,
+                prediction: mongoose.Schema.Types.Mixed,
+                units: String,
+              },
+            ],
+          },
+        ],
+      },
+    ],
+    reactionResults: [
+      {
+        reactionType: String,
+        description: String,
+        reactants: [String],
+        reactantGroups: [[String]],
+        products: [
+          {
+            smiles: String,
+            molecular_weight: Number,
+            num_atoms: Number,
+            logP: Number,
+            tpsa: Number,
+            num_h_donors: Number,
+            num_h_acceptors: Number,
+            num_rotatable_bonds: Number,
+            has_stereochemistry: Boolean,
+            functional_groups: [String],
+            admet_properties: [
+              {
+                section: String,
+                properties: [
+                  {
+                    name: String,
+                    prediction: mongoose.Schema.Types.Mixed,
+                    units: String,
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+        confidence: Number,
+        productSmiles: String,
+      },
+    ],
+    failedReactions: [
+      {
+        reactants: [String],
+        reason: String,
+        reactionType: String,
+      },
+    ],
+    statistics: {
+      mean_mw: Number,
+      std_mw: Number,
+      min_mw: Number,
+      max_mw: Number,
     },
-  ],
-  failedReactions: [
-    {
-      reactants: [String],
-      reason: String,
-      reactionType: String,
-    },
-  ],
-  statistics: {
-    mean_mw: Number,
-    std_mw: Number,
-    min_mw: Number,
-    max_mw: Number,
+    createdAt: { type: Date, default: Date.now },
+    processedReactionTypes: mongoose.Schema.Types.Mixed,
+    product_smiles: [String],
   },
-  createdAt: Date,
-  processedReactionTypes: mongoose.Schema.Types.Mixed,
-  product_smiles: [String],
-});
+  {
+    strict: true, // Enforce schema validation
+    indexes: [
+      { key: { userId: 1 } }, // Index on userId for faster queries
+      { key: { symptomsId: 1 } }, // Index on symptomsId for faster queries
+    ],
+  }
+);
 
 export const ReactionResponse = mongoose.model(
   "ReactionResponse",

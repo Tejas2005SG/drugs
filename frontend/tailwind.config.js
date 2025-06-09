@@ -22,6 +22,7 @@
           code: ['Fira Code', 'monospace'],                  // For code/AI output
           label: ['Lato', 'sans-serif'],                     // For scientific labels
         },
+     
       },
     },
     plugins: [],

@@ -278,7 +278,7 @@ const AlphaFoldExplorer = () => {
   );
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary via-primary to-secondary font-body">
+    <div className="min-h-screen  font-body">
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="text-center mb-12 animate-fade-in">

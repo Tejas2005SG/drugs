@@ -1,7 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import GeneratenewMolecule from '../models/generatenew.model.js';
 import CostEstimation from '../models/costestimination.model.js';
-import DrugName from '../models/drugName.js';
+import DrugName from '../models/drugName.model.js';
 import ResearchPaper from '../models/researchPapers.model.js';
 import { SavedSearch } from '../models/savedSearch.model.js';
 import Toxicity from '../models/toxicity.model.js';

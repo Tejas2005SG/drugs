@@ -1,11 +1,11 @@
 import mongoose from "mongoose";
 
 const DrugNameSchema = new mongoose.Schema({
-  moleculeTitle: {
+  smiles: {
     type: String,
     required: true,
   },
-  smiles: {
+  symptoms: {
     type: String,
     required: true,
   },
