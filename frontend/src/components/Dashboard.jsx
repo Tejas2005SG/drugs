@@ -1,46 +1,19 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useAuthStore } from '../Store/auth.store.js';
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
 import {
   UserPlus, LogIn, LogOut, Menu, X, ChevronRight, Activity, BrainCog,
   Settings, Home, Layers, Dna, DollarSign, FileText, Target, Pill,
-  Newspaper, MessageSquare, Torus, FileDown, ChevronLeft, 
- 
-  
-      FlaskConical,
-
-  
-  AlertTriangle,
-  Mic,
-  FileBox,
-
-  Atom
-  
+  Newspaper, MessageSquare, Torus, FileDown, ChevronLeft, FlaskConical, 
+  AlertTriangle, Mic, FileBox, Atom
 } from 'lucide-react';
 import { Toaster } from 'react-hot-toast';
 import {
-  AppBar,
-  Toolbar,
-  Drawer,
-  List,
-  ListItem,
-  ListItemIcon,
-  ListItemText,
-  IconButton,
-  Typography,
-  Avatar,
-  Box,
-  Divider,
-  Button,
-  Tooltip,
-  useMediaQuery,
-  useTheme,
-  Chip,
-  Fade,
-  GlobalStyles
+  AppBar, Toolbar, Drawer, List, ListItem, ListItemIcon, ListItemText, IconButton,
+  Typography, Avatar, Box, Divider, Button, Tooltip, useMediaQuery, useTheme, 
+  Chip, Fade, GlobalStyles, LinearProgress, Backdrop, CircularProgress
 } from '@mui/material';
 import { createTheme, ThemeProvider, styled } from '@mui/material/styles';
-import ToxicityPrediction from '../pages/ToxicityPrediction/ToxicityPrediction.jsx';
 import JarvisBot from '../pages/Chatbot/Chatbot.jsx';
 
 // Global styles for custom scrollbar
@@ -71,12 +44,10 @@ const globalStyles = (
       '*::-webkit-scrollbar-corner': {
         background: 'transparent',
       },
-      // Remove horizontal scrollbar
       'html, body': {
         overflowX: 'hidden',
         maxWidth: '100vw',
       },
-      // Ensure no horizontal overflow
       '*': {
         boxSizing: 'border-box',
       },
@@ -84,55 +55,42 @@ const globalStyles = (
   />
 );
 
-// Custom theme based on your specifications
+// Custom theme
 const customTheme = createTheme({
   palette: {
     mode: 'dark',
     primary: {
-      main: '#00F5D4', // AI Teal
-      light: '#5E81F4', // Soft Blue
-      dark: '#0A192F', // Navy
+      main: '#00F5D4',
+      light: '#5E81F4',
+      dark: '#0A192F',
     },
     secondary: {
-      main: '#5E81F4', // Soft Blue
+      main: '#5E81F4',
       light: '#00F5D4',
       dark: '#172A45',
     },
     background: {
-      default: '#0A192F', // Primary BG
-      paper: '#172A45', // Secondary BG
+      default: '#0A192F',
+      paper: '#172A45',
     },
     text: {
-      primary: '#E0E0E0', // Primary text
-      secondary: '#A0A0A0', // Secondary text
+      primary: '#E0E0E0',
+      secondary: '#A0A0A0',
     },
     error: {
-      main: '#FF4D6D', // Coral Pink
+      main: '#FF4D6D',
     },
     success: {
-      main: '#70E000', // Vibrant Green
+      main: '#70E000',
     },
   },
   typography: {
     fontFamily: '"Inter", "Roboto", "Helvetica", "Arial", sans-serif',
-    h1: {
-      fontFamily: '"Inter", sans-serif',
-      fontWeight: 700,
-    },
-    h2: {
-      fontFamily: '"Inter", sans-serif',
-      fontWeight: 600,
-    },
-    h3: {
-      fontFamily: '"Inter", sans-serif',
-      fontWeight: 600,
-    },
-    body1: {
-      fontFamily: '"Roboto", sans-serif',
-    },
-    body2: {
-      fontFamily: '"Roboto", sans-serif',
-    },
+    h1: { fontFamily: '"Inter", sans-serif', fontWeight: 700 },
+    h2: { fontFamily: '"Inter", sans-serif', fontWeight: 600 },
+    h3: { fontFamily: '"Inter", sans-serif', fontWeight: 600 },
+    body1: { fontFamily: '"Roboto", sans-serif' },
+    body2: { fontFamily: '"Roboto", sans-serif' },
   },
   components: {
     MuiDrawer: {
@@ -166,13 +124,8 @@ const customTheme = createTheme({
           '&.active': {
             backgroundColor: 'rgba(0, 245, 212, 0.12)',
             borderLeft: '3px solid #00F5D4',
-            '& .MuiListItemIcon-root': {
-              color: '#00F5D4',
-            },
-            '& .MuiListItemText-primary': {
-              color: '#00F5D4',
-              fontWeight: 600,
-            },
+            '& .MuiListItemIcon-root': { color: '#00F5D4' },
+            '& .MuiListItemText-primary': { color: '#00F5D4', fontWeight: 600 },
           },
         },
       },
@@ -208,7 +161,6 @@ const StyledDrawer = styled(Drawer)(({ theme }) => ({
     backdropFilter: 'blur(10px)',
     overflowX: 'hidden',
     maxWidth: '100vw',
-    // Custom scrollbar for drawer
     '&::-webkit-scrollbar': {
       width: '6px',
     },
@@ -247,23 +199,6 @@ const UserSection = styled(Box)(({ theme }) => ({
   },
 }));
 
-const CollapseButton = styled(IconButton)(({ theme }) => ({
-  position: 'absolute',
-  right: -12,
-  top: 20,
-  backgroundColor: '#00F5D4',
-  color: '#0A192F',
-  width: 24,
-  height: 24,
-  boxShadow: '0 4px 12px rgba(0, 245, 212, 0.3)',
-  '&:hover': {
-    backgroundColor: '#5E81F4',
-    transform: 'scale(1.1)',
-  },
-  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-}));
-
-// Custom scrollable container
 const ScrollableContainer = styled(Box)(({ theme }) => ({
   overflowY: 'auto',
   overflowX: 'hidden',
@@ -293,124 +228,207 @@ function DashboardPage() {
   const { user, logout } = useAuthStore();
   const navigate = useNavigate();
   const location = useLocation();
-  // const toastShown = useRef(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(true);
+  
+  // Optimized refresh management
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const refreshTimeoutRef = useRef(null);
+  
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
+  // Constants
+  const DRUG_DISCOVERY_ROUTE = '/dashboard/newdrug-discovery';
+
+  // Logging utility
+  const log = useCallback((message, data = {}) => {
+    console.log(`🔄 [OPTIMIZED_NAVIGATION] ${message}`, {
+      timestamp: new Date().toISOString(),
+      currentRoute: location.pathname,
+      ...data
+    });
+  }, [location.pathname]);
+
+  // Check if route is a dashboard route (excluding drug discovery)
+  const isDashboardRoute = useCallback((route) => {
+    return route.startsWith('/dashboard') && route !== DRUG_DISCOVERY_ROUTE;
+  }, []);
+
+  // Optimized instant navigation with minimal refresh delay
+  const performOptimizedNavigation = useCallback((targetPath) => {
+    log('🚀 OPTIMIZED NAVIGATION - Instant redirect', { targetPath });
+    
+    // Clear any existing timeout
+    if (refreshTimeoutRef.current) {
+      clearTimeout(refreshTimeoutRef.current);
+      refreshTimeoutRef.current = null;
+    }
+
+    // Show loading state immediately
+    setIsRefreshing(true);
+    
+    // Use requestAnimationFrame for the smoothest possible transition
+    requestAnimationFrame(() => {
+      log('⚡ EXECUTING INSTANT NAVIGATION', { targetPath });
+      
+      // Direct navigation with immediate refresh - fastest possible method
+      window.location.href = targetPath;
+    });
+  }, [log]);
+
+  // Enhanced navigation handler with optimized refresh logic
+  const handleNavigation = useCallback((path, itemName) => {
+    const currentRoute = location.pathname;
+    
+    log('🧭 Navigation initiated', { 
+      from: currentRoute,
+      to: path, 
+      item: itemName,
+      wasOnDrugDiscovery: currentRoute === DRUG_DISCOVERY_ROUTE,
+      isGoingToDashboard: isDashboardRoute(path)
+    });
+
+    // Check if we need to do optimized refresh navigation
+    const shouldDoOptimizedRefresh = currentRoute === DRUG_DISCOVERY_ROUTE && isDashboardRoute(path);
+    
+    if (shouldDoOptimizedRefresh) {
+      log('⚡ OPTIMIZED REFRESH CONDITIONS MET!', {
+        reason: 'Fast navigation from drug discovery to dashboard page',
+        from: currentRoute,
+        to: path
+      });
+      
+      // Instant navigation with minimal delay
+      performOptimizedNavigation(path);
+      return; // Don't continue with normal navigation
+    }
+
+    // Normal navigation for other cases
+    log('➡️ Normal navigation (no refresh needed)');
+    navigate(path);
+    
+    if (isMobile) {
+      log('📱 Closing mobile sidebar after navigation');
+      setIsSidebarOpen(false);
+    }
+  }, [navigate, isMobile, log, location.pathname, isDashboardRoute, performOptimizedNavigation]);
+
+  // Cleanup on unmount
   useEffect(() => {
-    console.log('DashboardPage - User:', user);
-  }, [user]);
+    return () => {
+      if (refreshTimeoutRef.current) {
+        clearTimeout(refreshTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    log('👤 User state updated', { user: user?.firstName || 'Guest', role: user?.role || 'guest' });
+  }, [user, log]);
 
   useEffect(() => {
     if (isMobile) {
+      log('📱 Mobile view detected - closing sidebar');
       setIsSidebarOpen(false);
     }
-  }, [location.pathname, isMobile]);
+  }, [location.pathname, isMobile, log]);
 
-  
-const navElements = [
-  {
-    name: "Dashboard Home",
-    icon: <Home size={20} />,
-    path: "/dashboard",
-    navigation: () => navigate("/dashboard"),
-    roles: ["admin", "citizen", "guest"],
-  },
-  {
-    name: "Discover New Drugs",
-    icon: <FlaskConical size={20} />,
-    path: "/dashboard/newdrug-discovery",
-    navigation: () => navigate("/dashboard/newdrug-discovery"),
-    roles: ["admin", "citizen", "guest"],
-  },
-  {
-    name: "Cost Estimation",
-    icon: <DollarSign size={20} />,
-    path: "/dashboard/cost-estimation",
-    navigation: () => navigate("/dashboard/cost-estimation"),
-    roles: ["admin", "citizen", "guest"],
-  },
-  {
-    name: "Protein Structure Generation",
-    icon: <Dna size={20} />,
-    path: "/dashboard/protein-structure",
-    navigation: () => navigate("/dashboard/protein-structure"),
-    roles: ["admin", "citizen", "guest"],
-  },
-  {
-    name: "Alphafold Structure",
-    icon: <Atom size={20} />,
-    path: "/dashboard/getalphafoldstrcture",
-    navigation: () => navigate("/dashboard/getalphafoldstrcture"),
-    roles: ["admin", "citizen", "guest"],
-  },
-  {
-    name: "AI Naming Suggestion",
-    icon: <BrainCog size={20} />,
-    path: "/dashboard/ai-naming",
-    navigation: () => navigate("/dashboard/ai-naming"),
-    roles: ["admin", "citizen", "guest"],
-  },
-  {
-    name: "Research Paper Generation",
-    icon: <FileText size={20} />,
-    path: "/dashboard/ai-research-paper-generator",
-    navigation: () => navigate("/dashboard/ai-research-paper-generator"),
-    roles: ["admin", "citizen", "guest"],
-  },
-  {
-    name: "Side Effects Prediction",
-    icon: <AlertTriangle size={20} />,
-    path: "/dashboard/sideeffect-prediction",
-    navigation: () => navigate("/dashboard/sideeffect-prediction"),
-    roles: ["admin", "citizen", "guest"],
-  },
-  {
-    name: "Voice Notes",
-    icon: <Mic size={20} />,
-    path: "/dashboard/voice-text-notes",
-    navigation: () => navigate("/dashboard/voice-text-notes"),
-    roles: ["admin", "citizen", "guest"],
-  },
-  {
-    name: "Summary",
-    icon: <FileBox size={20} />,
-    path: "/dashboard/summary",
-    navigation: () => navigate("/dashboard/summary"),
-    roles: ["admin", "citizen", "guest"],
-  },
-  {
-    name: "Live News",
-    icon: <Newspaper size={20} />,
-    path: "/dashboard/live-news",
-    navigation: () => navigate("/dashboard/live-news"),
-    roles: ["admin", "citizen", "guest"],
-  },
-];
+  const navElements = [
+    {
+      name: "Dashboard Home",
+      icon: <Home size={20} />,
+      path: "/dashboard",
+      roles: ["admin", "citizen", "guest"],
+    },
+    {
+      name: "Discover New Drugs",
+      icon: <FlaskConical size={20} />,
+      path: "/dashboard/newdrug-discovery",
+      roles: ["admin", "citizen", "guest"],
+    },
+    {
+      name: "Cost Estimation",
+      icon: <DollarSign size={20} />,
+      path: "/dashboard/cost-estimation",
+      roles: ["admin", "citizen", "guest"],
+    },
+    {
+      name: "Protein Structure Generation",
+      icon: <Dna size={20} />,
+      path: "/dashboard/protein-structure",
+      roles: ["admin", "citizen", "guest"],
+    },
+    {
+      name: "Alphafold Structure",
+      icon: <Atom size={20} />,
+      path: "/dashboard/getalphafoldstrcture",
+      roles: ["admin", "citizen", "guest"],
+    },
+    {
+      name: "AI Naming Suggestion",
+      icon: <BrainCog size={20} />,
+      path: "/dashboard/ai-naming",
+      roles: ["admin", "citizen", "guest"],
+    },
+    {
+      name: "Research Paper Generation",
+      icon: <FileText size={20} />,
+      path: "/dashboard/ai-research-paper-generator",
+      roles: ["admin", "citizen", "guest"],
+    },
+    {
+      name: "Side Effects Prediction",
+      icon: <AlertTriangle size={20} />,
+      path: "/dashboard/sideeffect-prediction",
+      roles: ["admin", "citizen", "guest"],
+    },
+    {
+      name: "Voice Notes",
+      icon: <Mic size={20} />,
+      path: "/dashboard/voice-text-notes",
+      roles: ["admin", "citizen", "guest"],
+    },
+    {
+      name: "Summary",
+      icon: <FileBox size={20} />,
+      path: "/dashboard/summary",
+      roles: ["admin", "citizen", "guest"],
+    },
+    {
+      name: "Live News",
+      icon: <Newspaper size={20} />,
+      path: "/dashboard/live-news",
+      roles: ["admin", "citizen", "guest"],
+    },
+  ];
 
   const filteredNavElements = navElements.filter(navElement => {
     const userRole = user?.role || 'guest';
     return navElement.roles.includes(userRole);
   });
 
-  const handleLogout = () => {
+  const handleLogout = useCallback(() => {
+    log('🚪 User logout initiated');
     logout();
     navigate('/');
-  };
+  }, [logout, navigate, log]);
 
-  const toggleSidebar = () => {
+  const toggleSidebar = useCallback(() => {
     if (isMobile) {
-      setIsSidebarOpen(!isSidebarOpen);
+      const newState = !isSidebarOpen;
+      log('📱 Toggling mobile sidebar', { newState });
+      setIsSidebarOpen(newState);
     } else {
-      setIsCollapsed(!isCollapsed);
+      const newState = !isCollapsed;
+      log('💻 Toggling desktop sidebar', { newState });
+      setIsCollapsed(newState);
     }
-  };
+  }, [isMobile, isSidebarOpen, isCollapsed, log]);
 
-  const isActiveRoute = (path) => {
+  const isActiveRoute = useCallback((path) => {
     return location.pathname === path;
-  };
+  }, [location.pathname]);
 
   const drawerWidth = isMobile ? DRAWER_WIDTH : (isCollapsed ? COLLAPSED_WIDTH : DRAWER_WIDTH);
 
@@ -423,9 +441,6 @@ const navElements = [
       overflowX: 'hidden',
       maxWidth: '100%',
     }}>
-
-
-      {/* User Section */}
       {(!isCollapsed || isMobile) && (
         <Fade in={!isCollapsed || isMobile} timeout={300}>
           <UserSection>
@@ -469,7 +484,6 @@ const navElements = [
         </Fade>
       )}
 
-      {/* Collapsed User Avatar */}
       {isCollapsed && !isMobile && (
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
           <Tooltip title={`Welcome, ${user?.firstName || 'Guest'}`} placement="right">
@@ -490,7 +504,6 @@ const navElements = [
         </Box>
       )}
 
-      {/* Navigation List */}
       <ScrollableContainer sx={{ flex: 1 }}>
         <List sx={{ py: 1 }}>
           {filteredNavElements.map((navElement, index) => (
@@ -501,10 +514,7 @@ const navElements = [
             >
               <ListItem
                 button
-                onClick={() => {
-                  navElement.navigation();
-                  if (isMobile) setIsSidebarOpen(false);
-                }}
+                onClick={() => handleNavigation(navElement.path, navElement.name)}
                 className={isActiveRoute(navElement.path) ? 'active' : ''}
                 sx={{
                   minHeight: 48,
@@ -522,13 +532,8 @@ const navElements = [
                   '&.active': {
                     backgroundColor: 'rgba(0, 245, 212, 0.12)',
                     borderLeft: '3px solid #00F5D4',
-                    '& .MuiListItemIcon-root': {
-                      color: '#00F5D4',
-                    },
-                    '& .MuiListItemText-primary': {
-                      color: '#00F5D4',
-                      fontWeight: 600,
-                    },
+                    '& .MuiListItemIcon-root': { color: '#00F5D4' },
+                    '& .MuiListItemText-primary': { color: '#00F5D4', fontWeight: 600 },
                   },
                 }}
               >
@@ -563,7 +568,6 @@ const navElements = [
 
       <Divider sx={{ bgcolor: 'rgba(0, 245, 212, 0.1)' }} />
 
-      {/* Logout Section */}
       <Box sx={{ p: 2 }}>
         {user ? (
           <Button
@@ -625,7 +629,6 @@ const navElements = [
         overflowX: 'hidden',
         maxWidth: '100vw',
       }}>
-        {/* App Bar */}
         <StyledAppBar position="fixed">
           <Toolbar>
             <IconButton
@@ -639,11 +642,7 @@ const navElements = [
                 '&:hover': { backgroundColor: 'rgba(0, 245, 212, 0.1)' },
               }}
             >
-              {isMobile && isSidebarOpen ? (
-                <X size={24} /> // Lucide's X icon
-              ) : (
-                <Menu size={24} /> // Lucide's Menu icon
-              )}
+              {isMobile && isSidebarOpen ? <X size={24} /> : <Menu size={24} />}
             </IconButton>
             <Typography
               variant="h6"
@@ -660,13 +659,38 @@ const navElements = [
               BioGemini
             </Typography>
           </Toolbar>
+          
+          {/* Optimized loading indicator */}
+          {isRefreshing && (
+            <LinearProgress
+              sx={{
+                position: 'absolute',
+                bottom: 0,
+                left: 0,
+                right: 0,
+                height: '2px',
+                background: 'transparent',
+                '& .MuiLinearProgress-bar': {
+                  background: 'linear-gradient(90deg, #00F5D4 0%, #5E81F4 100%)',
+                  animation: 'fastPulse 0.6s ease-in-out infinite',
+                },
+                '@keyframes fastPulse': {
+                  '0%': { opacity: 1, transform: 'scaleX(0)' },
+                  '50%': { opacity: 0.8, transform: 'scaleX(0.5)' },
+                  '100%': { opacity: 1, transform: 'scaleX(1)' },
+                },
+              }}
+            />
+          )}
         </StyledAppBar>
 
-        {/* Drawer */}
         <StyledDrawer
           variant={isMobile ? 'temporary' : 'permanent'}
           open={isMobile ? isSidebarOpen : true}
-          onClose={() => setIsSidebarOpen(false)}
+          onClose={() => {
+            log('📱 Closing mobile drawer via backdrop click');
+            setIsSidebarOpen(false);
+          }}
           ModalProps={{ keepMounted: true }}
           sx={{
             width: drawerWidth,
@@ -683,33 +707,59 @@ const navElements = [
           <DrawerContent />
         </StyledDrawer>
 
-        {/* Main Content */}
         <Box
           component="main"
           sx={{
             flexGrow: 1,
-            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
             bgcolor: 'background.default',
             minHeight: '100vh',
             overflowX: 'hidden',
             maxWidth: '100%',
+            position: 'relative',
           }}
         >
           <Toolbar />
-          <ScrollableContainer sx={{
+          <Box sx={{
             p: { xs: 2, md: 3 },
             height: 'calc(100vh - 64px)',
             overflowY: 'auto',
             overflowX: 'hidden',
+            opacity: isRefreshing ? 0.95 : 1,
+            transition: 'opacity 0.1s ease-out',
           }}>
             <Outlet />
-          </ScrollableContainer>
+          </Box>
+          
+          {/* Optimized loading backdrop */}
+          <Backdrop
+            sx={{ 
+              color: '#00F5D4', 
+              zIndex: (theme) => theme.zIndex.drawer + 1,
+              backgroundColor: 'rgba(10, 25, 47, 0.85)',
+              backdropFilter: 'blur(3px)',
+            }}
+            open={isRefreshing}
+          >
+            <Box sx={{ textAlign: 'center' }}>
+              <CircularProgress 
+                color="inherit" 
+                size={32}
+                thickness={6}
+                sx={{
+                  '& .MuiCircularProgress-circle': {
+                    strokeLinecap: 'round',
+                  },
+                  mb: 1.5,
+                }}
+              />
+              <Typography variant="h6" sx={{ color: '#00F5D4', fontWeight: 600, fontSize: '1rem' }}>
+                Loading...
+              </Typography>
+            </Box>
+          </Backdrop>
         </Box>
 
-        {/* Chatbot */}
         <JarvisBot />
-
-        {/* Toast notifications */}
         <Toaster position="top-right" />
       </Box>
     </ThemeProvider>

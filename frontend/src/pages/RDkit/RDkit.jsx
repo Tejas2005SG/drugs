@@ -57,12 +57,12 @@ import {
   Tooltip as ChartTooltip,
   Legend,
 } from "chart.js"
-import { Chart, Radar } from "react-chartjs-2"
+import { Radar } from "react-chartjs-2"
 import toast, { Toaster } from "react-hot-toast"
 import { useAuthStore } from "../../Store/auth.store.js"
 import "./rdkit.css"
 import jsPDF from "jspdf"
-import autoTable from "jspdf-autotable"
+
 ChartJS.register(RadialLinearScale, PointElement, LineElement, Filler, Legend, ChartTooltip)
 
 const timelineSteps = [
@@ -104,25 +104,109 @@ const toastWarn = (message, options = {}) => {
   })
 }
 
+// Storage keys for persistence
+const STORAGE_KEYS = {
+  SYMPTOMS: "rdkit_symptoms",
+  RESULT: "rdkit_result",
+  REACTION_RESULT: "rdkit_reaction_result",
+  SMILES_IMAGES: "rdkit_smiles_images",
+  EXPANDED: "rdkit_expanded",
+  SAVED_SYMPTOMS: "rdkit_saved_symptoms",
+}
+
+// Helper functions for localStorage
+const saveToStorage = (key, data) => {
+  try {
+    localStorage.setItem(key, JSON.stringify(data))
+  } catch (error) {
+    console.warn("Failed to save to localStorage:", error)
+  }
+}
+
+const loadFromStorage = (key, defaultValue = null) => {
+  try {
+    const stored = localStorage.getItem(key)
+    return stored ? JSON.parse(stored) : defaultValue
+  } catch (error) {
+    console.warn("Failed to load from localStorage:", error)
+    return defaultValue
+  }
+}
+
+const clearStorage = () => {
+  try {
+    Object.values(STORAGE_KEYS).forEach((key) => {
+      localStorage.removeItem(key)
+    })
+  } catch (error) {
+    console.warn("Failed to clear localStorage:", error)
+  }
+}
+
 const RDkit = () => {
-  const [symptoms, setSymptoms] = useState([]) // Changed to array
+  // Initialize state with persisted data
+  const [symptoms, setSymptoms] = useState(() => loadFromStorage(STORAGE_KEYS.SYMPTOMS, []))
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
-  const [result, setResult] = useState(null)
-  const [reactionResult, setReactionResult] = useState(null)
-  const [expanded, setExpanded] = useState({})
+  const [result, setResult] = useState(() => loadFromStorage(STORAGE_KEYS.RESULT, null))
+  const [reactionResult, setReactionResult] = useState(() => loadFromStorage(STORAGE_KEYS.REACTION_RESULT, null))
+  // const [expanded, setExpanded] = useState(() => loadFromStorage(STORAGE_KEYS.EXPANDED, {}))
   const [currentStep, setCurrentStep] = useState(0)
   const [availableReactions, setAvailableReactions] = useState([])
   const [reactionsLoading, setReactionsLoading] = useState(false)
   const [anchorEl, setAnchorEl] = useState(null)
-  const [smilesImages, setSmilesImages] = useState({})
+  const [smilesImages, setSmilesImages] = useState(() => loadFromStorage(STORAGE_KEYS.SMILES_IMAGES, {}))
   const [retryAttempts, setRetryAttempts] = useState({ disease: 0, protein: 0, reaction: 0, noReactions: 0 })
   const [maxRetries] = useState(5)
-  const [savedSymptoms, setSavedSymptoms] = useState([])
+  const [savedSymptoms, setSavedSymptoms] = useState(() => loadFromStorage(STORAGE_KEYS.SAVED_SYMPTOMS, []))
   const [symptomsLoading, setSymptomsLoading] = useState(false)
-
+const [expanded, setExpanded] = useState(() => loadFromStorage(STORAGE_KEYS.EXPANDED, {
+  "disease-prediction": false,
+  "detailed-disease-analysis": false,
+  "target-proteins": false,
+  "target-ligands": false,
+  "chemical-reactions": false,
+  "failed-reactions": false,
+}));
   const { user } = useAuthStore()
   const userId = user?._id
+
+  // Save state to localStorage whenever it changes
+  useEffect(() => {
+    saveToStorage(STORAGE_KEYS.SYMPTOMS, symptoms)
+  }, [symptoms])
+
+  useEffect(() => {
+    saveToStorage(STORAGE_KEYS.RESULT, result)
+  }, [result])
+
+  useEffect(() => {
+    saveToStorage(STORAGE_KEYS.REACTION_RESULT, reactionResult)
+  }, [reactionResult])
+
+  useEffect(() => {
+    saveToStorage(STORAGE_KEYS.SMILES_IMAGES, smilesImages)
+  }, [smilesImages])
+
+  useEffect(() => {
+    saveToStorage(STORAGE_KEYS.EXPANDED, expanded)
+  }, [expanded])
+
+  useEffect(() => {
+    saveToStorage(STORAGE_KEYS.SAVED_SYMPTOMS, savedSymptoms)
+  }, [savedSymptoms])
+
+  // Show toast notification on component mount if data was restored
+  useEffect(() => {
+    const hasPersistedData = result || reactionResult || symptoms.length > 0
+    if (hasPersistedData) {
+      toast.success("Previous analysis data restored from your last session!", {
+        id: "data-restored",
+        duration: 4000,
+        icon: "🔄",
+      })
+    }
+  }, []) // Only run on mount
 
   // Fetch available reactions
   useEffect(() => {
@@ -271,7 +355,7 @@ const RDkit = () => {
     }
   }, [reactionResult, retryAttempts.noReactions, loading, maxRetries])
 
-   const validateSymptoms = (symptomList) => {
+  const validateSymptoms = (symptomList) => {
     if (!Array.isArray(symptomList) || symptomList.length === 0) {
       return { valid: false, message: "Please enter at least three symptoms." }
     }
@@ -430,6 +514,7 @@ const RDkit = () => {
   }
 
   const handleReset = () => {
+    // Clear all state
     setSymptoms([])
     setError("")
     setResult(null)
@@ -440,17 +525,19 @@ const RDkit = () => {
     setAnchorEl(null)
     setSmilesImages({})
     setRetryAttempts({ disease: 0, protein: 0, reaction: 0, noReactions: 0 })
-    toast.success("Form reset successfully!", { id: "reset-success" })
+
+    // Clear localStorage
+    clearStorage()
+
+    toast.success("Form reset successfully! All data cleared from storage.", {
+      id: "reset-success",
+      icon: "🗑️",
+    })
   }
 
   const handleToggle = (key) => {
     setExpanded((prev) => ({ ...prev, [key]: !prev[key] }))
   }
-
-  // const handleSymptomClick = (symptom) => {
-  //   setSymptoms([symptom])
-  //   toast.success(`Loaded symptom: ${symptom}`, { id: "symptom-loaded" })
-  // }
 
   const getFunctionalGroups = (ligandSmiles) => {
     if (ligandSmiles === "Not applicable") {
@@ -534,12 +621,11 @@ const RDkit = () => {
       toast.error("Selected symptom group is invalid or empty.", { id: "symptom-group-error" })
     }
   }
+
   const handleExample = (exampleSymptoms) => {
     setSymptoms(exampleSymptoms)
   }
 
-
-  
   const generatePDF = async () => {
     const doc = new jsPDF()
     let yPosition = 20
@@ -1014,6 +1100,54 @@ const RDkit = () => {
     })
   }
 
+  // Check if disease match is 100% to hide certain sections
+  const is100PercentMatch = result?.disease?.predictedDiseases?.[0]?.DiseaseMatchness === "100%"
+  const is0PercentMatch = result?.disease?.predictedDiseases?.[0]?.DiseaseMatchness === "0%"
+
+  // Function to render section headers with dropdown functionality
+  const renderSectionHeader = (title, key, count = null, color = "#5E81F4") => (
+    <Box
+      sx={{
+        display: "flex",
+        alignItems: "center",
+        cursor: "pointer",
+        p: 2,
+        borderRadius: "4px",
+        "&:hover": { bgcolor: "rgba(94, 129, 244, 0.1)" },
+        transition: "background-color 0.2s ease",
+      }}
+      onClick={() => handleToggle(key)}
+    >
+      <Typography
+        variant="h6"
+        sx={{
+          fontWeight: 600,
+          flex: 1,
+          color: "#E0E0E0",
+          fontFamily: "'Inter', 'Barlow', sans-serif",
+        }}
+      >
+        {title}
+      </Typography>
+      {count !== null && (
+        <Chip
+          label={count}
+          size="small"
+          sx={{
+            mr: 1,
+            bgcolor: color,
+            color: "#0A192F",
+            fontWeight: 600,
+            fontFamily: "'Lato', sans-serif",
+          }}
+        />
+      )}
+      <IconButton size="small" sx={{ color: "#00F5D4" }}>
+        {expanded[key] ? <ExpandLess /> : <ExpandMore />}
+      </IconButton>
+    </Box>
+  )
+
   return (
     <Box sx={{ minHeight: "100vh", bgcolor: "#0A192F", py: 4, color: "#E0E0E0" }}>
       <Toaster position="top-right" />
@@ -1033,6 +1167,25 @@ const RDkit = () => {
               Advanced molecular analysis system for symptom-based disease prediction, target identification, and
               optimized ligand reaction simulation
             </Typography>
+            {(result || reactionResult || symptoms.length > 0) && (
+              <Alert
+                severity="info"
+                sx={{
+                  mt: 2,
+                  bgcolor: "#0A192F",
+                  border: "1px solid #00F5D4",
+                  color: "#E0E0E0",
+                  maxWidth: 600,
+                  mx: "auto",
+                }}
+                icon={<Info sx={{ color: "#00F5D4" }} />}
+              >
+                <Typography variant="body2" sx={{ fontFamily: "'Roboto', 'Open Sans', sans-serif" }}>
+                  📊 Data persisted from previous session. Results will be preserved on page refresh until you click
+                  Reset.
+                </Typography>
+              </Alert>
+            )}
           </Box>
 
           <Card variant="outlined" sx={{ mb: 4, borderRadius: 2, bgcolor: "#172A45", borderColor: "#00F5D4" }}>
@@ -2018,7 +2171,6 @@ const RDkit = () => {
             </Grid>
 
             {/* Saved Symptom Groups Card */}
-            {/* Saved Symptom Groups Card */}
             <Grid item xs={12} md={6}>
               <Card
                 variant="outlined"
@@ -2246,118 +2398,232 @@ const RDkit = () => {
           </Grid>
         </Paper>
 
-        {result && !loading && (
-          <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
-            {result?.disease && (
-              <Paper elevation={2} sx={{ borderRadius: 2, bgcolor: "#172A45" }}>
-                <CardHeader
-                  title={
-                    <Typography
-                      variant="h6"
-                      sx={{ fontWeight: 600, color: "#E0E0E0", fontFamily: "'Inter', 'Barlow', sans-serif" }}
-                    >
-                      Disease Prediction Results
-                    </Typography>
-                  }
-                  subheader={
-                    <Typography
-                      variant="body2"
-                      sx={{ color: "#A0A0A0", mt: 0.5, fontFamily: "'Roboto', 'Open Sans', sans-serif" }}
-                    >
-                      AI-powered disease identification and analysis
-                    </Typography>
-                  }
+       {result && !loading && (
+  <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
+    {/* Download PDF Report Button - Moved outside all dropdowns */}
+    {result && (result.disease || result.proteins || reactionResult) && (
+      <Box sx={{ display: "flex", justifyContent: "flex-end", mb: 2 }}>
+        <Button
+          variant="contained"
+          onClick={generatePDF}
+          startIcon={<GetApp />}
+          sx={{
+            bgcolor: "#00F5D4",
+            color: "#0A192F",
+            "&:hover": { bgcolor: "#5E81F4" },
+            textTransform: "none",
+            fontFamily: "'Lato', sans-serif",
+            fontWeight: 600,
+          }}
+        >
+          Download PDF Report
+        </Button>
+      </Box>
+    )}
 
+    {/* Disease Prediction Results Section */}
+    {result?.disease && (
+      <Paper elevation={2} sx={{ borderRadius: 2, bgcolor: "#172A45" }}>
+        {renderSectionHeader(
+          "Disease Prediction Results",
+          "disease-prediction",
+          result.disease.predictedDiseases?.length || 0,
+          "#F44336",
+        )}
+        <Collapse in={expanded["disease-prediction"]}>
+          <CardContent>
+            <Box sx={{ mb: 4 }}>
+              <Typography
+                variant="subtitle1"
+                sx={{ fontWeight: 600, mb: 2, color: "#E0E0E0", fontFamily: "'Inter', 'Barlow', sans-serif" }}
+              >
+                Predicted Diseases
+              </Typography>
+              {result.disease.predictedDiseases?.length > 0 ? (
+                result.disease.predictedDiseases.map((disease, index) => (
+                  <Card
+                    key={index}
+                    variant="outlined"
+                    sx={{ mb: 2, borderRadius: 2, bgcolor: "#0A192F", borderColor: "#5E81F4" }}
+                  >
+                    <CardContent sx={{ p: 2 }}>
+                      <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
+                        <Typography
+                          variant="subtitle1"
+                          sx={{
+                            fontWeight: 600,
+                            flex: 1,
+                            color: "#E0E0E0",
+                            fontFamily: "'Inter', 'Barlow', sans-serif",
+                          }}
+                        >
+                          {disease.diseaseName || "Unknown Disease"}
+                        </Typography>
+                        <Chip
+                          label={`Match: ${disease.DiseaseMatchness || "N/A"}`}
+                          size="small"
+                          sx={{
+                            bgcolor: "#70E000",
+                            color: "#0A192F",
+                            fontWeight: 500,
+                            fontFamily: "'Lato', sans-serif",
+                          }}
+                        />
+                      </Box>
+                      {disease.diseaseCautions && disease.diseaseCautions.length > 0 && (
+                        <Box>
+                          <Typography
+                            variant="body2"
+                            sx={{
+                              fontWeight: 600,
+                              mb: 1,
+                              color: "#A0A0A0",
+                              fontFamily: "'Roboto', 'Open Sans', sans-serif",
+                            }}
+                          >
+                            Cautions:
+                          </Typography>
+                          <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
+                            {disease.diseaseCautions.map((caution, idx) => (
+                              <Chip
+                                key={idx}
+                                label={caution}
+                                size="small"
+                                variant="outlined"
+                                sx={{
+                                  borderColor: "#FF4D6D",
+                                  color: "#FF4D6D",
+                                  fontFamily: "'Lato', sans-serif",
+                                }}
+                              />
+                            ))}
+                          </Box>
+                        </Box>
+                      )}
+                    </CardContent>
+                  </Card>
+                ))
+              ) : (
+                <Typography
+                  variant="body2"
+                  sx={{ color: "#A0A0A0", fontFamily: "'Roboto', 'Open Sans', sans-serif" }}
+                >
+                  No diseases predicted. Please try different symptoms or try again later.
+                </Typography>
+              )}
+            </Box>
 
-                  action={
-                    result && (result.disease || result.proteins || reactionResult) ? (
-                      <Button
-                        variant="contained"
-                        onClick={generatePDF}
-                        startIcon={<GetApp />}
-                        sx={{
-                          bgcolor: "#00F5D4",
-                          color: "#0A192F",
-                          "&:hover": { bgcolor: "#5E81F4" },
-                          textTransform: "none",
-                          fontFamily: "'Lato', sans-serif",
-                          fontWeight: 600,
-                        }}
+            {/* Detailed Disease Analysis Section */}
+            {result.disease.predictedDiseases[0]?.DiseaseMatchness !== "0%" && (
+              <>
+                <Divider sx={{ my: 3, bgcolor: "#5E81F4" }} />
+                {renderSectionHeader(
+                  "Detailed Disease Analysis",
+                  "detailed-disease-analysis",
+                  Object.entries(result.disease?.DiseaseAnalysis || {}).length,
+                  "#2196F3",
+                )}
+                <Collapse in={expanded["detailed-disease-analysis"]}>
+                  <Box sx={{ mt: 2 }}>
+                    {result.disease.predictedDiseases[0]?.DiseaseMatchness === "0%" ? (
+                      <Typography
+                        variant="body2"
+                        sx={{ color: "#A0A0A0", fontFamily: "'Roboto', 'Open Sans', sans-serif" }}
                       >
-                        Download PDF Report
-                      </Button>
-                    ) : null
-                  }
-                />
-                <CardContent>
-                  <Box sx={{ mb: 4 }}>
-                    <Typography
-                      variant="subtitle1"
-                      sx={{ fontWeight: 600, mb: 2, color: "#E0E0E0", fontFamily: "'Inter', 'Barlow', sans-serif" }}
-                    >
-                      Predicted Diseases
-                    </Typography>
-                    {result.disease.predictedDiseases?.length > 0 ? (
-                      result.disease.predictedDiseases.map((disease, index) => (
+                        No such disease is present in the history with all these symptoms.
+                      </Typography>
+                    ) : Object.entries(result.disease?.DiseaseAnalysis || {}).length > 0 ? (
+                      Object.entries(result.disease.DiseaseAnalysis).map(([key, items]) => (
                         <Card
-                          key={index}
+                          key={key}
                           variant="outlined"
                           sx={{ mb: 2, borderRadius: 2, bgcolor: "#0A192F", borderColor: "#5E81F4" }}
                         >
                           <CardContent sx={{ p: 2 }}>
-                            <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
+                            <Box
+                              sx={{
+                                display: "flex",
+                                alignItems: "center",
+                                cursor: "pointer",
+                              }}
+                              onClick={() => handleToggle(key)}
+                            >
                               <Typography
-                                variant="subtitle1"
+                                variant="body1"
                                 sx={{
                                   fontWeight: 600,
                                   flex: 1,
+                                  textTransform: "capitalize",
                                   color: "#E0E0E0",
                                   fontFamily: "'Inter', 'Barlow', sans-serif",
                                 }}
                               >
-                                {disease.diseaseName || "Unknown Disease"}
+                                {key.replace(/([A-Z])/g, " $1").trim()}
                               </Typography>
                               <Chip
-                                label={`Match: ${disease.DiseaseMatchness || "N/A"}`}
+                                label={items.length}
                                 size="small"
                                 sx={{
-                                  bgcolor: "#70E000",
+                                  mr: 1,
+                                  bgcolor: "#5E81F4",
                                   color: "#0A192F",
-                                  fontWeight: 500,
                                   fontFamily: "'Lato', sans-serif",
                                 }}
                               />
+                              <IconButton size="small" sx={{ color: "#00F5D4" }}>
+                                {expanded[key] ? <ExpandLess /> : <ExpandMore />}
+                              </IconButton>
                             </Box>
-                            {disease.diseaseCautions && disease.diseaseCautions.length > 0 && (
-                              <Box>
-                                <Typography
-                                  variant="body2"
-                                  sx={{
-                                    fontWeight: 600,
-                                    mb: 1,
-                                    color: "#A0A0A0",
-                                    fontFamily: "'Roboto', 'Open Sans', sans-serif",
-                                  }}
-                                >
-                                  Cautions:
-                                </Typography>
-                                <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
-                                  {disease.diseaseCautions.map((caution, idx) => (
-                                    <Chip
-                                      key={idx}
-                                      label={caution}
-                                      size="small"
-                                      variant="outlined"
+                            <Collapse in={expanded[key]}>
+                              <Box sx={{ mt: 2 }}>
+                                {items.map((item, idx) => (
+                                  <Paper
+                                    key={idx}
+                                    variant="outlined"
+                                    sx={{ p: 2, mb: 2, bgcolor: "#172A45", borderColor: "#5E81F4" }}
+                                  >
+                                    <Typography
+                                      variant="body2"
                                       sx={{
-                                        borderColor: "#FF4D6D",
-                                        color: "#FF4D6D",
-                                        fontFamily: "'Lato', sans-serif",
+                                        fontWeight: 500,
+                                        mb: 1,
+                                        color: "#E0E0E0",
+                                        fontFamily: "'Roboto', 'Open Sans', sans-serif",
                                       }}
-                                    />
-                                  ))}
-                                </Box>
+                                    >
+                                      {item.summary || "No summary available"}
+                                    </Typography>
+                                    <Box sx={{ display: "flex", alignItems: "center", gap: 2, mt: 2 }}>
+                                      <Chip
+                                        label={`Source: ${item.source || "N/A"}`}
+                                        size="small"
+                                        variant="outlined"
+                                        sx={{
+                                          borderColor: "#5E81F4",
+                                          color: "#A0A0A0",
+                                          fontFamily: "'Lato', sans-serif",
+                                        }}
+                                      />
+                                      {item.url && (
+                                        <Button
+                                          size="small"
+                                          href={item.url}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          sx={{
+                                            textTransform: "none",
+                                            color: "#00F5D4",
+                                            fontFamily: "'Lato', sans-serif",
+                                          }}
+                                        >
+                                          View Source
+                                        </Button>
+                                      )}
+                                    </Box>
+                                  </Paper>
+                                ))}
                               </Box>
-                            )}
+                            </Collapse>
                           </CardContent>
                         </Card>
                       ))
@@ -2366,232 +2632,109 @@ const RDkit = () => {
                         variant="body2"
                         sx={{ color: "#A0A0A0", fontFamily: "'Roboto', 'Open Sans', sans-serif" }}
                       >
-                        No diseases predicted. Please try different symptoms or try again later.
+                        No detailed analysis available.
                       </Typography>
                     )}
                   </Box>
-                  {result.disease.predictedDiseases[0]?.DiseaseMatchness !== "0%" && (
-                    <>
-                      <Divider sx={{ my: 3, bgcolor: "#5E81F4" }} />
-                      <Box>
-                        <Typography
-                          variant="subtitle1"
-                          sx={{ fontWeight: 600, mb: 2, color: "#E0E0E0", fontFamily: "'Inter', 'Barlow', sans-serif" }}
-                        >
-                          Detailed Disease Analysis
-                        </Typography>
-                        {result.disease.predictedDiseases[0]?.DiseaseMatchness === "0%" ? (
-                          <Typography
-                            variant="body2"
-                            sx={{ color: "#A0A0A0", fontFamily: "'Roboto', 'Open Sans', sans-serif" }}
-                          >
-                            No such disease is present in the history with all these symptoms.
-                          </Typography>
-                        ) : Object.entries(result.disease?.DiseaseAnalysis || {}).length > 0 ? (
-                          Object.entries(result.disease.DiseaseAnalysis).map(([key, items]) => (
-                            <Card
-                              key={key}
-                              variant="outlined"
-                              sx={{ mb: 2, borderRadius: 2, bgcolor: "#0A192F", borderColor: "#5E81F4" }}
-                            >
-                              <CardContent sx={{ p: 2 }}>
-                                <Box
-                                  sx={{
-                                    display: "flex",
-                                    alignItems: "center",
-                                    cursor: "pointer",
-                                  }}
-                                  onClick={() => handleToggle(key)}
-                                >
-                                  <Typography
-                                    variant="body1"
-                                    sx={{
-                                      fontWeight: 600,
-                                      flex: 1,
-                                      textTransform: "capitalize",
-                                      color: "#E0E0E0",
-                                      fontFamily: "'Inter', 'Barlow', sans-serif",
-                                    }}
-                                  >
-                                    {key.replace(/([A-Z])/g, " $1").trim()}
-                                  </Typography>
-                                  <Chip
-                                    label={items.length}
-                                    size="small"
-                                    sx={{
-                                      mr: 1,
-                                      bgcolor: "#5E81F4",
-                                      color: "#0A192F",
-                                      fontFamily: "'Lato', sans-serif",
-                                    }}
-                                  />
-                                  <IconButton size="small" sx={{ color: "#00F5D4" }}>
-                                    {expanded[key] ? <ExpandLess /> : <ExpandMore />}
-                                  </IconButton>
-                                </Box>
-                                <Collapse in={expanded[key]}>
-                                  <Box sx={{ mt: 2 }}>
-                                    {items.map((item, idx) => (
-                                      <Paper
-                                        key={idx}
-                                        variant="outlined"
-                                        sx={{ p: 2, mb: 2, bgcolor: "#172A45", borderColor: "#5E81F4" }}
-                                      >
-                                        <Typography
-                                          variant="body2"
-                                          sx={{
-                                            fontWeight: 500,
-                                            mb: 1,
-                                            color: "#E0E0E0",
-                                            fontFamily: "'Roboto', 'Open Sans', sans-serif",
-                                          }}
-                                        >
-                                          {item.summary || "No summary available"}
-                                        </Typography>
-                                        <Box sx={{ display: "flex", alignItems: "center", gap: 2, mt: 2 }}>
-                                          <Chip
-                                            label={`Source: ${item.source || "N/A"}`}
-                                            size="small"
-                                            variant="outlined"
-                                            sx={{
-                                              borderColor: "#5E81F4",
-                                              color: "#A0A0A0",
-                                              fontFamily: "'Lato', sans-serif",
-                                            }}
-                                          />
-                                          {item.url && (
-                                            <Button
-                                              size="small"
-                                              href={item.url}
-                                              target="_blank"
-                                              rel="noopener noreferrer"
-                                              sx={{
-                                                textTransform: "none",
-                                                color: "#00F5D4",
-                                                fontFamily: "'Lato', sans-serif",
-                                              }}
-                                            >
-                                              View Source
-                                            </Button>
-                                          )}
-                                        </Box>
-                                      </Paper>
-                                    ))}
-                                  </Box>
-                                </Collapse>
-                              </CardContent>
-                            </Card>
-                          ))
-                        ) : (
-                          <Typography
-                            variant="body2"
-                            sx={{ color: "#A0A0A0", fontFamily: "'Roboto', 'Open Sans', sans-serif" }}
-                          >
-                            No detailed analysis available.
-                          </Typography>
-                        )}
-                      </Box>
-                    </>
-                  )}
-                </CardContent>
-              </Paper>
+                </Collapse>
+              </>
             )}
+          </CardContent>
+        </Collapse>
+      </Paper>
+    )}
 
-            {result?.proteins?.TargetProteins && result.disease.predictedDiseases[0]?.DiseaseMatchness !== "100%" && (
-              <Paper elevation={2} sx={{ borderRadius: 2, bgcolor: "#172A45" }}>
-                <CardHeader
-                  title={
+    {/* Target Proteins Section - Hidden when 100% match */}
+    {result?.proteins?.TargetProteins && !is100PercentMatch && !is0PercentMatch && (
+      <Paper elevation={2} sx={{ borderRadius: 2, bgcolor: "#172A45" }}>
+        {renderSectionHeader(
+          "Target Proteins",
+          "target-proteins",
+          result.proteins.TargetProteins.length,
+          "#9C27B0",
+        )}
+        <Collapse in={expanded["target-proteins"]}>
+          <CardContent>
+            <Typography
+              variant="body2"
+              sx={{ color: "#A0A0A0", mb: 3, fontFamily: "'Roboto', 'Open Sans', sans-serif" }}
+            >
+              Identified protein targets for therapeutic intervention
+            </Typography>
+            {result.proteins.TargetProteins.length > 0 ? (
+              result.proteins.TargetProteins.map((protein, index) => (
+                <Card
+                  key={index}
+                  variant="outlined"
+                  sx={{ mb: 2, borderRadius: 2, bgcolor: "#0A192F", borderColor: "#5E81F4" }}
+                >
+                  <CardContent sx={{ p: 2 }}>
                     <Typography
-                      variant="h6"
-                      sx={{ fontWeight: 600, color: "#E0E0E0", fontFamily: "'Inter', 'Barlow', sans-serif" }}
+                      variant="subtitle1"
+                      sx={{
+                        fontWeight: 600,
+                        mb: 2,
+                        color: "#E0E0E0",
+                        fontFamily: "'Inter', 'Barlow', sans-serif",
+                      }}
                     >
-                      Target Proteins
+                      {protein.proteinName || "Unknown Protein"}
                     </Typography>
-                  }
-                  subheader={
-                    <Typography
-                      variant="body2"
-                      sx={{ color: "#A0A0A0", mt: 0.5, fontFamily: "'Roboto', 'Open Sans', sans-serif" }}
-                    >
-                      Identified protein targets for therapeutic intervention
-                    </Typography>
-                  }
-                />
-                <CardContent>
-                  {result.proteins.TargetProteins.length > 0 ? (
-                    result.proteins.TargetProteins.map((protein, index) => (
-                      <Card
-                        key={index}
-                        variant="outlined"
-                        sx={{ mb: 2, borderRadius: 2, bgcolor: "#0A192F", borderColor: "#5E81F4" }}
-                      >
-                        <CardContent sx={{ p: 2 }}>
-                          <Typography
-                            variant="subtitle1"
-                            sx={{
-                              fontWeight: 600,
-                              mb: 2,
-                              color: "#E0E0E0",
-                              fontFamily: "'Inter', 'Barlow', sans-serif",
-                            }}
-                          >
-                            {protein.proteinName || "Unknown Protein"}
-                          </Typography>
-                          <Grid container spacing={2}>
-                            <Grid item xs={12} sm={6}>
-                              <Typography
-                                variant="body2"
-                                sx={{
-                                  fontWeight: 600,
-                                  color: "#A0A0A0",
-                                  fontFamily: "'Roboto', 'Open Sans', sans-serif",
-                                }}
-                              >
-                                Function:
-                              </Typography>
-                              <Typography
-                                variant="body2"
-                                sx={{ mb: 1, color: "#E0E0E0", fontFamily: "'Roboto', 'Open Sans', sans-serif" }}
-                              >
-                                {protein.proteinFunction || "N/A"}
-                              </Typography>
-                            </Grid>
-                            <Grid item xs={12} sm={6}>
-                              <Typography
-                                variant="body2"
-                                sx={{
-                                  fontWeight: 600,
-                                  color: "#A0A0A0",
-                                  fontFamily: "'Roboto', 'Open Sans', sans-serif",
-                                }}
-                              >
-                                UniProt ID:
-                              </Typography>
-                              <Chip
-                                label={protein.proteinUniport || "N/A"}
-                                size="small"
-                                sx={{ fontFamily: "'Fira Code', monospace", bgcolor: "#5E81F4", color: "#0A192F" }}
-                              />
-                            </Grid>
-                            <Grid item xs={12}>
-                              <Typography
-                                variant="body2"
-                                sx={{
-                                  fontWeight: 600,
-                                  color: "#A0A0A0",
-                                  fontFamily: "'Roboto', 'Open Sans', sans-serif",
-                                }}
-                              >
-                                Description:
-                              </Typography>
-                              <Typography
-                                variant="body2"
-                                sx={{ mb: 1, color: "#E0E0E0", fontFamily: "'Roboto', 'Open Sans', sans-serif" }}
-                              >
-                                {protein.ProtienDiscription || "N/A"}
-                              </Typography>
-                            </Grid>
-                            <Grid item xs={12}>
+                    <Grid container spacing={2}>
+                      <Grid item xs={12} sm={6}>
+                        <Typography
+                          variant="body2"
+                          sx={{
+                            fontWeight: 600,
+                            color: "#A0A0A0",
+                            fontFamily: "'Roboto', 'Open Sans', sans-serif",
+                          }}
+                        >
+                          Function:
+                        </Typography>
+                        <Typography
+                          variant="body2"
+                          sx={{ mb: 1, color: "#E0E0E0", fontFamily: "'Roboto', 'Open Sans', sans-serif" }}
+                        >
+                          {protein.proteinFunction || "N/A"}
+                        </Typography>
+                      </Grid>
+                      <Grid item xs={12} sm={6}>
+                        <Typography
+                          variant="body2"
+                          sx={{
+                            fontWeight: 600,
+                            color: "#A0A0A0",
+                            fontFamily: "'Roboto', 'Open Sans', sans-serif",
+                          }}
+                        >
+                          UniProt ID:
+                        </Typography>
+                        <Chip
+                          label={protein.proteinUniport || "N/A"}
+                          size="small"
+                          sx={{ fontFamily: "'Fira Code', monospace", bgcolor: "#5E81F4", color: "#0A192F" }}
+                        />
+                      </Grid>
+                      <Grid item xs={12}>
+                        <Typography
+                          variant="body2"
+                          sx={{
+                            fontWeight: 600,
+                            color: "#A0A0A0",
+                            fontFamily: "'Roboto', 'Open Sans', sans-serif",
+                          }}
+                        >
+                          Description:
+                        </Typography>
+                        <Typography
+                          variant="body2"
+                          sx={{ mb: 1, color: "#E0E0E0", fontFamily: "'Roboto', 'Open Sans', sans-serif" }}
+                        >
+                          {protein.ProtienDiscription || "N/A"}
+                        </Typography>
+                      </Grid>
+                      <Grid item xs={12}>
                               <Typography
                                 variant="body2"
                                 sx={{
@@ -2602,56 +2745,440 @@ const RDkit = () => {
                               >
                                 Detailed Information:
                               </Typography>
-                              <Typography
-                                variant="body2"
-                                sx={{ color: "#E0E0E0", fontFamily: "'Roboto', 'Open Sans', sans-serif" }}
-                              >
-                                {protein.ProtienDetailedDiscription || "N/A"}
+                              <Typography variant="body2" sx={{ color: "#E0E0E0", fontFamily: "'Roboto', 'Open Sans', sans-serif" }}>
+                                {protein.proteinDetailedDiscription || "N/A"}
                               </Typography>
                             </Grid>
+                    </Grid>
+                  </CardContent>
+                </Card>
+              ))
+            ) : (
+              <Typography
+                variant="body2"
+                sx={{ color: "#A0A0A0", fontFamily: "'Roboto', 'Open Sans', sans-serif" }}
+              >
+                No target proteins identified.
+              </Typography>
+            )}
+          </CardContent>
+        </Collapse>
+      </Paper>
+    )}
+
+    {/* Target Ligands Section - Hidden when 100% match */}
+    {result?.proteins?.TargetLigands && !is100PercentMatch && !is0PercentMatch && (
+      <Paper elevation={2} sx={{ borderRadius: 2, bgcolor: "#172A45" }}>
+        {renderSectionHeader(
+          "Target Ligands",
+          "target-ligands",
+          result.proteins.TargetLigands.length,
+          "#FF9800",
+        )}
+        <Collapse in={expanded["target-ligands"]}>
+          <CardContent>
+            <Typography
+              variant="body2"
+              sx={{ color: "#A0A0A0", mb: 3, fontFamily: "'Roboto', 'Open Sans', sans-serif" }}
+            >
+              Therapeutic compounds and molecular ligands
+            </Typography>
+            {result.proteins.TargetLigands.length > 0 ? (
+              result.proteins.TargetLigands.map((ligand, index) => (
+                <Card
+                  key={index}
+                  variant="outlined"
+                  sx={{ mb: 2, borderRadius: 2, bgcolor: "#0A192F", borderColor: "#5E81F4" }}
+                >
+                  <CardContent sx={{ p: 2 }}>
+                    <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
+                      <Typography
+                        variant="subtitle1"
+                        sx={{
+                          fontWeight: 600,
+                          flex: 1,
+                          color: "#E0E0E0",
+                          fontFamily: "'Inter', 'Barlow', sans-serif",
+                        }}
+                      >
+                        {ligand.ligandName || "Unknown Ligand"}
+                      </Typography>
+                      {ligand.LigandSmile === "Not applicable" && (
+                        <Chip
+                          label="Protein"
+                          size="small"
+                          sx={{ bgcolor: "#FF4D6D", color: "#0A192F", fontFamily: "'Lato', sans-serif" }}
+                        />
+                      )}
+                    </Box>
+
+                    <Grid container spacing={2}>
+                      <Grid item xs={12} sm={6}>
+                        <Typography
+                          variant="body2"
+                          sx={{
+                            fontWeight: 600,
+                            color: "#A0A0A0",
+                            fontFamily: "'Roboto', 'Open Sans', sans-serif",
+                          }}
+                        >
+                          Function:
+                        </Typography>
+                        <Typography
+                          variant="body2"
+                          sx={{ mb: 1, color: "#E0E0E0", fontFamily: "'Roboto', 'Open Sans', sans-serif" }}
+                        >
+                          {ligand.ligandFunction || "N/A"}
+                        </Typography>
+                      </Grid>
+                      <Grid item xs={12} sm={6}>
+                        <Typography
+                          variant="body2"
+                          sx={{
+                            fontWeight: 600,
+                            color: "#A0A0A0",
+                            fontFamily: "'Roboto', 'Open Sans', sans-serif",
+                          }}
+                        >
+                          DrugBank ID:
+                        </Typography>
+                        <Chip
+                          label={ligand.ligandDrugBankID || "N/A"}
+                          size="small"
+                          sx={{ fontFamily: "'Fira Code', monospace", bgcolor: "#5E81F4", color: "#0A192F" }}
+                        />
+                      </Grid>
+                      <Grid item xs={12}>
+                        <Typography
+                          variant="body2"
+                          sx={{
+                            fontWeight: 600,
+                            color: "#A0A0A0",
+                            fontFamily: "'Roboto', 'Open Sans', sans-serif",
+                          }}
+                        >
+                          SMILES:
+                        </Typography>
+                        <Paper
+                          variant="outlined"
+                          sx={{
+                            p: 1,
+                            bgcolor: "#0A192F",
+                            fontFamily: "'Fira Code', monospace",
+                            fontSize: "0.85rem",
+                            wordBreak: "break-all",
+                            color: "#E0E0E0",
+                            borderColor: "#5E81F4",
+                          }}
+                        >
+                          {ligand.LigandSmile || "N/A"}
+                        </Paper>
+                      </Grid>
+                      {ligand.LigandSmile &&
+                      ligand.LigandSmile !== "Not applicable" &&
+                      smilesImages[ligand.LigandSmile] ? (
+                        <Grid item xs={12}>
+                          <Typography
+                            variant="body2"
+                            sx={{
+                              fontWeight: 600,
+                              color: "#A0A0A0",
+                              fontFamily: "'Roboto', 'Open Sans', sans-serif",
+                            }}
+                          >
+                            Structure:
+                          </Typography>
+                          <img
+                            src={`data:image/png;base64,${smilesImages[ligand.LigandSmile]}`}
+                            alt={`Structure of ${ligand.ligandName}`}
+                            style={{ maxWidth: "200px", marginTop: "8px" }}
+                          />
+                        </Grid>
+                      ) : (
+                        <Grid item xs={12}>
+                          <Typography
+                            variant="body2"
+                            sx={{
+                              fontWeight: 600,
+                              color: "#A0A0A0",
+                              fontFamily: "'Roboto', 'Open Sans', sans-serif",
+                            }}
+                          >
+                            Structure:
+                          </Typography>
+                          <Typography
+                            variant="caption"
+                            sx={{ color: "#A0A0A0", fontFamily: "'Roboto', 'Open Sans', sans-serif" }}
+                          >
+                            {ligand.LigandSmile === "Not applicable"
+                              ? "Structure not applicable (Protein)"
+                              : "Unable to load structure image"}
+                          </Typography>
+                        </Grid>
+                      )}
+                      <Grid item xs={12}>
+                        <Typography
+                          variant="body2"
+                          sx={{
+                            fontWeight: 600,
+                            color: "#A0A0A0",
+                            fontFamily: "'Roboto', 'Open Sans', sans-serif",
+                          }}
+                        >
+                          Functional Groups:
+                        </Typography>
+                        <Typography
+                          variant="body2"
+                          sx={{ mb: 1, color: "#E0E0E0", fontFamily: "'Roboto', 'Open Sans', sans-serif" }}
+                        >
+                          {getFunctionalGroups(ligand.LigandSmile)}
+                        </Typography>
+                      </Grid>
+                      <Grid item xs={12}>
+                        <Typography
+                          variant="body2"
+                          sx={{
+                            fontWeight: 600,
+                            color: "#A0A0A0",
+                            fontFamily: "'Roboto', 'Open Sans', sans-serif",
+                          }}
+                        >
+                          Description:
+                        </Typography>
+                        <Typography
+                          variant="body2"
+                          sx={{ color: "#E0E0E0", fontFamily: "'Roboto', 'Open Sans', sans-serif" }}
+                        >
+                          {ligand.LigandDiscription || "N/A"}
+                        </Typography>
+                      </Grid>
+                      {ligand.LigandSmile !== "Not applicable" &&
+                        reactionResult &&
+                        reactionResult.reactants && (
+                          <Grid item xs={12}>
+                            <Typography
+                              variant="body2"
+                              sx={{
+                                fontWeight: 600,
+                                color: "#A0A0A0",
+                                fontFamily: "'Roboto', 'Open Sans', sans-serif",
+                              }}
+                            >
+                              ADMET Properties:
+                            </Typography>
+                            {(() => {
+                              const reactant = reactionResult.reactants.find(
+                                (r) => r.smiles === ligand.LigandSmile,
+                              )
+                              if (
+                                !reactant ||
+                                !reactant.admet_properties ||
+                                reactant.admet_properties.length === 0
+                              ) {
+                                return (
+                                  <Typography
+                                    variant="body2"
+                                    sx={{ color: "#A0A0A0", fontFamily: "'Roboto', 'Open Sans', sans-serif" }}
+                                  >
+                                    Not available
+                                  </Typography>
+                                )
+                              }
+                              return reactant.admet_properties.map((section, secIdx) => (
+                                <Box key={secIdx} sx={{ mt: 2 }}>
+                                  <Typography
+                                    variant="subtitle2"
+                                    sx={{
+                                      fontWeight: 600,
+                                      mb: 1,
+                                      color: "#E0E0E0",
+                                      fontFamily: "'Inter', 'Barlow', sans-serif",
+                                    }}
+                                  >
+                                    {section.section}
+                                  </Typography>
+                                  <TableContainer
+                                    component={Paper}
+                                    sx={{
+                                      boxShadow: "0 4px 12px rgba(0,0,0,0.05)",
+                                      borderRadius: 2,
+                                      overflow: "hidden",
+                                      bgcolor: "#0A192F",
+                                    }}
+                                  >
+                                    <Table size="small">
+                                      <TableHead>
+                                        <TableRow sx={{ bgcolor: "#5E81F4" }}>
+                                          <TableCell
+                                            sx={{
+                                              fontWeight: 600,
+                                              color: "#0A192F",
+                                              py: 1.5,
+                                              px: 2,
+                                              borderBottom: "none",
+                                              fontFamily: "'Lato', sans-serif",
+                                            }}
+                                          >
+                                            Property
+                                          </TableCell>
+                                          <TableCell
+                                            sx={{
+                                              fontWeight: 600,
+                                              color: "#0A192F",
+                                              py: 1.5,
+                                              px: 2,
+                                              borderBottom: "none",
+                                              fontFamily: "'Lato', sans-serif",
+                                            }}
+                                          >
+                                            Prediction
+                                          </TableCell>
+                                          <TableCell
+                                            sx={{
+                                              fontWeight: 600,
+                                              color: "#0A192F",
+                                              py: 1.5,
+                                              px: 2,
+                                              borderBottom: "none",
+                                              fontFamily: "'Lato', sans-serif",
+                                            }}
+                                          >
+                                            Units
+                                          </TableCell>
+                                        </TableRow>
+                                      </TableHead>
+                                      <TableBody>
+                                        {section.properties.map((prop, propIdx) => (
+                                          <TableRow
+                                            key={propIdx}
+                                            sx={{
+                                              "&:nth-of-type(odd)": { bgcolor: "#172A45" },
+                                              "&:hover": { bgcolor: "#0A192F" },
+                                              transition: "background-color 0.3s ease",
+                                            }}
+                                          >
+                                            <TableCell
+                                              sx={{
+                                                py: 1.5,
+                                                px: 2,
+                                                borderBottom: "1px solid #5E81F4",
+                                                color: "#E0E0E0",
+                                                fontFamily: "'Roboto', 'Open Sans', sans-serif",
+                                              }}
+                                            >
+                                              {prop.name}
+                                            </TableCell>
+                                            <TableCell
+                                              sx={{
+                                                py: 1.5,
+                                                px: 2,
+                                                borderBottom: "1px solid #5E81F4",
+                                                color: "#E0E0E0",
+                                                fontFamily: "'Roboto', 'Open Sans', sans-serif",
+                                              }}
+                                            >
+                                              {prop.prediction}
+                                            </TableCell>
+                                            <TableCell
+                                              sx={{
+                                                py: 1.5,
+                                                px: 2,
+                                                borderBottom: "1px solid #5E81F4",
+                                                color: "#E0E0E0",
+                                                fontFamily: "'Roboto', 'Open Sans', sans-serif",
+                                              }}
+                                            >
+                                              {prop.units || "-"}
+                                            </TableCell>
+                                          </TableRow>
+                                        ))}
+                                      </TableBody>
+                                    </Table>
+                                  </TableContainer>
+                                </Box>
+                              ))
+                            })()}
                           </Grid>
-                        </CardContent>
-                      </Card>
-                    ))
-                  ) : (
+                        )}
+                    </Grid>
+
+                    {ligand.LigandSmile === "Not applicable" && (
+                      <Alert
+                        severity="warning"
+                        sx={{
+                          mt: 2,
+                          bgcolor: "#FF4D6D",
+                          color: "#0A192F",
+                          fontFamily: "'Roboto', 'Open Sans', sans-serif",
+                        }}
+                        icon={<Warning />}
+                      >
+                        <Typography variant="body2">
+                          This ligand is a protein and cannot be processed for chemical reactions.
+                        </Typography>
+                      </Alert>
+                    )}
+                  </CardContent>
+                </Card>
+              ))
+            ) : (
+              <Typography
+                variant="body2"
+                sx={{ color: "#A0A0A0", fontFamily: "'Roboto', 'Open Sans', sans-serif" }}
+              >
+                No target ligands identified.
+              </Typography>
+            )}
+          </CardContent>
+        </Collapse>
+      </Paper>
+    )}
+
+    {/* Chemical Reaction Results Section - Hidden when 100% match */}
+    {reactionResult && !is100PercentMatch && !is0PercentMatch && (
+      <Paper elevation={2} sx={{ borderRadius: 2, bgcolor: "#172A45" }}>
+        {renderSectionHeader(
+          "Chemical Reaction Results",
+          "chemical-reactions",
+          `${reactionResult.reactionResults?.length || 0} Successful`,
+          "#70E000",
+        )}
+        <Collapse in={expanded["chemical-reactions"]}>
+          <CardContent>
+            <Typography
+              variant="body2"
+              sx={{ color: "#A0A0A0", mb: 3, fontFamily: "'Roboto', 'Open Sans', sans-serif" }}
+            >
+              Computational chemistry analysis and product generation
+            </Typography>
+            <Grid container spacing={3}>
+              <Grid item xs={12}>
+                <Typography
+                  variant="subtitle1"
+                  sx={{ fontWeight: 600, mb: 2, color: "#E0E0E0", fontFamily: "'Inter', 'Barlow', sans-serif" }}
+                >
+                  Successful Reactions
+                </Typography>
+                {reactionResult.reactionResults.length === 0 ? (
+                  <Alert severity="info" icon={<Info sx={{ color: "#5E81F4" }} />}>
                     <Typography
                       variant="body2"
                       sx={{ color: "#A0A0A0", fontFamily: "'Roboto', 'Open Sans', sans-serif" }}
                     >
-                      No target proteins identified.
+                      No successful reactions found.{" "}
+                      {retryAttempts.noReactions < maxRetries
+                        ? "Retrying automatically..."
+                        : "Please try different symptoms or check the backend."}
                     </Typography>
-                  )}
-                </CardContent>
-              </Paper>
-            )}
-
-            {result?.proteins?.TargetLigands && result.disease.predictedDiseases[0]?.DiseaseMatchness !== "100%" && (
-              <Paper elevation={2} sx={{ borderRadius: 2, bgcolor: "#172A45" }}>
-                <CardHeader
-                  title={
-                    <Typography
-                      variant="h6"
-                      sx={{ fontWeight: 600, color: "#E0E0E0", fontFamily: "'Inter', 'Barlow', sans-serif" }}
-                    >
-                      Target Ligands
-                    </Typography>
-                  }
-                  subheader={
-                    <Typography
-                      variant="body2"
-                      sx={{ color: "#A0A0A0", mt: 0.5, fontFamily: "'Roboto', 'Open Sans', sans-serif" }}
-                    >
-                      Therapeutic compounds and molecular ligands
-                    </Typography>
-                  }
-                />
-                <CardContent>
-                  {result.proteins.TargetLigands.length > 0 ? (
-                    result.proteins.TargetLigands.map((ligand, index) => (
+                  </Alert>
+                ) : (
+                  reactionResult.reactionResults.map((reaction, index) => {
+                    const mainProducts = deduplicateProducts(reaction.products.slice(0, 1))
+                    return (
                       <Card
                         key={index}
                         variant="outlined"
-                        sx={{ mb: 2, borderRadius: 2, bgcolor: "#0A192F", borderColor: "#5E81F4" }}
+                        sx={{ mb: 3, borderRadius: 2, bgcolor: "#0A192F", borderColor: "#5E81F4" }}
                       >
                         <CardContent sx={{ p: 2 }}>
                           <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
@@ -2664,1054 +3191,668 @@ const RDkit = () => {
                                 fontFamily: "'Inter', 'Barlow', sans-serif",
                               }}
                             >
-                              {ligand.ligandName || "Unknown Ligand"}
+                              {reaction.reactionType || "Unknown Reaction"}
                             </Typography>
-                            {ligand.LigandSmile === "Not applicable" && (
+                            <Tooltip title={`Confidence: ${(reaction.confidence * 100).toFixed(1)}%`}>
                               <Chip
-                                label="Protein"
+                                label={`${(reaction.confidence * 100).toFixed(1)}% Confidence`}
                                 size="small"
-                                sx={{ bgcolor: "#FF4D6D", color: "#0A192F", fontFamily: "'Lato', sans-serif" }}
+                                sx={{
+                                  bgcolor:
+                                    reaction.confidence >= 0.7
+                                      ? "#70E000" // Green for 70-100%
+                                      : reaction.confidence >= 0.5
+                                        ? "#FFD700" // Yellow for 50-70%
+                                        : "#FF4D6D", // Red for 0-40%
+                                  color: "#0A192F",
+                                  fontWeight: 500,
+                                  fontFamily: "'Lato', sans-serif",
+                                  mr: 1,
+                                }}
                               />
-                            )}
+                            </Tooltip>
+                            <IconButton
+                              size="small"
+                              onClick={() => handleToggle(`reaction-${index}`)}
+                              sx={{ color: "#00F5D4" }}
+                            >
+                              {expanded[`reaction-${index}`] ? <ExpandLess /> : <ExpandMore />}
+                            </IconButton>
                           </Box>
 
-                          <Grid container spacing={2}>
-                            <Grid item xs={12} sm={6}>
-                              <Typography
-                                variant="body2"
-                                sx={{
-                                  fontWeight: 600,
-                                  color: "#A0A0A0",
-                                  fontFamily: "'Roboto', 'Open Sans', sans-serif",
-                                }}
-                              >
-                                Function:
-                              </Typography>
-                              <Typography
-                                variant="body2"
-                                sx={{ mb: 1, color: "#E0E0E0", fontFamily: "'Roboto', 'Open Sans', sans-serif" }}
-                              >
-                                {ligand.ligandFunction || "N/A"}
-                              </Typography>
-                            </Grid>
-                            <Grid item xs={12} sm={6}>
-                              <Typography
-                                variant="body2"
-                                sx={{
-                                  fontWeight: 600,
-                                  color: "#A0A0A0",
-                                  fontFamily: "'Roboto', 'Open Sans', sans-serif",
-                                }}
-                              >
-                                DrugBank ID:
-                              </Typography>
-                              <Chip
-                                label={ligand.ligandDrugBankID || "N/A"}
-                                size="small"
-                                sx={{ fontFamily: "'Fira Code', monospace", bgcolor: "#5E81F4", color: "#0A192F" }}
-                              />
-                            </Grid>
-                            <Grid item xs={12}>
-                              <Typography
-                                variant="body2"
-                                sx={{
-                                  fontWeight: 600,
-                                  color: "#A0A0A0",
-                                  fontFamily: "'Roboto', 'Open Sans', sans-serif",
-                                }}
-                              >
-                                SMILES:
-                              </Typography>
-                              <Paper
-                                variant="outlined"
-                                sx={{
-                                  p: 1,
-                                  bgcolor: "#0A192F",
-                                  fontFamily: "'Fira Code', monospace",
-                                  fontSize: "0.85rem",
-                                  wordBreak: "break-all",
-                                  color: "#E0E0E0",
-                                  borderColor: "#5E81F4",
-                                }}
-                              >
-                                {ligand.LigandSmile || "N/A"}
-                              </Paper>
-                            </Grid>
-                            {ligand.LigandSmile &&
-                            ligand.LigandSmile !== "Not applicable" &&
-                            smilesImages[ligand.LigandSmile] ? (
-                              <Grid item xs={12}>
-                                <Typography
-                                  variant="body2"
-                                  sx={{
-                                    fontWeight: 600,
-                                    color: "#A0A0A0",
-                                    fontFamily: "'Roboto', 'Open Sans', sans-serif",
-                                  }}
-                                >
-                                  Structure:
-                                </Typography>
-                                <img
-                                  src={`data:image/png;base64,${smilesImages[ligand.LigandSmile]}`}
-                                  alt={`Structure of ${ligand.ligandName}`}
-                                  style={{ maxWidth: "200px", marginTop: "8px" }}
-                                />
-                              </Grid>
-                            ) : (
-                              <Grid item xs={12}>
-                                <Typography
-                                  variant="body2"
-                                  sx={{
-                                    fontWeight: 600,
-                                    color: "#A0A0A0",
-                                    fontFamily: "'Roboto', 'Open Sans', sans-serif",
-                                  }}
-                                >
-                                  Structure:
-                                </Typography>
-                                <Typography
-                                  variant="caption"
-                                  sx={{ color: "#A0A0A0", fontFamily: "'Roboto', 'Open Sans', sans-serif" }}
-                                >
-                                  {ligand.LigandSmile === "Not applicable"
-                                    ? "Structure not applicable (Protein)"
-                                    : "Unable to load structure image"}
-                                </Typography>
-                              </Grid>
-                            )}
-                            <Grid item xs={12}>
-                              <Typography
-                                variant="body2"
-                                sx={{
-                                  fontWeight: 600,
-                                  color: "#A0A0A0",
-                                  fontFamily: "'Roboto', 'Open Sans', sans-serif",
-                                }}
-                              >
-                                Functional Groups:
-                              </Typography>
-                              <Typography
-                                variant="body2"
-                                sx={{ mb: 1, color: "#E0E0E0", fontFamily: "'Roboto', 'Open Sans', sans-serif" }}
-                              >
-                                {getFunctionalGroups(ligand.LigandSmile)}
-                              </Typography>
-                            </Grid>
-                            <Grid item xs={12}>
-                              <Typography
-                                variant="body2"
-                                sx={{
-                                  fontWeight: 600,
-                                  color: "#A0A0A0",
-                                  fontFamily: "'Roboto', 'Open Sans', sans-serif",
-                                }}
-                              >
-                                Description:
-                              </Typography>
-                              <Typography
-                                variant="body2"
-                                sx={{ color: "#E0E0E0", fontFamily: "'Roboto', 'Open Sans', sans-serif" }}
-                              >
-                                {ligand.LigandDiscription || "N/A"}
-                              </Typography>
-                            </Grid>
-                            {ligand.LigandSmile !== "Not applicable" && reactionResult && reactionResult.reactants && (
-                              <Grid item xs={12}>
-                                <Typography
-                                  variant="body2"
-                                  sx={{
-                                    fontWeight: 600,
-                                    color: "#A0A0A0",
-                                    fontFamily: "'Roboto', 'Open Sans', sans-serif",
-                                  }}
-                                >
-                                  ADMET Properties:
-                                </Typography>
-                                {(() => {
-                                  const reactant = reactionResult.reactants.find((r) => r.smiles === ligand.LigandSmile)
-                                  if (
-                                    !reactant ||
-                                    !reactant.admet_properties ||
-                                    reactant.admet_properties.length === 0
-                                  ) {
-                                    return (
-                                      <Typography
-                                        variant="body2"
-                                        sx={{ color: "#A0A0A0", fontFamily: "'Roboto', 'Open Sans', sans-serif" }}
-                                      >
-                                        Not available
-                                      </Typography>
-                                    )
-                                  }
-                                  return reactant.admet_properties.map((section, secIdx) => (
-                                    <Box key={secIdx} sx={{ mt: 2 }}>
+                          <Typography
+                            variant="body2"
+                            sx={{ mb: 2, color: "#A0A0A0", fontFamily: "'Roboto', 'Open Sans', sans-serif" }}
+                          >
+                            {reaction.description || "No description available"}
+                          </Typography>
+
+                          <Box sx={{ mb: 2 }}>
+                            <Typography
+                              variant="body2"
+                              sx={{
+                                fontWeight: 600,
+                                mb: 1,
+                                color: "#A0A0A0",
+                                fontFamily: "'Roboto', 'Open Sans', sans-serif",
+                              }}
+                            >
+                              Reactants:
+                            </Typography>
+                            <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
+                              {reaction.reactants.map((reactant, idx) => (
+                                <Box key={idx} sx={{ mb: 1 }}>
+                                  <Chip
+                                    label={reactant}
+                                    size="small"
+                                    variant="outlined"
+                                    sx={{
+                                      fontFamily: "'Fira Code', monospace",
+                                      borderColor: "#5E81F4",
+                                      color: "#E0E0E0",
+                                    }}
+                                  />
+                                </Box>
+                              ))}
+                            </Box>
+                          </Box>
+
+                          <Collapse in={expanded[`reaction-${index}`]}>
+                            <Divider sx={{ my: 2, bgcolor: "#5E81F4" }} />
+                            <Typography
+                              variant="subtitle2"
+                              sx={{
+                                fontWeight: 600,
+                                mb: 2,
+                                color: "#E0E0E0",
+                                fontFamily: "'Inter', 'Barlow', sans-serif",
+                              }}
+                            >
+                              Main Product
+                            </Typography>
+                            <Grid container spacing={2}>
+                              {mainProducts.map((product, prodIndex) => (
+                                <Grid item xs={12} key={prodIndex}>
+                                  <Paper
+                                    variant="outlined"
+                                    sx={{ p: 2, borderRadius: 2, bgcolor: "#172A45", borderColor: "#5E81F4" }}
+                                  >
+                                    <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
                                       <Typography
                                         variant="subtitle2"
                                         sx={{
                                           fontWeight: 600,
-                                          mb: 1,
+                                          flex: 1,
                                           color: "#E0E0E0",
                                           fontFamily: "'Inter', 'Barlow', sans-serif",
                                         }}
                                       >
-                                        {section.section}
+                                        Product {prodIndex + 1}
                                       </Typography>
-                                      <TableContainer
-                                        component={Paper}
-                                        sx={{
-                                          boxShadow: "0 4px 12px rgba(0,0,0,0.05)",
-                                          borderRadius: 2,
-                                          overflow: "hidden",
-                                          bgcolor: "#0A192F",
-                                        }}
-                                      >
-                                        <Table size="small">
-                                          <TableHead>
-                                            <TableRow sx={{ bgcolor: "#5E81F4" }}>
-                                              <TableCell
-                                                sx={{
-                                                  fontWeight: 600,
-                                                  color: "#0A192F",
-                                                  py: 1.5,
-                                                  px: 2,
-                                                  borderBottom: "none",
-                                                  fontFamily: "'Lato', sans-serif",
-                                                }}
-                                              >
-                                                Property
-                                              </TableCell>
-                                              <TableCell
-                                                sx={{
-                                                  fontWeight: 600,
-                                                  color: "#0A192F",
-                                                  py: 1.5,
-                                                  px: 2,
-                                                  borderBottom: "none",
-                                                  fontFamily: "'Lato', sans-serif",
-                                                }}
-                                              >
-                                                Prediction
-                                              </TableCell>
-                                              <TableCell
-                                                sx={{
-                                                  fontWeight: 600,
-                                                  color: "#0A192F",
-                                                  py: 1.5,
-                                                  px: 2,
-                                                  borderBottom: "none",
-                                                  fontFamily: "'Lato', sans-serif",
-                                                }}
-                                              >
-                                                Units
-                                              </TableCell>
-                                            </TableRow>
-                                          </TableHead>
-                                          <TableBody>
-                                            {section.properties.map((prop, propIdx) => (
-                                              <TableRow
-                                                key={propIdx}
-                                                sx={{
-                                                  "&:nth-of-type(odd)": { bgcolor: "#172A45" },
-                                                  "&:hover": { bgcolor: "#0A192F" },
-                                                  transition: "background-color 0.3s ease",
-                                                }}
-                                              >
-                                                <TableCell
-                                                  sx={{
-                                                    py: 1.5,
-                                                    px: 2,
-                                                    borderBottom: "1px solid #5E81F4",
-                                                    color: "#E0E0E0",
-                                                    fontFamily: "'Roboto', 'Open Sans', sans-serif",
-                                                  }}
-                                                >
-                                                  {prop.name}
-                                                </TableCell>
-                                                <TableCell
-                                                  sx={{
-                                                    py: 1.5,
-                                                    px: 2,
-                                                    borderBottom: "1px solid #5E81F4",
-                                                    color: "#E0E0E0",
-                                                    fontFamily: "'Roboto', 'Open Sans', sans-serif",
-                                                  }}
-                                                >
-                                                  {prop.prediction}
-                                                </TableCell>
-                                                <TableCell
-                                                  sx={{
-                                                    py: 1.5,
-                                                    px: 2,
-                                                    borderBottom: "1px solid #5E81F4",
-                                                    color: "#E0E0E0",
-                                                    fontFamily: "'Roboto', 'Open Sans', sans-serif",
-                                                  }}
-                                                >
-                                                  {prop.units || "-"}
-                                                </TableCell>
-                                              </TableRow>
-                                            ))}
-                                          </TableBody>
-                                        </Table>
-                                      </TableContainer>
                                     </Box>
-                                  ))
-                                })()}
-                              </Grid>
-                            )}
-                          </Grid>
-
-                          {ligand.LigandSmile === "Not applicable" && (
-                            <Alert
-                              severity="warning"
-                              sx={{
-                                mt: 2,
-                                bgcolor: "#FF4D6D",
-                                color: "#0A192F",
-                                fontFamily: "'Roboto', 'Open Sans', sans-serif",
-                              }}
-                              icon={<Warning />}
-                            >
-                              <Typography variant="body2">
-                                This ligand is a protein and cannot be processed for chemical reactions.
-                              </Typography>
-                            </Alert>
-                          )}
-                        </CardContent>
-                      </Card>
-                    ))
-                  ) : (
-                    <Typography
-                      variant="body2"
-                      sx={{ color: "#A0A0A0", fontFamily: "'Roboto', 'Open Sans', sans-serif" }}
-                    >
-                      No target ligands identified.
-                    </Typography>
-                  )}
-                </CardContent>
-              </Paper>
-            )}
-
-            {reactionResult && (
-              <Paper elevation={2} sx={{ borderRadius: 2, bgcolor: "#172A45" }}>
-                <CardHeader
-                  title={
-                    <Typography
-                      variant="h6"
-                      sx={{ fontWeight: 600, color: "#E0E0E0", fontFamily: "'Inter', 'Barlow', sans-serif" }}
-                    >
-                      Chemical Reaction Results
-                    </Typography>
-                  }
-                  subheader={
-                    <Typography
-                      variant="body2"
-                      sx={{ color: "#A0A0A0", mt: 0.5, fontFamily: "'Roboto', 'Open Sans', sans-serif" }}
-                    >
-                      Computational chemistry analysis and product generation
-                    </Typography>
-                  }
-                  // action={
-                  //   result && (result.disease || result.proteins || reactionResult) ? (
-                  //     <Button
-                  //       variant="contained"
-                  //       onClick={generatePDF}
-                  //       startIcon={<GetApp />}
-                  //       sx={{
-                  //         bgcolor: "#00F5D4",
-                  //         color: "#0A192F",
-                  //         "&:hover": { bgcolor: "#5E81F4" },
-                  //         textTransform: "none",
-                  //         fontFamily: "'Lato', sans-serif",
-                  //         fontWeight: 600,
-                  //       }}
-                  //     >
-                  //       Download PDF Report
-                  //     </Button>
-                  //   ) : null
-                  // }
-                />
-                <CardContent>
-                  <Grid container spacing={3}>
-                    <Grid item xs={12}>
-                      <Typography
-                        variant="subtitle1"
-                        sx={{ fontWeight: 600, mb: 2, color: "#E0E0E0", fontFamily: "'Inter', 'Barlow', sans-serif" }}
-                      >
-                        Successful Reactions
-                      </Typography>
-                      {reactionResult.reactionResults.length === 0 ? (
-                        <Alert severity="info" icon={<Info sx={{ color: "#5E81F4" }} />}>
-                          <Typography
-                            variant="body2"
-                            sx={{ color: "#A0A0A0", fontFamily: "'Roboto', 'Open Sans', sans-serif" }}
-                          >
-                            No successful reactions found.{" "}
-                            {retryAttempts.noReactions < maxRetries
-                              ? "Retrying automatically..."
-                              : "Please try different symptoms or check the backend."}
-                          </Typography>
-                        </Alert>
-                      ) : (
-                        reactionResult.reactionResults.map((reaction, index) => {
-                          const mainProducts = deduplicateProducts(reaction.products.slice(0, 1))
-                          return (
-                            <Card
-                              key={index}
-                              variant="outlined"
-                              sx={{ mb: 3, borderRadius: 2, bgcolor: "#0A192F", borderColor: "#5E81F4" }}
-                            >
-                              <CardContent sx={{ p: 2 }}>
-                                <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
-                                  <Typography
-                                    variant="subtitle1"
-                                    sx={{
-                                      fontWeight: 600,
-                                      flex: 1,
-                                      color: "#E0E0E0",
-                                      fontFamily: "'Inter', 'Barlow', sans-serif",
-                                    }}
-                                  >
-                                    {reaction.reactionType || "Unknown Reaction"}
-                                  </Typography>
-                                  <Tooltip title={`Confidence: ${(reaction.confidence * 100).toFixed(1)}%`}>
-                                    <Chip
-                                      label={`${(reaction.confidence * 100).toFixed(1)}% Confidence`}
-                                      size="small"
-                                      sx={{
-                                        bgcolor:
-                                          reaction.confidence >= 0.7
-                                            ? "#70E000" // Green for 70-100%
-                                            : reaction.confidence >= 0.5
-                                              ? "#FFD700" // Yellow for 50-70%
-                                              : "#FF4D6D", // Red for 0-40%
-                                        color: "#0A192F",
-                                        fontWeight: 500,
-                                        fontFamily: "'Lato', sans-serif",
-                                        mr: 1, // Add some right margin
-                                      }}
-                                    />
-                                  </Tooltip>
-                                  <IconButton
-                                    size="small"
-                                    onClick={() => handleToggle(`reaction-${index}`)}
-                                    sx={{ color: "#00F5D4" }}
-                                  >
-                                    {expanded[`reaction-${index}`] ? <ExpandLess /> : <ExpandMore />}
-                                  </IconButton>
-                                </Box>
-
-                                <Typography
-                                  variant="body2"
-                                  sx={{ mb: 2, color: "#A0A0A0", fontFamily: "'Roboto', 'Open Sans', sans-serif" }}
-                                >
-                                  {reaction.description || "No description available"}
-                                </Typography>
-
-                                <Box sx={{ mb: 2 }}>
-                                  <Typography
-                                    variant="body2"
-                                    sx={{
-                                      fontWeight: 600,
-                                      mb: 1,
-                                      color: "#A0A0A0",
-                                      fontFamily: "'Roboto', 'Open Sans', sans-serif",
-                                    }}
-                                  >
-                                    Reactants:
-                                  </Typography>
-                                  <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
-                                    {reaction.reactants.map((reactant, idx) => (
-                                      <Box key={idx} sx={{ mb: 1 }}>
-                                        <Chip
-                                          label={reactant}
-                                          size="small"
-                                          variant="outlined"
+                                    <Grid container spacing={2}>
+                                      <Grid item xs={12} md={6}>
+                                        <Typography
+                                          variant="caption"
                                           sx={{
-                                            fontFamily: "'Fira Code', monospace",
-                                            borderColor: "#5E81F4",
-                                            color: "#E0E0E0",
+                                            fontWeight: 600,
+                                            color: "#A0A0A0",
+                                            fontFamily: "'Roboto', 'Open Sans', sans-serif",
                                           }}
-                                        />
-                                      </Box>
-                                    ))}
-                                  </Box>
-                                </Box>
-
-                                <Collapse in={expanded[`reaction-${index}`]}>
-                                  <Divider sx={{ my: 2, bgcolor: "#5E81F4" }} />
-                                  <Typography
-                                    variant="subtitle2"
-                                    sx={{
-                                      fontWeight: 600,
-                                      mb: 2,
-                                      color: "#E0E0E0",
-                                      fontFamily: "'Inter', 'Barlow', sans-serif",
-                                    }}
-                                  >
-                                    Main Product
-                                  </Typography>
-                                  <Grid container spacing={2}>
-                                    {mainProducts.map((product, prodIndex) => (
-                                      <Grid item xs={12} key={prodIndex}>
+                                        >
+                                          SMILES:
+                                        </Typography>
                                         <Paper
                                           variant="outlined"
-                                          sx={{ p: 2, borderRadius: 2, bgcolor: "#172A45", borderColor: "#5E81F4" }}
+                                          sx={{
+                                            p: 1,
+                                            mt: 0.5,
+                                            bgcolor: "#0A192F",
+                                            fontFamily: "'Fira Code', monospace",
+                                            fontSize: "0.8rem",
+                                            wordBreak: "break-all",
+                                            color: "#E0E0E0",
+                                            borderColor: "#5E81F4",
+                                          }}
                                         >
-                                          <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
-                                            <Typography
-                                              variant="subtitle2"
-                                              sx={{
-                                                fontWeight: 600,
-                                                flex: 1,
-                                                color: "#E0E0E0",
-                                                fontFamily: "'Inter', 'Barlow', sans-serif",
-                                              }}
-                                            >
-                                              Product {prodIndex + 1}
-                                            </Typography>
-                                          </Box>
-                                          <Grid container spacing={2}>
-                                            <Grid item xs={12} md={6}>
-                                              <Typography
-                                                variant="caption"
-                                                sx={{
-                                                  fontWeight: 600,
-                                                  color: "#A0A0A0",
-                                                  fontFamily: "'Roboto', 'Open Sans', sans-serif",
-                                                }}
-                                              >
-                                                SMILES:
-                                              </Typography>
-                                              <Paper
-                                                variant="outlined"
-                                                sx={{
-                                                  p: 1,
-                                                  mt: 0.5,
-                                                  bgcolor: "#0A192F",
-                                                  fontFamily: "'Fira Code', monospace",
-                                                  fontSize: "0.8rem",
-                                                  wordBreak: "break-all",
-                                                  color: "#E0E0E0",
-                                                  borderColor: "#5E81F4",
-                                                }}
-                                              >
-                                                {product.smiles || "N/A"}
-                                              </Paper>
-                                            </Grid>
-                                            <Grid item xs={12} md={6}>
-                                              {smilesImages[product.smiles] ? (
-                                                <Box sx={{ display: "flex", justifyContent: "center" }}>
-                                                  <img
-                                                    src={`data:image/png;base64,${smilesImages[product.smiles]}`}
-                                                    alt={`Product ${prodIndex + 1}`}
-                                                    style={{ maxWidth: "100%", height: "auto", maxHeight: "200px" }}
-                                                  />
-                                                </Box>
-                                              ) : (
-                                                <Typography
-                                                  variant="caption"
-                                                  sx={{
-                                                    color: "#A0A0A0",
-                                                    fontFamily: "'Roboto', 'Open Sans', sans-serif",
-                                                  }}
-                                                >
-                                                  Unable to load structure image
-                                                </Typography>
-                                              )}
-                                            </Grid>
-                                            <Grid item xs={6} md={3}>
-                                              <Typography
-                                                variant="caption"
-                                                sx={{
-                                                  fontWeight: 600,
-                                                  color: "#A0A0A0",
-                                                  fontFamily: "'Roboto', 'Open Sans', sans-serif",
-                                                }}
-                                              >
-                                                Molecular Weight:
-                                              </Typography>
-                                              <Typography
-                                                variant="body2"
-                                                sx={{
-                                                  color: "#E0E0E0",
-                                                  fontFamily: "'Roboto', 'Open Sans', sans-serif",
-                                                }}
-                                              >
-                                                {product.molecular_weight?.toFixed(2) || "N/A"} g/mol
-                                              </Typography>
-                                            </Grid>
-                                            <Grid item xs={6} md={3}>
-                                              <Typography
-                                                variant="caption"
-                                                sx={{
-                                                  fontWeight: 600,
-                                                  color: "#A0A0A0",
-                                                  fontFamily: "'Roboto', 'Open Sans', sans-serif",
-                                                }}
-                                              >
-                                                LogP:
-                                              </Typography>
-                                              <Typography
-                                                variant="body2"
-                                                sx={{
-                                                  color: "#E0E0E0",
-                                                  fontFamily: "'Roboto', 'Open Sans', sans-serif",
-                                                }}
-                                              >
-                                                {product.logP?.toFixed(2) || "N/A"}
-                                              </Typography>
-                                            </Grid>
-                                            <Grid item xs={6} md={3}>
-                                              <Typography
-                                                variant="caption"
-                                                sx={{
-                                                  fontWeight: 600,
-                                                  color: "#A0A0A0",
-                                                  fontFamily: "'Roboto', 'Open Sans', sans-serif",
-                                                }}
-                                              >
-                                                TPSA:
-                                              </Typography>
-                                              <Typography
-                                                variant="body2"
-                                                sx={{
-                                                  color: "#E0E0E0",
-                                                  fontFamily: "'Roboto', 'Open Sans', sans-serif",
-                                                }}
-                                              >
-                                                {product.tpsa?.toFixed(2) || "N/A"} Å²
-                                              </Typography>
-                                            </Grid>
-                                            <Grid item xs={6} md={3}>
-                                              <Typography
-                                                variant="caption"
-                                                sx={{
-                                                  fontWeight: 600,
-                                                  color: "#A0A0A0",
-                                                  fontFamily: "'Roboto', 'Open Sans', sans-serif",
-                                                }}
-                                              >
-                                                H-Donors/Acceptors:
-                                              </Typography>
-                                              <Typography
-                                                variant="body2"
-                                                sx={{
-                                                  color: "#E0E0E0",
-                                                  fontFamily: "'Roboto', 'Open Sans', sans-serif",
-                                                }}
-                                              >
-                                                {product.num_h_donors || 0}/{product.num_h_acceptors || 0}
-                                              </Typography>
-                                            </Grid>
-                                            <Grid item xs={12}>
-                                              <Typography
-                                                variant="caption"
-                                                sx={{
-                                                  fontWeight: 600,
-                                                  color: "#A0A0A0",
-                                                  fontFamily: "'Roboto', 'Open Sans', sans-serif",
-                                                }}
-                                              >
-                                                Functional Groups:
-                                              </Typography>
-                                              <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5, mt: 0.5 }}>
-                                                {product.functional_groups?.length > 0 ? (
-                                                  product.functional_groups.map((group, groupIdx) => (
-                                                    <Chip
-                                                      key={groupIdx}
-                                                      label={group}
-                                                      size="small"
-                                                      variant="outlined"
-                                                      sx={{
-                                                        fontSize: "0.7rem",
-                                                        borderColor: "#5E81F4",
-                                                        color: "#E0E0E0",
-                                                        fontFamily: "'Lato', sans-serif",
-                                                      }}
-                                                    />
-                                                  ))
-                                                ) : (
-                                                  <Typography
-                                                    variant="body2"
-                                                    sx={{
-                                                      color: "#A0A0A0",
-                                                      fontFamily: "'Roboto', 'Open Sans', sans-serif",
-                                                    }}
-                                                  >
-                                                    None identified
-                                                  </Typography>
-                                                )}
-                                              </Box>
-                                            </Grid>
-                                            {product.admet_properties && product.admet_properties.length > 0 && (
-                                              <Grid item xs={12}>
-                                                <Typography
-                                                  variant="caption"
-                                                  sx={{
-                                                    fontWeight: 600,
-                                                    color: "#A0A0A0",
-                                                    mt: 2,
-                                                    fontFamily: "'Roboto', 'Open Sans', sans-serif",
-                                                  }}
-                                                >
-                                                  ADMET Properties:
-                                                </Typography>
-                                                {product.admet_properties.map((section, secIdx) => (
-                                                  <Box key={secIdx} sx={{ mt: 2 }}>
-                                                    <Typography
-                                                      variant="subtitle2"
-                                                      sx={{
-                                                        fontWeight: 600,
-                                                        mb: 1,
-                                                        color: "#E0E0E0",
-                                                        fontFamily: "'Inter', 'Barlow', sans-serif",
-                                                      }}
-                                                    >
-                                                      {section.section}
-                                                    </Typography>
-                                                    <TableContainer
-                                                      component={Paper}
-                                                      sx={{
-                                                        boxShadow: "0 4px 12px rgba(0,0,0,0.05)",
-                                                        borderRadius: 2,
-                                                        overflow: "hidden",
-                                                        bgcolor: "#0A192F",
-                                                      }}
-                                                    >
-                                                      <Table size="small">
-                                                        <TableHead>
-                                                          <TableRow sx={{ bgcolor: "#5E81F4" }}>
-                                                            <TableCell
-                                                              sx={{
-                                                                fontWeight: 600,
-                                                                color: "#0A192F",
-                                                                py: 1.5,
-                                                                px: 2,
-                                                                borderBottom: "none",
-                                                                fontFamily: "'Lato', sans-serif",
-                                                              }}
-                                                            >
-                                                              Property
-                                                            </TableCell>
-                                                            <TableCell
-                                                              sx={{
-                                                                fontWeight: 600,
-                                                                color: "#0A192F",
-                                                                py: 1.5,
-                                                                px: 2,
-                                                                borderBottom: "none",
-                                                                fontFamily: "'Lato', sans-serif",
-                                                              }}
-                                                            >
-                                                              Prediction
-                                                            </TableCell>
-                                                            <TableCell
-                                                              sx={{
-                                                                fontWeight: 600,
-                                                                color: "#0A192F",
-                                                                py: 1.5,
-                                                                px: 2,
-                                                                borderBottom: "none",
-                                                                fontFamily: "'Lato', sans-serif",
-                                                              }}
-                                                            >
-                                                              Units
-                                                            </TableCell>
-                                                          </TableRow>
-                                                        </TableHead>
-                                                        <TableBody>
-                                                          {section.properties.map((prop, propIdx) => (
-                                                            <TableRow
-                                                              key={propIdx}
-                                                              sx={{
-                                                                "&:nth-of-type(odd)": { bgcolor: "#172A45" },
-                                                                "&:hover": { bgcolor: "#0A192F" },
-                                                                transition: "background-color 0.3s ease",
-                                                              }}
-                                                            >
-                                                              <TableCell
-                                                                sx={{
-                                                                  py: 1.5,
-                                                                  px: 2,
-                                                                  borderBottom: "1px solid #5E81F4",
-                                                                  color: "#E0E0E0",
-                                                                  fontFamily: "'Roboto', 'Open Sans', sans-serif",
-                                                                }}
-                                                              >
-                                                                {prop.name}
-                                                              </TableCell>
-                                                              <TableCell
-                                                                sx={{
-                                                                  py: 1.5,
-                                                                  px: 2,
-                                                                  borderBottom: "1px solid #5E81F4",
-                                                                  color: "#E0E0E0",
-                                                                  fontFamily: "'Roboto', 'Open Sans', sans-serif",
-                                                                }}
-                                                              >
-                                                                {prop.prediction}
-                                                              </TableCell>
-                                                              <TableCell
-                                                                sx={{
-                                                                  py: 1.5,
-                                                                  px: 2,
-                                                                  borderBottom: "1px solid #5E81F4",
-                                                                  color: "#E0E0E0",
-                                                                  fontFamily: "'Roboto', 'Open Sans', sans-serif",
-                                                                }}
-                                                              >
-                                                                {prop.units || "-"}
-                                                              </TableCell>
-                                                            </TableRow>
-                                                          ))}
-                                                        </TableBody>
-                                                      </Table>
-                                                    </TableContainer>
-                                                  </Box>
-                                                ))}
-                                              </Grid>
-                                            )}
-                                          </Grid>
+                                          {product.smiles || "N/A"}
                                         </Paper>
                                       </Grid>
-                                    ))}
-                                  </Grid>
-
-                                  <Box sx={{ mt: 4 }}>
-                                    <Typography
-                                      variant="subtitle2"
-                                      sx={{
-                                        fontWeight: 600,
-                                        mb: 2,
-                                        color: "#E0E0E0",
-                                        fontFamily: "'Inter', 'Barlow', sans-serif",
-                                      }}
-                                    >
-                                      ADMET Properties Comparison
-                                    </Typography>
-                                    {prepareAdmetGraphData(index) ? (
-                                      <Box sx={{ height: 400, width: "100%" }}>
-                                        <Radar
-                                          key={`radar-${index}`}
-                                          data={prepareAdmetGraphData(index)}
-                                          options={{
-                                            responsive: true,
-                                            maintainAspectRatio: false,
-                                            plugins: {
-                                              legend: {
-                                                position: "top",
-                                                labels: { color: "#E0E0E0", font: { family: "'Lato', sans-serif" } },
-                                              },
-                                              title: {
-                                                display: true,
-                                                text: "ADMET Properties Analysis",
-                                                color: "#E0E0E0",
-                                                font: { family: "'Inter', 'Barlow', sans-serif", size: 16 },
-                                              },
-                                              tooltip: {
-                                                callbacks: {
-                                                  label: (tooltipItem) => {
-                                                    return `${tooltipItem.dataset.label}: ${tooltipItem.raw}`
-                                                  },
-                                                },
-                                                backgroundColor: "#172A45",
-                                                titleColor: "#E0E0E0",
-                                                bodyColor: "#E0E0E0",
-                                                bodyFont: { family: "'Roboto', 'Open Sans', sans-serif" },
-                                              },
-                                            },
-                                            scales: {
-                                              r: {
-                                                beginAtZero: true,
-                                                min: 0,
-                                                max: 100,
-                                                ticks: {
-                                                  stepSize: 25,
-                                                  color: "#000000",
-                                                  font: { family: "'Lato', sans-serif" },
-                                                },
-                                                pointLabels: {
-                                                  font: {
-                                                    size: 12,
-                                                    family: "'Lato', sans-serif",
-                                                  },
-                                                  color: "#E0E0E0",
-                                                },
-                                                grid: {
-                                                  color: "#5E81F4",
-                                                },
-                                              },
-                                            },
+                                      <Grid item xs={12} md={6}>
+                                        {smilesImages[product.smiles] ? (
+                                          <Box sx={{ display: "flex", justifyContent: "center" }}>
+                                            <img
+                                              src={`data:image/png;base64,${smilesImages[product.smiles]}`}
+                                              alt={`Product ${prodIndex + 1}`}
+                                              style={{ maxWidth: "100%", height: "auto", maxHeight: "200px" }}
+                                            />
+                                          </Box>
+                                        ) : (
+                                          <Typography
+                                            variant="caption"
+                                            sx={{
+                                              color: "#A0A0A0",
+                                              fontFamily: "'Roboto', 'Open Sans', sans-serif",
+                                            }}
+                                          >
+                                            Unable to load structure image
+                                          </Typography>
+                                        )}
+                                      </Grid>
+                                      <Grid item xs={6} md={3}>
+                                        <Typography
+                                          variant="caption"
+                                          sx={{
+                                            fontWeight: 600,
+                                            color: "#A0A0A0",
+                                            fontFamily: "'Roboto', 'Open Sans', sans-serif",
                                           }}
-                                        />
-                                      </Box>
-                                    ) : (
-                                      <Typography
-                                        variant="body2"
-                                        sx={{ color: "#A0A0A0", fontFamily: "'Roboto', 'Open Sans', sans-serif" }}
-                                      >
-                                        No ADMET data available for comparison.
-                                      </Typography>
-                                    )}
-                                  </Box>
-                                </Collapse>
-                              </CardContent>
-                            </Card>
-                          )
-                        })
-                      )}
-                    </Grid>
+                                        >
+                                          Molecular Weight:
+                                        </Typography>
+                                        <Typography
+                                          variant="body2"
+                                          sx={{
+                                            color: "#E0E0E0",
+                                            fontFamily: "'Roboto', 'Open Sans', sans-serif",
+                                          }}
+                                        >
+                                          {product.molecular_weight?.toFixed(2) || "N/A"} g/mol
+                                        </Typography>
+                                      </Grid>
+                                      <Grid item xs={6} md={3}>
+                                        <Typography
+                                          variant="caption"
+                                          sx={{
+                                            fontWeight: 600,
+                                            color: "#A0A0A0",
+                                            fontFamily: "'Roboto', 'Open Sans', sans-serif",
+                                          }}
+                                        >
+                                          LogP:
+                                        </Typography>
+                                        <Typography
+                                          variant="body2"
+                                          sx={{
+                                            color: "#E0E0E0",
+                                            fontFamily: "'Roboto', 'Open Sans', sans-serif",
+                                          }}
+                                        >
+                                          {product.logP?.toFixed(2) || "N/A"}
+                                        </Typography>
+                                      </Grid>
+                                      <Grid item xs={6} md={3}>
+                                        <Typography
+                                          variant="caption"
+                                          sx={{
+                                            fontWeight: 600,
+                                            color: "#A0A0A0",
+                                            fontFamily: "'Roboto', 'Open Sans', sans-serif",
+                                          }}
+                                        >
+                                          TPSA:
+                                        </Typography>
+                                        <Typography
+                                          variant="body2"
+                                          sx={{
+                                            color: "#E0E0E0",
+                                            fontFamily: "'Roboto', 'Open Sans', sans-serif",
+                                          }}
+                                        >
+                                          {product.tpsa?.toFixed(2) || "N/A"} Å²
+                                        </Typography>
+                                      </Grid>
+                                      <Grid item xs={6} md={3}>
+                                        <Typography
+                                          variant="caption"
+                                          sx={{
+                                            fontWeight: 600,
+                                            color: "#A0A0A0",
+                                            fontFamily: "'Roboto', 'Open Sans', sans-serif",
+                                          }}
+                                        >
+                                          H-Donors/Acceptors:
+                                        </Typography>
+                                        <Typography
+                                          variant="body2"
+                                          sx={{
+                                            color: "#E0E0E0",
+                                            fontFamily: "'Roboto', 'Open Sans', sans-serif",
+                                          }}
+                                        >
+                                          {product.num_h_donors || 0}/{product.num_h_acceptors || 0}
+                                        </Typography>
+                                      </Grid>
+                                      <Grid item xs={12}>
+                                        <Typography
+                                          variant="caption"
+                                          sx={{
+                                            fontWeight: 600,
+                                            color: "#A0A0A0",
+                                            fontFamily: "'Roboto', 'Open Sans', sans-serif",
+                                          }}
+                                        >
+                                          Functional Groups:
+                                        </Typography>
+                                        <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5, mt: 0.5 }}>
+                                          {product.functional_groups?.length > 0 ? (
+                                            product.functional_groups.map((group, groupIdx) => (
+                                              <Chip
+                                                key={groupIdx}
+                                                label={group}
+                                                size="small"
+                                                variant="outlined"
+                                                sx={{
+                                                  fontSize: "0.7rem",
+                                                  borderColor: "#5E81F4",
+                                                  color: "#E0E0E0",
+                                                  fontFamily: "'Lato', sans-serif",
+                                                }}
+                                              />
+                                            ))
+                                          ) : (
+                                            <Typography
+                                              variant="body2"
+                                              sx={{
+                                                color: "#A0A0A0",
+                                                fontFamily: "'Roboto', 'Open Sans', sans-serif",
+                                              }}
+                                            >
+                                              None identified
+                                            </Typography>
+                                          )}
+                                        </Box>
+                                      </Grid>
+                                      {product.admet_properties && product.admet_properties.length > 0 && (
+                                        <Grid item xs={12}>
+                                          <Typography
+                                            variant="caption"
+                                            sx={{
+                                              fontWeight: 600,
+                                              color: "#A0A0A0",
+                                              mt: 2,
+                                              fontFamily: "'Roboto', 'Open Sans', sans-serif",
+                                            }}
+                                          >
+                                            ADMET Properties:
+                                          </Typography>
+                                          {product.admet_properties.map((section, secIdx) => (
+                                            <Box key={secIdx} sx={{ mt: 2 }}>
+                                              <Typography
+                                                variant="subtitle2"
+                                                sx={{
+                                                  fontWeight: 600,
+                                                  mb: 1,
+                                                  color: "#E0E0E0",
+                                                  fontFamily: "'Inter', 'Barlow', sans-serif",
+                                                }}
+                                              >
+                                                {section.section}
+                                              </Typography>
+                                              <TableContainer
+                                                component={Paper}
+                                                sx={{
+                                                  boxShadow: "0 4px 12px rgba(0,0,0,0.05)",
+                                                  borderRadius: 2,
+                                                  overflow: "hidden",
+                                                  bgcolor: "#0A192F",
+                                                }}
+                                              >
+                                                <Table size="small">
+                                                  <TableHead>
+                                                    <TableRow sx={{ bgcolor: "#5E81F4" }}>
+                                                      <TableCell
+                                                        sx={{
+                                                          fontWeight: 600,
+                                                          color: "#0A192F",
+                                                          py: 1.5,
+                                                          px: 2,
+                                                          borderBottom: "none",
+                                                          fontFamily: "'Lato', sans-serif",
+                                                        }}
+                                                      >
+                                                        Property
+                                                      </TableCell>
+                                                      <TableCell
+                                                        sx={{
+                                                          fontWeight: 600,
+                                                          color: "#0A192F",
+                                                          py: 1.5,
+                                                          px: 2,
+                                                          borderBottom: "none",
+                                                          fontFamily: "'Lato', sans-serif",
+                                                        }}
+                                                      >
+                                                        Prediction
+                                                      </TableCell>
+                                                      <TableCell
+                                                        sx={{
+                                                          fontWeight: 600,
+                                                          color: "#0A192F",
+                                                          py: 1.5,
+                                                          px: 2,
+                                                          borderBottom: "none",
+                                                          fontFamily: "'Lato', sans-serif",
+                                                        }}
+                                                      >
+                                                        Units
+                                                      </TableCell>
+                                                    </TableRow>
+                                                  </TableHead>
+                                                  <TableBody>
+                                                    {section.properties.map((prop, propIdx) => (
+                                                      <TableRow
+                                                        key={propIdx}
+                                                        sx={{
+                                                          "&:nth-of-type(odd)": { bgcolor: "#172A45" },
+                                                          "&:hover": { bgcolor: "#0A192F" },
+                                                          transition: "background-color 0.3s ease",
+                                                        }}
+                                                      >
+                                                        <TableCell
+                                                          sx={{
+                                                            py: 1.5,
+                                                            px: 2,
+                                                            borderBottom: "1px solid #5E81F4",
+                                                            color: "#E0E0E0",
+                                                            fontFamily: "'Roboto', 'Open Sans', sans-serif",
+                                                          }}
+                                                        >
+                                                          {prop.name}
+                                                        </TableCell>
+                                                        <TableCell
+                                                          sx={{
+                                                            py: 1.5,
+                                                            px: 2,
+                                                            borderBottom: "1px solid #5E81F4",
+                                                            color: "#E0E0E0",
+                                                            fontFamily: "'Roboto', 'Open Sans', sans-serif",
+                                                          }}
+                                                        >
+                                                          {prop.prediction}
+                                                        </TableCell>
+                                                        <TableCell
+                                                          sx={{
+                                                            py: 1.5,
+                                                            px: 2,
+                                                            borderBottom: "1px solid #5E81F4",
+                                                            color: "#E0E0E0",
+                                                            fontFamily: "'Roboto', 'Open Sans', sans-serif",
+                                                          }}
+                                                        >
+                                                          {prop.units || "-"}
+                                                        </TableCell>
+                                                      </TableRow>
+                                                    ))}
+                                                  </TableBody>
+                                                </Table>
+                                              </TableContainer>
+                                            </Box>
+                                          ))}
+                                        </Grid>
+                                      )}
+                                    </Grid>
+                                  </Paper>
+                                </Grid>
+                              ))}
+                            </Grid>
 
-                    <Grid item xs={12}>
-                      <Card variant="outlined" sx={{ borderRadius: 2, bgcolor: "#172A45", borderColor: "#5E81F4" }}>
-                        <CardHeader
-                          title={
-                            <Typography
-                              variant="subtitle1"
-                              sx={{ fontWeight: 600, color: "#E0E0E0", fontFamily: "'Inter', 'Barlow', sans-serif" }}
-                            >
-                              Over all Statistics
-                            </Typography>
-                          }
-                        />
-                        <CardContent sx={{ pt: 0 }}>
-                          <Grid container spacing={2}>
-                            <Grid item xs={3}>
-                              <Typography
-                                variant="caption"
-                                sx={{
-                                  fontWeight: 600,
-                                  color: "#A0A0A0",
-                                  fontFamily: "'Roboto', 'Open Sans', sans-serif",
-                                }}
-                              >
-                                Mean MW:
-                              </Typography>
-                              <Typography
-                                variant="h6"
-                                sx={{ fontWeight: 600, color: "#E0E0E0", fontFamily: "'Inter', 'Barlow', sans-serif" }}
-                              >
-                                {reactionResult.statistics?.mean_mw?.toFixed(2) || "N/A"}
-                              </Typography>
-                            </Grid>
-                            <Grid item xs={3}>
-                              <Typography
-                                variant="caption"
-                                sx={{
-                                  fontWeight: 600,
-                                  color: "#A0A0A0",
-                                  fontFamily: "'Roboto', 'Open Sans', sans-serif",
-                                }}
-                              >
-                                Std MW:
-                              </Typography>
-                              <Typography
-                                variant="h6"
-                                sx={{ fontWeight: 600, color: "#E0E0E0", fontFamily: "'Inter', 'Barlow', sans-serif" }}
-                              >
-                                {reactionResult.statistics?.std_mw?.toFixed(2) || "N/A"}
-                              </Typography>
-                            </Grid>
-                            <Grid item xs={3}>
-                              <Typography
-                                variant="caption"
-                                sx={{
-                                  fontWeight: 600,
-                                  color: "#A0A0A0",
-                                  fontFamily: "'Roboto', 'Open Sans', sans-serif",
-                                }}
-                              >
-                                Min MW:
-                              </Typography>
-                              <Typography
-                                variant="h6"
-                                sx={{ fontWeight: 600, color: "#E0E0E0", fontFamily: "'Inter', 'Barlow', sans-serif" }}
-                              >
-                                {reactionResult.statistics?.min_mw?.toFixed(2) || "N/A"}
-                              </Typography>
-                            </Grid>
-                            <Grid item xs={3}>
-                              <Typography
-                                variant="caption"
-                                sx={{
-                                  fontWeight: 600,
-                                  color: "#A0A0A0",
-                                  fontFamily: "'Roboto', 'Open Sans', sans-serif",
-                                }}
-                              >
-                                Max MW:
-                              </Typography>
-                              <Typography
-                                variant="h6"
-                                sx={{ fontWeight: 600, color: "#E0E0E0", fontFamily: "'Inter', 'Barlow', sans-serif" }}
-                              >
-                                {reactionResult.statistics?.max_mw?.toFixed(2) || "N/A"}
-                              </Typography>
-                            </Grid>
-                          </Grid>
-                        </CardContent>
-                      </Card>
-                    </Grid>
-
-                    <Grid item xs={12}>
-                      <Typography
-                        variant="subtitle1"
-                        sx={{ fontWeight: 600, mb: 2, color: "#E0E0E0", fontFamily: "'Inter', 'Barlow', sans-serif" }}
-                      >
-                        Failed Reactions
-                      </Typography>
-                      {reactionResult.failedReactions.length === 0 ? (
-                        <Alert severity="success" icon={<CheckCircle sx={{ color: "#70E000" }} />}>
-                          <Typography
-                            variant="body2"
-                            sx={{ color: "#A0A0A0", fontFamily: "'Roboto', 'Open Sans', sans-serif" }}
-                          >
-                            All reactions completed successfully!
-                          </Typography>
-                        </Alert>
-                      ) : (
-                        reactionResult.failedReactions.map((fail, index) => (
-                          <Card
-                            key={index}
-                            variant="outlined"
-                            sx={{ mb: 2, borderRadius: 2, bgcolor: "#0A192F", borderColor: "#5E81F4" }}
-                          >
-                            <CardContent sx={{ p: 2 }}>
+                            <Box sx={{ mt: 4 }}>
                               <Typography
                                 variant="subtitle2"
                                 sx={{
                                   fontWeight: 600,
-                                  mb: 1,
+                                  mb: 2,
                                   color: "#E0E0E0",
                                   fontFamily: "'Inter', 'Barlow', sans-serif",
                                 }}
                               >
-                                {fail.reactionType || "Unknown Reaction"}
+                                ADMET Properties Comparison
                               </Typography>
-                              <Typography
-                                variant="body2"
-                                sx={{ mb: 1, color: "#A0A0A0", fontFamily: "'Roboto', 'Open Sans', sans-serif" }}
-                              >
-                                Reactants: {fail.reactants?.join(", ") || "N/A"}
-                              </Typography>
-                              <Typography
-                                variant="body2"
-                                sx={{ color: "#FF4D6D", fontFamily: "'Roboto', 'Open Sans', sans-serif" }}
-                              >
-                                Reason: {fail.reason || "Unknown error"}
-                              </Typography>
-                            </CardContent>
-                          </Card>
-                        ))
-                      )}
+                              {prepareAdmetGraphData(index) ? (
+                                <Box sx={{ height: 400, width: "100%" }}>
+                                  <Radar
+                                    key={`radar-${index}`}
+                                    data={prepareAdmetGraphData(index)}
+                                    options={{
+                                      responsive: true,
+                                      maintainAspectRatio: false,
+                                      plugins: {
+                                        legend: {
+                                          position: "top",
+                                          labels: { color: "#E0E0E0", font: { family: "'Lato', sans-serif" } },
+                                        },
+                                        title: {
+                                          display: true,
+                                          text: "ADMET Properties Analysis",
+                                          color: "#E0E0E0",
+                                          font: { family: "'Inter', 'Barlow', sans-serif", size: 16 },
+                                        },
+                                        tooltip: {
+                                          callbacks: {
+                                            label: (tooltipItem) => {
+                                              return `${tooltipItem.dataset.label}: ${tooltipItem.raw}`
+                                            },
+                                          },
+                                          backgroundColor: "#172A45",
+                                          titleColor: "#E0E0E0",
+                                          bodyColor: "#E0E0E0",
+                                          bodyFont: { family: "'Roboto', 'Open Sans', sans-serif" },
+                                        },
+                                      },
+                                      scales: {
+                                        r: {
+                                          beginAtZero: true,
+                                          min: 0,
+                                          max: 100,
+                                          ticks: {
+                                            stepSize: 25,
+                                            color: "#000000",
+                                            font: { family: "'Lato', sans-serif" },
+                                          },
+                                          pointLabels: {
+                                            font: {
+                                              size: 12,
+                                              family: "'Lato', sans-serif",
+                                            },
+                                            color: "#E0E0E0",
+                                          },
+                                          grid: {
+                                            color: "#5E81F4",
+                                          },
+                                        },
+                                      },
+                                    }}
+                                  />
+                                </Box>
+                              ) : (
+                                <Typography
+                                  variant="body2"
+                                  sx={{ color: "#A0A0A0", fontFamily: "'Roboto', 'Open Sans', sans-serif" }}
+                                >
+                                  No ADMET data available for comparison.
+                                </Typography>
+                              )}
+                            </Box>
+                          </Collapse>
+                        </CardContent>
+                      </Card>
+                    )
+                  })
+                )}
+              </Grid>
+
+              <Grid item xs={12}>
+                <Card variant="outlined" sx={{ borderRadius: 2, bgcolor: "#172A45", borderColor: "#5E81F4" }}>
+                  <CardHeader
+                    title={
+                      <Typography
+                        variant="subtitle1"
+                        sx={{ fontWeight: 600, color: "#E0E0E0", fontFamily: "'Inter', 'Barlow', sans-serif" }}
+                      >
+                        Overall Statistics
+                      </Typography>
+                    }
+                  />
+                  <CardContent sx={{ pt: 0 }}>
+                    <Grid container spacing={2}>
+                      <Grid item xs={3}>
+                        <Typography
+                          variant="caption"
+                          sx={{
+                            fontWeight: 600,
+                            color: "#A0A0A0",
+                            fontFamily: "'Roboto', 'Open Sans', sans-serif",
+                          }}
+                        >
+                          Mean MW:
+                        </Typography>
+                        <Typography
+                          variant="h6"
+                          sx={{
+                            fontWeight: 600,
+                            color: "#E0E0E0",
+                            fontFamily: "'Inter', 'Barlow', sans-serif",
+                          }}
+                        >
+                          {reactionResult.statistics?.mean_mw?.toFixed(2) || "N/A"}
+                        </Typography>
+                      </Grid>
+                      <Grid item xs={3}>
+                        <Typography
+                          variant="caption"
+                          sx={{
+                            fontWeight: 600,
+                            color: "#A0A0A0",
+                            fontFamily: "'Roboto', 'Open Sans', sans-serif",
+                          }}
+                        >
+                          Std MW:
+                        </Typography>
+                        <Typography
+                          variant="h6"
+                          sx={{
+                            fontWeight: 600,
+                            color: "#E0E0E0",
+                            fontFamily: "'Inter', 'Barlow', sans-serif",
+                          }}
+                        >
+                          {reactionResult.statistics?.std_mw?.toFixed(2) || "N/A"}
+                        </Typography>
+                      </Grid>
+                      <Grid item xs={3}>
+                        <Typography
+                          variant="caption"
+                          sx={{
+                            fontWeight: 600,
+                            color: "#A0A0A0",
+                            fontFamily: "'Roboto', 'Open Sans', sans-serif",
+                          }}
+                        >
+                          Min MW:
+                        </Typography>
+                        <Typography
+                          variant="h6"
+                          sx={{
+                            fontWeight: 600,
+                            color: "#E0E0E0",
+                            fontFamily: "'Inter', 'Barlow', sans-serif",
+                          }}
+                        >
+                          {reactionResult.statistics?.min_mw?.toFixed(2) || "N/A"}
+                        </Typography>
+                      </Grid>
+                      <Grid item xs={3}>
+                        <Typography
+                          variant="caption"
+                          sx={{
+                            fontWeight: 600,
+                            color: "#A0A0A0",
+                            fontFamily: "'Roboto', 'Open Sans', sans-serif",
+                          }}
+                        >
+                          Max MW:
+                        </Typography>
+                        <Typography
+                          variant="h6"
+                          sx={{
+                            fontWeight: 600,
+                            color: "#E0E0E0",
+                            fontFamily: "'Inter', 'Barlow', sans-serif",
+                          }}
+                        >
+                          {reactionResult.statistics?.max_mw?.toFixed(2) || "N/A"}
+                        </Typography>
+                      </Grid>
                     </Grid>
-                  </Grid>
-                </CardContent>
-              </Paper>
-            )}
-          </Box>
-        )}
+                  </CardContent>
+                </Card>
+              </Grid>
+
+              {/* Failed Reactions Section - Hidden when 100% match */}
+              <Grid item xs={12}>
+                {renderSectionHeader(
+                  "Failed Reactions",
+                  "failed-reactions",
+                  reactionResult.failedReactions?.length || 0,
+                  "#FF4D6D",
+                )}
+                <Collapse in={expanded["failed-reactions"]}>
+                  <Box sx={{ mt: 2 }}>
+                    {reactionResult.failedReactions?.length === 0 ? (
+                      <Alert severity="success" icon={<CheckCircle sx={{ color: "#70E000" }} />}>
+                        <Typography
+                          variant="body2"
+                          sx={{ color: "#A0A0A0", fontFamily: "'Roboto', 'Open Sans', sans-serif" }}
+                        >
+                          All reactions completed successfully!
+                        </Typography>
+                      </Alert>
+                    ) : (
+                      reactionResult.failedReactions?.map((fail, index) => (
+                        <Card
+                          key={index}
+                          variant="outlined"
+                          sx={{ mb: 2, borderRadius: 2, bgcolor: "#0A192F", borderColor: "#5E81F4" }}
+                        >
+                          <CardContent sx={{ p: 2 }}>
+                            <Typography
+                              variant="subtitle2"
+                              sx={{
+                                fontWeight: 600,
+                                mb: 1,
+                                color: "#E0E0E0",
+                                fontFamily: "'Inter', 'Barlow', sans-serif",
+                              }}
+                            >
+                              {fail.reactionType || "Unknown Reaction"}
+                            </Typography>
+                            <Typography
+                              variant="body2"
+                              sx={{ mb: 1, color: "#A0A0A0", fontFamily: "'Roboto', 'Open Sans', sans-serif" }}
+                            >
+                              Reactants: {fail.reactants?.join(", ") || "N/A"}
+                            </Typography>
+                            <Typography
+                              variant="body2"
+                              sx={{ color: "#FF4D6D", fontFamily: "'Roboto', 'Open Sans', sans-serif" }}
+                            >
+                              Reason: {fail.reason || "Unknown error"}
+                            </Typography>
+                          </CardContent>
+                        </Card>
+                      ))
+                    )}
+                  </Box>
+                </Collapse>
+              </Grid>
+            </Grid>
+          </CardContent>
+        </Collapse>
+      </Paper>
+    )}
+  </Box>
+)}
       </Container>
     </Box>
   )

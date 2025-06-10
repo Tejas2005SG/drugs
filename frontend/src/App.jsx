@@ -27,6 +27,7 @@ import VoiceToTextNotes from './pages/VoiceToTextNotes/VoicetoTextNotes.jsx';
 import Chatbot from './pages/Chatbot/Chatbot.jsx';
 import SymptomChecker from './pages/SymptomChecker/SymptomChecker.jsx';
 import RDkit from './pages/RDkit/RDkit.jsx';
+import DashboardPage from './components/Dashboard.jsx';
 // import Toxicityprediction from './pages/Toxicityprediction/Toxicityprediction.jsx';
 
 const ProtectedRoute = ({ children }) => {
@@ -48,7 +49,7 @@ function App() {
         <Route path="/verifyotp" element={<VerifyPhone />} />
         <Route path='/dashboard' element={
           <ProtectedRoute>
-            <Dashboard />
+            <DashboardPage />
           </ProtectedRoute>
         } >
           <Route index element={<DashboardHome />} /> {/* Default route for /dashboard */}
