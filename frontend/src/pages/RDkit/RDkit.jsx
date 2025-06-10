@@ -105,96 +105,125 @@ const toastWarn = (message, options = {}) => {
 }
 
 // Storage keys for persistence
-const STORAGE_KEYS = {
-  SYMPTOMS: "rdkit_symptoms",
-  RESULT: "rdkit_result",
-  REACTION_RESULT: "rdkit_reaction_result",
-  SMILES_IMAGES: "rdkit_smiles_images",
-  EXPANDED: "rdkit_expanded",
-  SAVED_SYMPTOMS: "rdkit_saved_symptoms",
-}
+// const STORAGE_KEYS = {
+//   SYMPTOMS: "rdkit_symptoms",
+//   RESULT: "rdkit_result",
+//   REACTION_RESULT: "rdkit_reaction_result",
+//   SMILES_IMAGES: "rdkit_smiles_images",
+//   EXPANDED: "rdkit_expanded",
+//   SAVED_SYMPTOMS: "rdkit_saved_symptoms",
+// }
 
 // Helper functions for localStorage
-const saveToStorage = (key, data) => {
-  try {
-    localStorage.setItem(key, JSON.stringify(data))
-  } catch (error) {
-    console.warn("Failed to save to localStorage:", error)
-  }
-}
+// const saveToStorage = (key, data) => {
+//   try {
+//     localStorage.setItem(key, JSON.stringify(data))
+//   } catch (error) {
+//     console.warn("Failed to save to localStorage:", error)
+//   }
+// }
 
-const loadFromStorage = (key, defaultValue = null) => {
-  try {
-    const stored = localStorage.getItem(key)
-    return stored ? JSON.parse(stored) : defaultValue
-  } catch (error) {
-    console.warn("Failed to load from localStorage:", error)
-    return defaultValue
-  }
-}
+// const loadFromStorage = (key, defaultValue = null) => {
+//   try {
+//     const stored = localStorage.getItem(key)
+//     return stored ? JSON.parse(stored) : defaultValue
+//   } catch (error) {
+//     console.warn("Failed to load from localStorage:", error)
+//     return defaultValue
+//   }
+// }
 
-const clearStorage = () => {
-  try {
-    Object.values(STORAGE_KEYS).forEach((key) => {
-      localStorage.removeItem(key)
-    })
-  } catch (error) {
-    console.warn("Failed to clear localStorage:", error)
-  }
-}
+// const clearStorage = () => {
+//   try {
+//     Object.values(STORAGE_KEYS).forEach((key) => {
+//       localStorage.removeItem(key)
+//     })
+//   } catch (error) {
+//     console.warn("Failed to clear localStorage:", error)
+//   }
+// }
 
 const RDkit = () => {
   // Initialize state with persisted data
-  const [symptoms, setSymptoms] = useState(() => loadFromStorage(STORAGE_KEYS.SYMPTOMS, []))
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState("")
-  const [result, setResult] = useState(() => loadFromStorage(STORAGE_KEYS.RESULT, null))
-  const [reactionResult, setReactionResult] = useState(() => loadFromStorage(STORAGE_KEYS.REACTION_RESULT, null))
-  // const [expanded, setExpanded] = useState(() => loadFromStorage(STORAGE_KEYS.EXPANDED, {}))
-  const [currentStep, setCurrentStep] = useState(0)
-  const [availableReactions, setAvailableReactions] = useState([])
-  const [reactionsLoading, setReactionsLoading] = useState(false)
-  const [anchorEl, setAnchorEl] = useState(null)
-  const [smilesImages, setSmilesImages] = useState(() => loadFromStorage(STORAGE_KEYS.SMILES_IMAGES, {}))
-  const [retryAttempts, setRetryAttempts] = useState({ disease: 0, protein: 0, reaction: 0, noReactions: 0 })
-  const [maxRetries] = useState(5)
-  const [savedSymptoms, setSavedSymptoms] = useState(() => loadFromStorage(STORAGE_KEYS.SAVED_SYMPTOMS, []))
-  const [symptomsLoading, setSymptomsLoading] = useState(false)
-const [expanded, setExpanded] = useState(() => loadFromStorage(STORAGE_KEYS.EXPANDED, {
+  // const [symptoms, setSymptoms] = useState(() => loadFromStorage(STORAGE_KEYS.SYMPTOMS, []))
+  // const [loading, setLoading] = useState(false)
+  // const [error, setError] = useState("")
+  // const [result, setResult] = useState(() => loadFromStorage(STORAGE_KEYS.RESULT, null))
+  // const [reactionResult, setReactionResult] = useState(() => loadFromStorage(STORAGE_KEYS.REACTION_RESULT, null))
+  // // const [expanded, setExpanded] = useState(() => loadFromStorage(STORAGE_KEYS.EXPANDED, {}))
+  // const [currentStep, setCurrentStep] = useState(0)
+  // const [availableReactions, setAvailableReactions] = useState([])
+  // const [reactionsLoading, setReactionsLoading] = useState(false)
+  // const [anchorEl, setAnchorEl] = useState(null)
+  // const [smilesImages, setSmilesImages] = useState(() => loadFromStorage(STORAGE_KEYS.SMILES_IMAGES, {}))
+  // const [retryAttempts, setRetryAttempts] = useState({ disease: 0, protein: 0, reaction: 0, noReactions: 0 })
+  // const [maxRetries] = useState(5)
+  // const [savedSymptoms, setSavedSymptoms] = useState(() => loadFromStorage(STORAGE_KEYS.SAVED_SYMPTOMS, []))
+  // const [symptomsLoading, setSymptomsLoading] = useState(false)
+// const [expanded, setExpanded] = useState(() => loadFromStorage(STORAGE_KEYS.EXPANDED, {
+//   "disease-prediction": false,
+//   "detailed-disease-analysis": false,
+//   "target-proteins": false,
+//   "target-ligands": false,
+//   "chemical-reactions": false,
+//   "failed-reactions": false,
+// }));
+
+
+
+const [hasGeneratedPDF, setHasGeneratedPDF] = useState(false);
+
+const [symptoms, setSymptoms] = useState([])
+const [loading, setLoading] = useState(false)
+const [error, setError] = useState("")
+const [result, setResult] = useState(null)
+const [reactionResult, setReactionResult] = useState(null)
+const [currentStep, setCurrentStep] = useState(0)
+const [availableReactions, setAvailableReactions] = useState([])
+const [reactionsLoading, setReactionsLoading] = useState(false)
+const [anchorEl, setAnchorEl] = useState(null)
+const [smilesImages, setSmilesImages] = useState({})
+const [retryAttempts, setRetryAttempts] = useState({ disease: 0, protein: 0, reaction: 0, noReactions: 0 })
+const [maxRetries] = useState(5)
+const [savedSymptoms, setSavedSymptoms] = useState([])
+const [symptomsLoading, setSymptomsLoading] = useState(false)
+const [expanded, setExpanded] = useState({
   "disease-prediction": false,
   "detailed-disease-analysis": false,
   "target-proteins": false,
   "target-ligands": false,
   "chemical-reactions": false,
   "failed-reactions": false,
-}));
-  const { user } = useAuthStore()
-  const userId = user?._id
+})
+const { user } = useAuthStore()
+const userId = user?._id
+
+
 
   // Save state to localStorage whenever it changes
-  useEffect(() => {
-    saveToStorage(STORAGE_KEYS.SYMPTOMS, symptoms)
-  }, [symptoms])
+  // useEffect(() => {
+  //   saveToStorage(STORAGE_KEYS.SYMPTOMS, symptoms)
+  // }, [symptoms])
 
-  useEffect(() => {
-    saveToStorage(STORAGE_KEYS.RESULT, result)
-  }, [result])
+  // useEffect(() => {
+  //   saveToStorage(STORAGE_KEYS.RESULT, result)
+  // }, [result])
 
-  useEffect(() => {
-    saveToStorage(STORAGE_KEYS.REACTION_RESULT, reactionResult)
-  }, [reactionResult])
+  // useEffect(() => {
+  //   saveToStorage(STORAGE_KEYS.REACTION_RESULT, reactionResult)
+  // }, [reactionResult])
 
-  useEffect(() => {
-    saveToStorage(STORAGE_KEYS.SMILES_IMAGES, smilesImages)
-  }, [smilesImages])
+  // useEffect(() => {
+  //   saveToStorage(STORAGE_KEYS.SMILES_IMAGES, smilesImages)
+  // }, [smilesImages])
 
-  useEffect(() => {
-    saveToStorage(STORAGE_KEYS.EXPANDED, expanded)
-  }, [expanded])
+  // useEffect(() => {
+  //   saveToStorage(STORAGE_KEYS.EXPANDED, expanded)
+  // }, [expanded])
 
-  useEffect(() => {
-    saveToStorage(STORAGE_KEYS.SAVED_SYMPTOMS, savedSymptoms)
-  }, [savedSymptoms])
+  // useEffect(() => {
+  //   saveToStorage(STORAGE_KEYS.SAVED_SYMPTOMS, savedSymptoms)
+  // }, [savedSymptoms])
 
   // Show toast notification on component mount if data was restored
   useEffect(() => {
@@ -208,6 +237,12 @@ const [expanded, setExpanded] = useState(() => loadFromStorage(STORAGE_KEYS.EXPA
     }
   }, []) // Only run on mount
 
+
+
+// Add this useEffect after your existing useEffect hooks
+
+
+  
   // Fetch available reactions
   useEffect(() => {
     const fetchAvailableReactions = async () => {
@@ -513,27 +548,28 @@ const [expanded, setExpanded] = useState(() => loadFromStorage(STORAGE_KEYS.EXPA
     }
   }
 
-  const handleReset = () => {
-    // Clear all state
-    setSymptoms([])
-    setError("")
-    setResult(null)
-    setReactionResult(null)
-    setLoading(false)
-    setCurrentStep(0)
-    setExpanded({})
-    setAnchorEl(null)
-    setSmilesImages({})
-    setRetryAttempts({ disease: 0, protein: 0, reaction: 0, noReactions: 0 })
+ const handleReset = () => {
+  // Clear all state
+  setSymptoms([]);
+  setError("");
+  setResult(null);
+  setReactionResult(null);
+  setLoading(false);
+  setCurrentStep(0);
+  setExpanded({});
+  setAnchorEl(null);
+  setSmilesImages({});
+  setRetryAttempts({ disease: 0, protein: 0, reaction: 0, noReactions: 0 });
+  setHasGeneratedPDF(false); // Allow new PDF generation after reset
 
-    // Clear localStorage
-    clearStorage()
+  // Clear localStorage
+  // clearStorage();
 
-    toast.success("Form reset successfully! All data cleared from storage.", {
-      id: "reset-success",
-      icon: "🗑️",
-    })
-  }
+  toast.success("Form reset successfully! All data cleared from storage.", {
+    id: "reset-success",
+    icon: "🗑️",
+  });
+};
 
   const handleToggle = (key) => {
     setExpanded((prev) => ({ ...prev, [key]: !prev[key] }))
@@ -626,484 +662,544 @@ const [expanded, setExpanded] = useState(() => loadFromStorage(STORAGE_KEYS.EXPA
     setSymptoms(exampleSymptoms)
   }
 
-  const generatePDF = async () => {
-    const doc = new jsPDF()
-    let yPosition = 20
-    const pageHeight = 280
-    const margin = 20
+ const generatePDF = async () => {
+  const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+  let yPosition = 20;
+  const pageHeight = 280;
+  const margin = 20;
 
-    // Helper functions
-    const checkPageBreak = (requiredSpace = 20) => {
-      if (yPosition + requiredSpace > pageHeight) {
-        doc.addPage()
-        yPosition = 20
+  // Helper functions
+  const checkPageBreak = (requiredSpace = 20) => {
+    if (yPosition + requiredSpace > pageHeight) {
+      doc.addPage();
+      yPosition = 20;
+    }
+  };
+
+  const addTitle = (title, fontSize = 16, color = [0, 100, 255]) => {
+    checkPageBreak(15);
+    doc.setFontSize(fontSize);
+    doc.setTextColor(...color);
+    doc.text(title, margin, yPosition);
+    yPosition += fontSize === 20 ? 15 : 10;
+  };
+
+  const addText = (text, fontSize = 12, color = [40, 40, 40], indent = 0) => {
+    checkPageBreak(10);
+    doc.setFontSize(fontSize);
+    doc.setTextColor(...color);
+    const splitText = doc.splitTextToSize(text, 170 - indent);
+    doc.text(splitText, margin + indent, yPosition);
+    yPosition += splitText.length * 6;
+  };
+
+const addTable = (headers, rows) => {
+  checkPageBreak(30);
+  const startY = yPosition;
+  const cellHeight = 8;
+  const cellWidth = (170 - margin) / headers.length;
+
+  // Draw headers
+  doc.setFontSize(10);
+  doc.setTextColor(255, 255, 255);
+  doc.setFillColor(94, 129, 244);
+  doc.rect(margin, startY, 170 - margin, cellHeight, "F");
+
+  headers.forEach((header, i) => {
+    doc.text(header, margin + i * cellWidth + 2, startY + 6);
+  });
+
+  // Draw rows
+  doc.setTextColor(40, 40, 40);
+  rows.forEach((row, rowIndex) => {
+    const rowY = startY + (rowIndex + 1) * cellHeight;
+    if (rowIndex % 2 === 0) {
+      doc.setFillColor(245, 245, 245);
+      doc.rect(margin, rowY, 170 - margin, cellHeight, "F");
+    }
+
+    row.forEach((cell, cellIndex) => {
+      doc.text(String(cell), margin + cellIndex * cellWidth + 2, rowY + 6);
+    });
+  });
+
+  yPosition = startY + cellHeight * (rows.length + 1) + 10;
+};
+
+  const addImage = async (base64Image, caption, width = 80, height = 60) => {
+    if (!base64Image) {
+      addText(`[Image: ${caption}]`, 10, [150, 150, 150]);
+      return;
+    }
+    try {
+      checkPageBreak(height + 15);
+      await loadImage(base64Image); // Verify image is loadable
+      doc.addImage(
+        `data:image/png;base64,${base64Image}`,
+        "PNG",
+        margin,
+        yPosition,
+        width,
+        height,
+        undefined,
+        "FAST"
+      );
+      yPosition += height + 5;
+      if (caption) {
+        addText(caption, 10, [100, 100, 100]);
       }
+      yPosition += 5;
+    } catch (error) {
+      console.warn("Failed to add image to PDF:", error);
+      addText(`[Failed to load image: ${caption}]`, 10, [150, 150, 150]);
     }
+  };
 
-    const addTitle = (title, fontSize = 16, color = [0, 100, 200]) => {
-      checkPageBreak(15)
-      doc.setFontSize(fontSize)
-      doc.setTextColor(...color)
-      doc.text(title, margin, yPosition)
-      yPosition += fontSize === 20 ? 15 : 10
-    }
+  const addAdmetChart = async (chartData, title) => {
+    try {
+      checkPageBreak(120);
+      const canvas = document.createElement("canvas");
+      canvas.width = 500;
+      canvas.height = 400;
+      const ctx = canvas.getContext("2d");
 
-    const addText = (text, fontSize = 12, color = [40, 40, 40], indent = 0) => {
-      checkPageBreak(8)
-      doc.setFontSize(fontSize)
-      doc.setTextColor(...color)
-      const splitText = doc.splitTextToSize(text, 170 - indent)
-      doc.text(splitText, margin + indent, yPosition)
-      yPosition += splitText.length * 6
-    }
+      ctx.fillStyle = "#2d3748";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    const addTable = (headers, rows) => {
-      checkPageBreak(30)
-      // Simple table implementation without autoTable
-      const startY = yPosition
-      const cellHeight = 8
-      const cellWidth = (170 - margin) / headers.length
-
-      // Draw headers
-      doc.setFontSize(10)
-      doc.setTextColor(255, 255, 255)
-      doc.setFillColor(94, 129, 244)
-      doc.rect(margin, startY, 170 - margin, cellHeight, "F")
-
-      headers.forEach((header, i) => {
-        doc.text(header, margin + i * cellWidth + 2, startY + 6)
-      })
-
-      // Draw rows
-      doc.setTextColor(40, 40, 40)
-      rows.forEach((row, rowIndex) => {
-        const rowY = startY + cellHeight + rowIndex * cellHeight
-        if (rowIndex % 2 === 0) {
-          doc.setFillColor(245, 245, 245)
-          doc.rect(margin, rowY, 170 - margin, cellHeight, "F")
-        }
-
-        row.forEach((cell, cellIndex) => {
-          doc.text(String(cell), margin + cellIndex * cellWidth + 2, rowY + 6)
-        })
-      })
-
-      yPosition = startY + cellHeight + rows.length * cellHeight + 10
-    }
-
-    const addImage = async (base64Image, caption, width = 80, height = 60) => {
-      if (base64Image) {
-        try {
-          checkPageBreak(height + 15)
-          doc.addImage(`data:image/png;base64,${base64Image}`, "PNG", margin, yPosition, width, height)
-          yPosition += height + 5
-          if (caption) {
-            addText(caption, 10, [100, 100, 100])
-          }
-          yPosition += 5
-        } catch (error) {
-          console.warn("Failed to add image to PDF:", error)
-          addText(`[Image: ${caption}]`, 10, [150, 150, 150])
-        }
-      }
-    }
-
-    // Convert ADMET chart to image with dark theme
-    const addAdmetChart = async (chartData, title) => {
-      try {
-        checkPageBreak(120)
-        const canvas = document.createElement("canvas")
-        canvas.width = 500
-        canvas.height = 400
-        const ctx = canvas.getContext("2d")
-
-        // Dark background like the reference image
-        ctx.fillStyle = "#2d3748"
-        ctx.fillRect(0, 0, canvas.width, canvas.height)
-
-        // Create chart with dark theme
-        const chartInstance = new ChartJS(ctx, {
-          type: "radar",
-          data: chartData,
-          options: {
-            responsive: false,
-            animation: false,
-            plugins: {
-              legend: {
-                position: "top",
-                labels: {
-                  color: "#ffffff",
-                  font: { size: 14 },
-                },
-              },
-              title: {
-                display: true,
-                text: title,
+      const chartInstance = new ChartJS(ctx, {
+        type: "radar",
+        data: chartData,
+        options: {
+          responsive: false,
+          animation: false,
+          plugins: {
+            legend: {
+              position: "top",
+              labels: {
                 color: "#ffffff",
-                font: { size: 16 },
+                font: { size: 14 },
               },
             },
-            scales: {
-              r: {
-                beginAtZero: true,
-                min: 0,
-                max: 100,
-                ticks: {
-                  color: "#ffffff",
-                  backdropColor: "transparent",
-                },
-                pointLabels: {
-                  color: "#ffffff",
-                  font: { size: 12 },
-                },
-                grid: { color: "#4a5568" },
-                angleLines: { color: "#4a5568" },
-              },
-            },
-            elements: {
-              line: {
-                borderWidth: 3,
-              },
-              point: {
-                radius: 6,
-                borderWidth: 2,
-              },
+            title: {
+              display: true,
+              text: title,
+              color: "#ffffff",
+              font: { size: 16 },
             },
           },
-        })
+          scales: {
+            r: {
+              beginAtZero: true,
+              min: 0,
+              max: 100,
+              ticks: {
+                color: "#ffffff",
+                backdropColor: "transparent",
+              },
+              pointLabels: {
+                color: "#ffffff",
+                font: { size: 12 },
+              },
+              grid: { color: "#4a5568" },
+              angleLines: { color: "#4a5568" },
+            },
+          },
+          elements: {
+            line: { borderWidth: 3 },
+            point: { radius: 6, borderWidth: 2 },
+          },
+        },
+      });
 
-        await new Promise((resolve) => setTimeout(resolve, 1000))
-        const chartImage = canvas.toDataURL("image/png").split(",")[1]
-        await addImage(chartImage, title, 140, 110)
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      const chartImage = canvas.toDataURL("image/png").split(",")[1];
+      await addImage(chartImage, title, 140, 110);
 
-        chartInstance.destroy()
-        canvas.remove()
-      } catch (error) {
-        console.warn("Failed to add ADMET chart to PDF:", error)
-        addText(`[ADMET Chart: ${title}]`, 10, [150, 150, 150])
-      }
+      chartInstance.destroy();
+      canvas.remove();
+    } catch (error) {
+      console.warn("Failed to add ADMET chart to PDF:", error);
+      addText(`[ADMET Chart: ${title}]`, 10, [150, 150, 150]);
+    }
+  };
+
+  // Title Page
+  doc.setFontSize(24);
+  doc.setTextColor(40, 40, 40);
+  doc.text("Drug Discovery Analysis Report", margin, yPosition);
+  yPosition += 20;
+
+  doc.setFontSize(14);
+  doc.text(`Generated on: ${new Date().toLocaleString()}`, margin, yPosition);
+  yPosition += 10;
+
+  doc.setFontSize(12);
+  doc.text(`User: ${user?.name || "Unknown"}`, margin, yPosition);
+  yPosition += 20;
+
+  // INPUT SYMPTOMS SECTION
+  if (symptoms.length > 0) {
+    addTitle("Input Symptoms", 20, [0, 150, 0]);
+    addText(`Total Symptoms Entered: ${symptoms.length}`, 12, [40, 40, 40], 5);
+    yPosition += 5;
+
+    addTitle("Symptoms List:", 14, [0, 100, 0]);
+    symptoms.forEach((symptom, index) => {
+      addText(`${index + 1}. ${symptom}`, 12, [40, 40, 40], 10);
+    });
+
+    const validation = validateSymptoms(symptoms);
+    if (validation.valid) {
+      addText("✓ Symptoms validation: PASSED (3+ unique symptoms)", 11, [0, 150, 0], 5);
+    } else {
+      addText(`✗ Symptoms validation: ${validation.message}`, 11, [200, 0, 0], 5);
     }
 
-    // Title Page
-    doc.setFontSize(24)
-    doc.setTextColor(40, 40, 40)
-    doc.text("Drug Discovery Analysis Report", margin, yPosition)
-    yPosition += 20
-
-    doc.setFontSize(14)
-    doc.text(`Generated on: ${new Date().toLocaleString()}`, margin, yPosition)
-    yPosition += 10
-
-    doc.setFontSize(12)
-    doc.text(`User: ${user?.name || "Unknown"}`, margin, yPosition)
-    yPosition += 20
-
-    // INPUT SYMPTOMS SECTION - Add this at the beginning
-    if (symptoms.length > 0) {
-      addTitle("Input Symptoms", 20, [0, 150, 0])
-      addText(`Total Symptoms Entered: ${symptoms.length}`, 12, [40, 40, 40], 5)
-      yPosition += 5
-
-      addTitle("Symptoms List:", 14, [0, 100, 0])
-      symptoms.forEach((symptom, index) => {
-        addText(`${index + 1}. ${symptom}`, 12, [40, 40, 40], 10)
-      })
-
-      // Add validation status
-      const validation = validateSymptoms(symptoms)
-      if (validation.valid) {
-        addText("✓ Symptoms validation: PASSED (3+ unique symptoms)", 11, [0, 150, 0], 5)
-      } else {
-        addText(`✗ Symptoms validation: ${validation.message}`, 11, [200, 0, 0], 5)
-      }
-
-      yPosition += 15
-    }
-
-    // Rest of the PDF sections remain the same...
-    // 1. DISEASE PREDICTION RESULTS
-    if (result?.disease?.predictedDiseases) {
-      addTitle("Disease Prediction Results", 20, [200, 0, 0])
-
-      result.disease.predictedDiseases.forEach((disease, index) => {
-        addTitle(`${index + 1}. ${disease.diseaseName || "Unknown Disease"}`, 16, [0, 150, 0])
-        addText(`Match Confidence: ${disease.DiseaseMatchness || "N/A"}`, 12, [40, 40, 40], 10)
-
-        if (disease.diseaseCautions && disease.diseaseCautions.length > 0) {
-          addText(`Cautions: ${disease.diseaseCautions.join(", ")}`, 11, [200, 0, 0], 10)
-        }
-
-        if (disease.diseaseSymptoms && disease.diseaseSymptoms.length > 0) {
-          addText(`Symptoms: ${disease.diseaseSymptoms.join(", ")}`, 11, [40, 40, 40], 10)
-        }
-
-        if (disease.diseaseTreatments && disease.diseaseTreatments.length > 0) {
-          addText(`Treatments: ${disease.diseaseTreatments.join(", ")}`, 11, [0, 100, 0], 10)
-        }
-
-        if (disease.diseaseDescription) {
-          addText(`Description: ${disease.diseaseDescription}`, 10, [60, 60, 60], 10)
-        }
-
-        yPosition += 10
-      })
-
-      // Detailed Disease Analysis
-      if (
-        result.disease.predictedDiseases[0]?.DiseaseMatchness !== "0%" &&
-        Object.entries(result.disease?.DiseaseAnalysis || {}).length > 0
-      ) {
-        addTitle("Detailed Disease Analysis", 18, [0, 100, 150])
-
-        Object.entries(result.disease.DiseaseAnalysis).forEach(([key, items]) => {
-          addTitle(key.replace(/([A-Z])/g, " $1").trim(), 14, [0, 100, 150])
-
-          items.forEach((item, idx) => {
-            addText(`${idx + 1}. ${item.summary || "No summary available"}`, 11, [40, 40, 40], 15)
-            if (item.source) {
-              addText(`Source: ${item.source}`, 10, [100, 100, 100], 20)
-            }
-            if (item.url) {
-              addText(`URL: ${item.url}`, 10, [0, 0, 200], 20)
-            }
-            yPosition += 5
-          })
-        })
-      }
-    }
-
-    // 2. TARGET PROTEINS
-    if (result?.proteins?.TargetProteins && result.proteins.TargetProteins.length > 0) {
-      checkPageBreak(30)
-      addTitle("Target Proteins", 20, [150, 0, 150])
-
-      result.proteins.TargetProteins.forEach((protein, index) => {
-        addTitle(`${index + 1}. ${protein.proteinName || "Unknown Protein"}`, 16, [150, 0, 150])
-        addText(`Function: ${protein.proteinFunction || "N/A"}`, 12, [40, 40, 40], 10)
-        addText(`UniProt ID: ${protein.proteinUniport || "N/A"}`, 12, [40, 40, 40], 10)
-        addText(`Description: ${protein.ProtienDiscription || "N/A"}`, 12, [40, 40, 40], 10)
-
-        if (protein.proteinDetailedDiscription) {
-          addText(`Detailed Information: ${protein.proteinDetailedDiscription}`, 11, [60, 60, 60], 10)
-        }
-
-        if (protein.proteinStructure) {
-          addText(`Structure: ${protein.proteinStructure}`, 11, [40, 40, 40], 10)
-        }
-
-        if (protein.proteinPathways && protein.proteinPathways.length > 0) {
-          addText(`Pathways: ${protein.proteinPathways.join(", ")}`, 11, [40, 40, 40], 10)
-        }
-
-        if (protein.proteinInteractions && protein.proteinInteractions.length > 0) {
-          addText(`Interactions: ${protein.proteinInteractions.join(", ")}`, 11, [40, 40, 40], 10)
-        }
-
-        yPosition += 15
-      })
-    }
-
-    // 3. TARGET LIGANDS
-    if (result?.proteins?.TargetLigands && result.proteins.TargetLigands.length > 0) {
-      checkPageBreak(30)
-      addTitle("Target Ligands", 20, [200, 100, 0])
-
-      for (const [index, ligand] of result.proteins.TargetLigands.entries()) {
-        addTitle(`${index + 1}. ${ligand.ligandName || "Unknown Ligand"}`, 16, [200, 100, 0])
-        addText(`Function: ${ligand.ligandFunction || "N/A"}`, 12, [40, 40, 40], 10)
-        addText(`DrugBank ID: ${ligand.ligandDrugBankID || "N/A"}`, 12, [40, 40, 40], 10)
-
-        if (ligand.LigandSmile && ligand.LigandSmile !== "Not applicable") {
-          addText(`SMILES: ${ligand.LigandSmile}`, 11, [40, 40, 40], 10)
-
-          // Add molecular structure image
-          if (smilesImages[ligand.LigandSmile]) {
-            await addImage(smilesImages[ligand.LigandSmile], `Structure of ${ligand.ligandName}`)
-          }
-
-          // Add functional groups
-          const functionalGroups = getFunctionalGroups(ligand.LigandSmile)
-          addText(`Functional Groups: ${functionalGroups}`, 11, [40, 40, 40], 10)
-
-          // Add ADMET Properties for ligands
-          if (reactionResult && reactionResult.reactants) {
-            const reactant = reactionResult.reactants.find((r) => r.smiles === ligand.LigandSmile)
-            if (reactant && reactant.admet_properties && reactant.admet_properties.length > 0) {
-              addTitle("ADMET Properties", 14, [0, 100, 100])
-
-              reactant.admet_properties.forEach((section) => {
-                addText(section.section, 12, [0, 80, 80], 15)
-
-                const headers = ["Property", "Prediction", "Units"]
-                const rows = section.properties.map((prop) => [prop.name, prop.prediction, prop.units || "-"])
-
-                addTable(headers, rows)
-              })
-            }
-          }
-        } else {
-          addText("SMILES: Not applicable (Protein)", 11, [150, 150, 150], 10)
-        }
-
-        if (ligand.LigandDiscription) {
-          addText(`Description: ${ligand.LigandDiscription}`, 11, [60, 60, 60], 10)
-        }
-
-        if (ligand.ligandMechanism) {
-          addText(`Mechanism: ${ligand.ligandMechanism}`, 11, [40, 40, 40], 10)
-        }
-
-        if (ligand.ligandSideEffects && ligand.ligandSideEffects.length > 0) {
-          addText(`Side Effects: ${ligand.ligandSideEffects.join(", ")}`, 11, [200, 0, 0], 10)
-        }
-
-        yPosition += 15
-      }
-    }
-
-    // 4. CHEMICAL REACTION RESULTS
-    if (reactionResult?.reactionResults && reactionResult.reactionResults.length > 0) {
-      checkPageBreak(30)
-      addTitle("Chemical Reaction Results", 20, [200, 0, 0])
-
-      for (const [index, reaction] of reactionResult.reactionResults.entries()) {
-        addTitle(`Reaction ${index + 1}: ${reaction.reactionType || "Unknown Reaction"}`, 16, [200, 0, 0])
-        addText(`Confidence: ${(reaction.confidence * 100).toFixed(1)}%`, 12, [40, 40, 40], 10)
-        addText(`Description: ${reaction.description || "No description available"}`, 12, [40, 40, 40], 10)
-        addText(`Reactants: ${reaction.reactants?.join(", ") || "N/A"}`, 12, [40, 40, 40], 10)
-
-        // Products
-        if (reaction.products && reaction.products.length > 0) {
-          const mainProducts = deduplicateProducts(reaction.products.slice(0, 5))
-
-          for (const [prodIndex, product] of mainProducts.entries()) {
-            addTitle(`Product ${prodIndex + 1}`, 14, [0, 150, 0])
-
-            if (product.smiles) {
-              addText(`SMILES: ${product.smiles}`, 11, [40, 40, 40], 15)
-
-              // Add product structure image
-              if (smilesImages[product.smiles]) {
-                await addImage(smilesImages[product.smiles], `Product ${prodIndex + 1} Structure`)
-              }
-            }
-
-            // Molecular properties
-            const properties = [
-              ["Molecular Weight", `${product.molecular_weight?.toFixed(2) || "N/A"} g/mol`],
-              ["LogP", product.logP?.toFixed(2) || "N/A"],
-              ["TPSA", `${product.tpsa?.toFixed(2) || "N/A"} Å²`],
-              ["H-Donors", product.num_h_donors || 0],
-              ["H-Acceptors", product.num_h_acceptors || 0],
-              ["Rotatable Bonds", product.num_rotatable_bonds || 0],
-              ["Aromatic Rings", product.num_aromatic_rings || 0],
-            ]
-
-            addTitle("Molecular Properties", 12, [0, 100, 100])
-            properties.forEach(([prop, value]) => {
-              addText(`${prop}: ${value}`, 10, [40, 40, 40], 20)
-            })
-
-            // Functional Groups
-            if (product.functional_groups && product.functional_groups.length > 0) {
-              addText(`Functional Groups: ${product.functional_groups.join(", ")}`, 11, [40, 40, 40], 15)
-            }
-
-            // Drug-likeness properties
-            if (product.drug_likeness) {
-              addTitle("Drug-Likeness Properties", 12, [0, 100, 100])
-              Object.entries(product.drug_likeness).forEach(([key, value]) => {
-                addText(`${key}: ${value}`, 10, [40, 40, 40], 20)
-              })
-            }
-
-            // ADMET Properties for products
-            if (product.admet_properties && product.admet_properties.length > 0) {
-              addTitle("ADMET Properties", 12, [0, 100, 100])
-
-              product.admet_properties.forEach((section) => {
-                addText(section.section, 11, [0, 80, 80], 20)
-
-                const headers = ["Property", "Prediction", "Units"]
-                const rows = section.properties.map((prop) => [prop.name, prop.prediction, prop.units || "-"])
-
-                addTable(headers, rows)
-              })
-            }
-            yPosition += 10
-          }
-
-          // Add ADMET Radar Chart with dark theme
-          const chartData = prepareAdmetGraphData(index)
-          if (chartData) {
-            await addAdmetChart(chartData, `ADMET Properties Comparison - Reaction ${index + 1}`)
-          }
-        }
-
-        // Reaction Statistics
-        if (reaction.statistics) {
-          addTitle("Reaction Statistics", 14, [100, 0, 100])
-          Object.entries(reaction.statistics).forEach(([key, value]) => {
-            addText(`${key}: ${value}`, 11, [40, 40, 40], 15)
-          })
-        }
-
-        yPosition += 15
-      }
-
-      // Failed Reactions Summary
-      if (reactionResult.failedReactions && reactionResult.failedReactions.length > 0) {
-        checkPageBreak(30)
-        addTitle("Failed Reactions Summary", 16, [200, 0, 0])
-
-        reactionResult.failedReactions.forEach((fail, index) => {
-          addText(`${index + 1}. ${fail.reactionType || "Unknown Reaction"}`, 12, [200, 0, 0], 5)
-          addText(`Reactants: ${fail.reactants?.join(", ") || "N/A"}`, 11, [40, 40, 40], 15)
-          addText(`Reason: ${fail.reason || "Unknown error"}`, 11, [150, 0, 0], 15)
-          yPosition += 8
-        })
-      }
-
-      // Overall Statistics
-      if (reactionResult.statistics) {
-        checkPageBreak(40)
-        addTitle("Overall Reaction Statistics", 16, [100, 0, 100])
-
-        const statsData = [
-          ["Mean Molecular Weight", `${reactionResult.statistics.mean_mw?.toFixed(2) || "N/A"} g/mol`],
-          ["Standard Deviation MW", `${reactionResult.statistics.std_mw?.toFixed(2) || "N/A"} g/mol`],
-          ["Minimum Molecular Weight", `${reactionResult.statistics.min_mw?.toFixed(2) || "N/A"} g/mol`],
-          ["Maximum Molecular Weight", `${reactionResult.statistics.max_mw?.toFixed(2) || "N/A"} g/mol`],
-          ["Total Products Generated", reactionResult.statistics.total_products || 0],
-          ["Successful Reactions", reactionResult.reactionResults?.length || 0],
-          ["Failed Reactions", reactionResult.failedReactions?.length || 0],
-        ]
-
-        const headers = ["Statistic", "Value"]
-        addTable(headers, statsData)
-      }
-    }
-
-    // Footer
-    checkPageBreak(20)
-    doc.setFontSize(10)
-    doc.setTextColor(100, 100, 100)
-    doc.text("Generated by Drug Discovery Pipeline - Complete Analysis Report", margin, yPosition)
-    doc.text(`Total Pages: ${doc.internal.getNumberOfPages()}`, margin, yPosition + 8)
-
-    // Save the PDF
-    const fileName = `Drug_Discovery_Analysis_${new Date().toISOString().split("T")[0]}.pdf`
-    doc.save(fileName)
-    toast.success("Complete PDF report with all data, structures, and ADMET charts generated successfully!", {
-      id: "pdf-success",
-      duration: 4000,
-    })
+    yPosition += 15;
   }
+
+  // DISEASE PREDICTION RESULTS
+  if (result?.disease?.predictedDiseases) {
+    addTitle("Disease Prediction Results", 20, [200, 0, 0]);
+
+    result.disease.predictedDiseases.forEach((disease, index) => {
+      addTitle(`${index + 1}. ${disease.diseaseName || "Unknown Disease"}`, 16, [0, 150, 0]);
+      addText(`Match Confidence: ${disease.DiseaseMatchness || "N/A"}`, 12, [40, 40, 40], 10);
+
+      if (disease.diseaseCautions?.length > 0) {
+        addText(`Cautions: ${disease.diseaseCautions.join(", ")}`, 11, [200, 0, 0], 10);
+      }
+
+      if (disease.diseaseSymptoms?.length > 0) {
+        addText(`Symptoms: ${disease.diseaseSymptoms.join(", ")}`, 11, [40, 40, 40], 10);
+      }
+
+      if (disease.diseaseTreatments?.length > 0) {
+        addText(`Treatments: ${disease.diseaseTreatments.join(", ")}`, 11, [0, 100, 0], 10);
+      }
+
+      if (disease.diseaseDescription) {
+        addText(`Description: ${disease.diseaseDescription}`, 10, [60, 60, 60], 10);
+      }
+
+      yPosition += 10;
+    });
+
+    // Detailed Disease Analysis
+    if (
+      result.disease.predictedDiseases[0]?.DiseaseMatchness !== "0%" &&
+      Object.entries(result.disease?.DiseaseAnalysis || {}).length > 0
+    ) {
+      addTitle("Detailed Disease Analysis", 18, [0, 100, 150]);
+
+      Object.entries(result.disease.DiseaseAnalysis).forEach(([key, items]) => {
+        addTitle(key.replace(/([A-Z])/g, " $1").trim(), 14, [0, 100, 150]);
+
+        items.forEach((item, idx) => {
+          addText(`${idx + 1}. ${item.summary || "No summary available"}`, 11, [40, 40, 40], 15);
+          if (item.source) {
+            addText(`Source: ${item.source}`, 10, [100, 100, 100], 20);
+          }
+          if (item.url) {
+            addText(`URL: ${item.url}`, 10, [0, 0, 200], 20);
+          }
+          yPosition += 5;
+        });
+      });
+    }
+  }
+
+  // TARGET PROTEINS
+  if (result?.proteins?.TargetProteins?.length > 0) {
+    checkPageBreak(30);
+    addTitle("Target Proteins", 20, [150, 0, 150]);
+
+    result.proteins.TargetProteins.forEach((protein, index) => {
+      addTitle(`${index + 1}. ${protein.proteinName || "Unknown Protein"}`, 16, [150, 0, 150]);
+      addText(`Function: ${protein.proteinFunction || "N/A"}`, 12, [40, 40, 40], 10);
+      addText(`UniProt ID: ${protein.proteinUniport || "N/A"}`, 12, [40, 40, 40], 10);
+      addText(`Description: ${protein.ProtienDiscription || "N/A"}`, 12, [40, 40, 40], 10);
+
+      if (protein.proteinDetailedDiscription) {
+        addText(`Detailed Information: ${protein.proteinDetailedDiscription}`, 11, [60, 60, 60], 10);
+      }
+
+      if (protein.proteinStructure) {
+        addText(`Structure: ${protein.proteinStructure}`, 11, [40, 40, 40], 10);
+      }
+
+      if (protein.proteinPathways?.length > 0) {
+        addText(`Pathways: ${protein.proteinPathways.join(", ")}`, 11, [40, 40, 40], 10);
+      }
+
+      if (protein.proteinInteractions?.length > 0) {
+        addText(`Interactions: ${protein.proteinInteractions.join(", ")}`, 11, [40, 40, 40], 10);
+      }
+
+      yPosition += 15;
+    });
+  }
+
+  // TARGET LIGANDS
+  if (result?.proteins?.TargetLigands?.length > 0) {
+    checkPageBreak(30);
+    addTitle("Target Ligands", 20, [200, 100, 0]);
+
+    for (const [index, ligand] of result.proteins.TargetLigands.entries()) {
+      addTitle(`${index + 1}. ${ligand.ligandName || "Unknown Ligand"}`, 16, [200, 100, 0]);
+      addText(`Function: ${ligand.ligandFunction || "N/A"}`, 12, [40, 40, 40], 10);
+      addText(`DrugBank ID: ${ligand.ligandDrugBankID || "N/A"}`, 12, [40, 40, 40], 10);
+
+      if (ligand.LigandSmile && ligand.LigandSmile !== "Not applicable") {
+        addText(`SMILES: ${ligand.LigandSmile}`, 11, [40, 40, 40], 10);
+
+        // Add molecular structure image
+        if (smilesImages[ligand.LigandSmile]) {
+          await addImage(
+            smilesImages[ligand.LigandSmile],
+            `Structure of ${ligand.ligandName || "Ligand"}`,
+            100,
+            75
+          );
+        } else {
+          addText(`[No image available for ${ligand.ligandName}]`, 10, [150, 150, 150]);
+        }
+
+        const functionalGroups = getFunctionalGroups(ligand.LigandSmile);
+        addText(`Functional Groups: ${functionalGroups}`, 11, [40, 40, 40], 10);
+
+        // Add ADMET Properties for ligands
+        if (reactionResult?.reactants) {
+          const reactant = reactionResult.reactants.find((r) => r.smiles === ligand.LigandSmile);
+          if (reactant?.admet_properties?.length > 0) {
+            addTitle("ADMET Properties", 14, [0, 100, 100]);
+
+            reactant.admet_properties.forEach((section) => {
+              addText(section.section, 12, [0, 80, 80], 15);
+
+              const headers = ["Property", "Prediction", "Units"];
+              const rows = section.properties.map((prop) => [
+                prop.name,
+                prop.prediction,
+                prop.units || "-",
+              ]);
+
+              addTable(headers, rows);
+            });
+          }
+        }
+      } else {
+        addText("SMILES: Not applicable (Protein)", 11, [150, 150, 150], 10);
+      }
+
+      if (ligand.LigandDiscription) {
+        addText(`Description: ${ligand.LigandDiscription}`, 11, [60, 60, 60], 10);
+      }
+
+      if (ligand.ligandMechanism) {
+        addText(`Mechanism: ${ligand.ligandMechanism}`, 11, [40, 40, 40], 10);
+      }
+
+      if (ligand.ligandSideEffects?.length > 0) {
+        addText(`Side Effects: ${ligand.ligandSideEffects.join(", ")}`, 11, [200, 0, 0], 10);
+      }
+
+      yPosition += 15;
+    }
+  }
+
+  // CHEMICAL REACTION RESULTS
+  if (reactionResult?.reactionResults?.length > 0) {
+    checkPageBreak(30);
+    addTitle("Chemical Reaction Results", 20, [200, 0, 0]);
+
+    for (const [index, reaction] of reactionResult.reactionResults.entries()) {
+      addTitle(`Reaction ${index + 1}: ${reaction.reactionType || "Unknown Reaction"}`, 16, [200, 0, 0]);
+      addText(`Confidence: ${(reaction.confidence * 100).toFixed(1)}%`, 12, [40, 40, 40], 10);
+      addText(`Description: ${reaction.description || "No description available"}`, 12, [40, 40, 40], 10);
+      addText(`Reactants: ${reaction.reactants?.join(", ") || "N/A"}`, 12, [40, 40, 40], 10);
+
+      // Products
+      if (reaction.products?.length > 0) {
+        const mainProducts = deduplicateProducts(reaction.products.slice(0, 5));
+
+        for (const [prodIndex, product] of mainProducts.entries()) {
+          addTitle(`Product ${prodIndex + 1}`, 14, [0, 150, 0]);
+
+          if (product.smiles) {
+            addText(`SMILES: ${product.smiles}`, 11, [40, 40, 40], 15);
+
+            // Add product structure image
+            if (smilesImages[product.smiles]) {
+              await addImage(
+                smilesImages[product.smiles],
+                `Product ${prodIndex + 1} Structure`,
+                100,
+                75
+              );
+            } else {
+              addText(`[No image available for Product ${prodIndex + 1}]`, 10, [150, 150, 150]);
+            }
+          }
+
+          const properties = [
+            ["Molecular Weight", `${product.molecular_weight?.toFixed(2) || "N/A"} g/mol`],
+            ["LogP", product.logP?.toFixed(2) || "N/A"],
+            ["TPSA", `${product.tpsa?.toFixed(2) || "N/A"} Å²`],
+            ["H-Donors", product.num_h_donors || 0],
+            ["H-Acceptors", product.num_h_acceptors || 0],
+            ["Rotatable Bonds", product.num_rotatable_bonds || 0],
+            ["Aromatic Rings", product.num_aromatic_rings || 0],
+          ];
+
+          addTitle("Molecular Properties", 12, [0, 100, 100]);
+          properties.forEach(([prop, value]) => {
+            addText(`${prop}: ${value}`, 10, [40, 40, 40], 20);
+          });
+
+          if (product.functional_groups?.length > 0) {
+            addText(`Functional Groups: ${product.functional_groups.join(", ")}`, 11, [40, 40, 40], 15);
+          }
+
+          if (product.drug_likeness) {
+            addTitle("Drug-Likeness Properties", 12, [0, 100, 100]);
+            Object.entries(product.drug_likeness).forEach(([key, value]) => {
+              addText(`${key}: ${value}`, 10, [40, 40, 40], 20);
+            });
+          }
+
+          if (product.admet_properties?.length > 0) {
+            addTitle("ADMET Properties", 12, [0, 100, 100]);
+
+            product.admet_properties.forEach((section) => {
+              addText(section.section, 11, [0, 80, 80], 20);
+
+              const headers = ["Property", "Prediction", "Units"];
+              const rows = section.properties.map((prop) => [
+                prop.name,
+                prop.prediction,
+                prop.units || "-",
+              ]);
+
+              addTable(headers, rows);
+            });
+          }
+          yPosition += 10;
+        }
+
+        const chartData = prepareAdmetGraphData(index);
+        if (chartData) {
+          await addAdmetChart(chartData, `ADMET Properties Comparison - Reaction ${index + 1}`);
+        }
+      }
+
+      if (reaction.statistics) {
+        addTitle("Reaction Statistics", 14, [100, 0, 100]);
+        Object.entries(reaction.statistics).forEach(([key, value]) => {
+          addText(`${key}: ${value}`, 11, [40, 40, 40], 15);
+        });
+      }
+
+      yPosition += 15;
+    }
+
+    // Failed Reactions Summary
+    if (reactionResult.failedReactions?.length > 0) {
+      checkPageBreak(30);
+      addTitle("Failed Reactions Summary", 16, [200, 0, 0]);
+
+      reactionResult.failedReactions.forEach((fail, index) => {
+        addText(`${index + 1}. ${fail.reactionType || "Unknown Reaction"}`, 12, [200, 0, 0], 5);
+        addText(`Reactants: ${fail.reactants?.join(", ") || "N/A"}`, 11, [40, 40, 40], 15);
+        addText(`Reason: ${fail.reason || "Unknown error"}`, 11, [150, 0, 0], 15);
+        yPosition += 8;
+      });
+    }
+
+    // Overall Statistics
+    if (reactionResult.statistics) {
+      checkPageBreak(40);
+      addTitle("Overall Reaction Statistics", 16, [100, 0, 100]);
+
+      const statsData = [
+        ["Mean Molecular Weight", `${reactionResult.statistics.mean_mw?.toFixed(2) || "N/A"} g/mol`],
+        ["Standard Deviation MW", `${reactionResult.statistics.std_mw?.toFixed(2) || "N/A"} g/mol`],
+        ["Minimum Molecular Weight", `${reactionResult.statistics.min_mw?.toFixed(2) || "N/A"} g/mol`],
+        ["Maximum Molecular Weight", `${reactionResult.statistics.max_mw?.toFixed(2) || "N/A"} g/mol`],
+        ["Total Products Generated", reactionResult.statistics.total_products || 0],
+        ["Successful Reactions", reactionResult.reactionResults?.length || 0],
+        ["Failed Reactions", reactionResult.failedReactions?.length || 0],
+      ];
+
+      const headers = ["Statistic", "Value"];
+      addTable(headers, statsData);
+    }
+  }
+
+  // Footer
+  checkPageBreak(20);
+  doc.setFontSize(10);
+  doc.setTextColor(100, 100, 100);
+  doc.text("Generated by Drug Discovery Pipeline - Complete Analysis Report", margin, yPosition);
+  doc.text(`Total Pages: ${doc.internal.getNumberOfPages()}`, margin, yPosition + 8);
+
+  // Save the PDF
+  const fileName = `Drug_Discovery_Analysis_${new Date().toISOString().split("T")[0]}.pdf`;
+  doc.save(fileName);
+  toast.success("Complete PDF report with all data, structures, and ADMET charts generated successfully!", {
+    id: "pdf-success",
+    duration: 4000,
+  });
+};
 
   // Check if disease match is 100% to hide certain sections
   const is100PercentMatch = result?.disease?.predictedDiseases?.[0]?.DiseaseMatchness === "100%"
   const is0PercentMatch = result?.disease?.predictedDiseases?.[0]?.DiseaseMatchness === "0%"
 
+  // Add this state at the top level of the RDkit component, alongside other useState declarations
+
+const loadImage = (base64) => {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.src = `data:image/png;base64,${base64}`;
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error('Image loading failed'));
+  });
+};
+
+// Replace the previous useEffect with this corrected version
+useEffect(() => {
+  if (
+    !loading &&
+    !error &&
+    result &&
+    reactionResult &&
+    symptoms.length >= 3 &&
+    !hasGeneratedPDF &&
+    result.disease?.predictedDiseases?.[0]?.DiseaseMatchness !== "0%"
+  ) {
+    const timer = setTimeout(async () => {
+      try {
+        await generatePDF();
+        setHasGeneratedPDF(true);
+        toast.success("PDF report with molecular structures automatically generated and downloaded!", {
+          id: "auto-pdf-success",
+          duration: 4000,
+          icon: "📄",
+        });
+      } catch (err) {
+        console.error("Error generating PDF:", err);
+        toast.error("Failed to generate PDF automatically.", {
+          id: "auto-pdf-error",
+          duration: 4000,
+        });
+      }
+    }, 2000);
+
+    return () => clearTimeout(timer);
+  }
+}, [loading, error, result, reactionResult, symptoms, hasGeneratedPDF,smilesImages]);
+  
   // Function to render section headers with dropdown functionality
   const renderSectionHeader = (title, key, count = null, color = "#5E81F4") => (
     <Box
@@ -1167,7 +1263,7 @@ const [expanded, setExpanded] = useState(() => loadFromStorage(STORAGE_KEYS.EXPA
               Advanced molecular analysis system for symptom-based disease prediction, target identification, and
               optimized ligand reaction simulation
             </Typography>
-            {(result || reactionResult || symptoms.length > 0) && (
+            {/* {(result || reactionResult || symptoms.length > 0) && (
               <Alert
                 severity="info"
                 sx={{
@@ -1185,7 +1281,7 @@ const [expanded, setExpanded] = useState(() => loadFromStorage(STORAGE_KEYS.EXPA
                   Reset.
                 </Typography>
               </Alert>
-            )}
+            )} */}
           </Box>
 
           <Card variant="outlined" sx={{ mb: 4, borderRadius: 2, bgcolor: "#172A45", borderColor: "#00F5D4" }}>
