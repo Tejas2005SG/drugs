@@ -4,13 +4,6 @@ import {
   postProteinStructure,
   generatenewmolecule,
   getgeneratednewmolecule,
-  proxyGeminiRequest,
-  saveResearchPapers,
-  getSavedResearchPapers,
-  checkSavedPapers,
-  saveGeneratedResearchPaper,
-  getSavedGeneratedResearchPapers,
-  checkSavedGeneratedPapers,
   convertFileToSmiles, // New controller for converting MOL/SDF to SMILES
   getFingerprints, // New controller for fingerprint extraction (mocked)
   performDocking, // New controller for molecular docking (mocked)
@@ -32,14 +25,14 @@ router.post("/postproteinstructure/:id", protectRoute, postProteinStructure);
 router.post("/generatenewmolecule/:id", protectRoute, generatenewmolecule);
 router.get("/generatednewmolecule", protectRoute, getgeneratednewmolecule);
 
-// research paper
-router.post("/proxy/gemini", proxyGeminiRequest);
-router.post("/save-research-papers", protectRoute, saveResearchPapers);
-router.get("/saved-research-papers", protectRoute, getSavedResearchPapers);
-router.get("/check-saved-papers", protectRoute, checkSavedPapers);
-router.post("/save-generated-research-paper", protectRoute, saveGeneratedResearchPaper);
-router.get("/saved-generated-research-papers", protectRoute, getSavedGeneratedResearchPapers);
-router.get("/check-saved-generated-papers", protectRoute, checkSavedGeneratedPapers);
+// // research paper
+// router.post("/proxy/gemini", proxyGeminiRequest);
+// router.post("/save-research-papers", protectRoute, saveResearchPapers);
+// router.get("/saved-research-papers", protectRoute, getSavedResearchPapers);
+// router.get("/check-saved-papers", protectRoute, checkSavedPapers);
+// router.post("/save-generated-research-paper", protectRoute, saveGeneratedResearchPaper);
+// router.get("/saved-generated-research-papers", protectRoute, getSavedGeneratedResearchPapers);
+// router.get("/check-saved-generated-papers", protectRoute, checkSavedGeneratedPapers);
 
 // New Routes for AI-Driven Target Prediction
 router.post("/convert-file-to-smiles", protectRoute, convertFileToSmiles); // Convert MOL/SDF to SMILES

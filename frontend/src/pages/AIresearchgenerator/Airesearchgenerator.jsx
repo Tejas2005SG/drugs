@@ -42,6 +42,14 @@ const isValidPaper = (paper) => {
   );
 };
 
+// Clean Gemini response to extract valid JSON
+const cleanGeminiResponse = (response) => {
+  let cleaned = response.replace(/```json|```/g, "").trim();
+  cleaned = cleaned.replace(/^`+|`+$/g, "").trim();
+  const jsonMatch = cleaned.match(/(\[.*?\]|\{.*?\})/s);
+  return jsonMatch ? jsonMatch[0] : cleaned;
+};
+
 function Airesearchgenerator() {
   const [activeTab, setActiveTab] = useState("related");
   const [symptomGroups, setSymptomGroups] = useState([]);
@@ -58,24 +66,24 @@ function Airesearchgenerator() {
   const toastShown = useRef(false);
   const { user, checkAuth, checkingAuth } = useAuthStore();
 
-  // useEffect(() => {
-  //   if (!toastShown.current) {
-  //     toast(
-  //       "First, select a symptom group and SMILES string",
-  //       {
-  //         position: "top-right",
-  //         duration: 8000,
-  //         style: {
-  //           background: "#fefcbf",
-  //           color: "#92400e",
-  //           border: "1px solid #f59e0b",
-  //         },
-  //         icon: "⚠️",
-  //       }
-  //     );
-  //     toastShown.current = true;
-  //   }
-  // }, []);
+  useEffect(() => {
+    if (!toastShown.current) {
+      toast(
+        "First, select a symptom group and SMILES string",
+        {
+          position: "top-right",
+          duration: 8000,
+          style: {
+            background: "#fefcbf",
+            color: "#92400e",
+            border: "1px solid #f59e0b",
+          },
+          icon: "⚠️",
+        }
+      );
+      toastShown.current = true;
+    }
+  }, []);
 
   useEffect(() => {
     const initializeApp = async () => {
@@ -117,7 +125,7 @@ function Airesearchgenerator() {
   const fetchSavedPapers = async () => {
     if (!user?._id) return;
     try {
-      const response = await axiosInstance.get("/protein/saved-research-papers");
+      const response = await axiosInstance.get("/researchPaper/saved-research-papers");
       setSavedPapers(response.data.papers || []);
     } catch (err) {
       console.error("Error fetching saved papers:", err.response?.data || err.message);
@@ -128,7 +136,7 @@ function Airesearchgenerator() {
   const fetchSavedGeneratedPapers = async () => {
     if (!user?._id) return;
     try {
-      const response = await axiosInstance.get("/protein/saved-generated-research-papers");
+      const response = await axiosInstance.get("/researchPaper/saved-generated-research-papers");
       const papers = response.data.papers || [];
       const sortedPapers = papers.sort((a, b) => {
         const dateA = a.createdAt ? new Date(a.createdAt) : new Date(0);
@@ -145,7 +153,7 @@ function Airesearchgenerator() {
   const checkIfPapersExist = async (symptoms, smiles) => {
     if (!user?._id || !symptoms || !smiles) return false;
     try {
-      const response = await axiosInstance.get("/protein/check-saved-papers", {
+      const response = await axiosInstance.get("/researchPaper/check-saved-papers", {
         params: { symptoms, smiles },
       });
       return response.data.exists;
@@ -158,9 +166,10 @@ function Airesearchgenerator() {
   const checkIfGeneratedPaperExists = async (symptoms, smiles) => {
     if (!user?._id || !symptoms || !smiles) return false;
     try {
-      const response = await axiosInstance.get("/protein/check-saved-generated-papers", {
+      const response = await axiosInstance.get("/researchPaper/check-saved-generated-papers", {
         params: { symptoms, smiles },
       });
+      console.log("Check generated paper response:", response.data);
       return response.data.exists;
     } catch (err) {
       console.error("Error checking saved generated papers:", err.response?.data || err.message);
@@ -176,7 +185,9 @@ function Airesearchgenerator() {
       papers,
     };
     try {
-      await axiosInstance.post("/protein/save-research-papers", payload);
+      await axiosInstance.post("/researchPaper/save-research-papers", payload);
+      await fetchSavedPapers();
+      toast.success("Research papers saved successfully!");
     } catch (err) {
       console.error("Error saving papers:", err.response?.data || err.message);
       toast.error("Failed to save research papers");
@@ -191,11 +202,82 @@ function Airesearchgenerator() {
       paper,
     };
     try {
-      await axiosInstance.post("/protein/save-generated-research-paper", payload);
+      await axiosInstance.post("/researchPaper/save-generated-research-paper", payload);
       await fetchSavedGeneratedPapers();
+      toast.success("Generated research paper saved successfully!");
     } catch (err) {
       console.error("Error saving generated paper:", err.response?.data || err.message);
       toast.error("Failed to save generated research paper");
+    }
+  };
+
+  const fetchResearchPapers = async (symptoms, smiles) => {
+    try {
+      const prompt = `
+        You are an expert in chemical informatics and academic research. Given the SMILES string "${smiles}" and associated symptoms "${symptoms}", search for relevant peer-reviewed research papers from trusted academic sources (e.g., PubMed, IEEE Xplore, CrossRef). Return 3-5 papers in clean JSON format (no Markdown or code fences) with the following fields for each paper: title (string), authors (string), year (string), abstract (string), doi (string), url (string), is_simulated (boolean, set to false for real papers). If no real papers are found, generate realistic simulated papers based on the SMILES structure and symptoms, setting is_simulated to true. Ensure the papers are highly relevant to the chemical compound's therapeutic applications for the symptoms. Example output:
+        [
+          {
+            "title": "Example Title",
+            "authors": "J. Doe, A. Smith",
+            "year": "2023",
+            "abstract": "This study explores...",
+            "doi": "10.1000/xyz123",
+            "url": "https://example.com/paper",
+            "is_simulated": false
+          }
+        ]
+      `;
+      const response = await axiosInstance.post("/researchPaper/proxy/gemini", { prompt });
+      const content = response.data.content;
+      try {
+        const cleanedContent = cleanGeminiResponse(content);
+        const papers = JSON.parse(cleanedContent);
+        if (!Array.isArray(papers)) throw new Error("Invalid papers format");
+        return papers.map(paper => ({
+          ...paper,
+          is_simulated: paper.is_simulated || false,
+          abstract: cleanAbstract(paper.abstract),
+        }));
+      } catch (parseError) {
+        console.error("Error parsing Gemini response:", parseError);
+        return generateFallbackPapers(smiles, symptoms);
+      }
+    } catch (err) {
+      console.error("Error fetching research papers:", err.response?.data || err.message);
+      return generateFallbackPapers(smiles, symptoms);
+    }
+  };
+
+  const generateResearchPaper = async (symptoms, smiles) => {
+    try {
+      const prompt = `
+        You are an expert in chemical informatics and academic writing. Given the SMILES string "${smiles}" and associated symptoms "${symptoms}", generate a high-quality research paper in IEEE format. The paper should be structured with the following sections: Title, Authors, Abstract, Keywords, I. Introduction, II. Methodology, III. Results and Discussion, IV. Conclusion, References. Ensure the content is scientifically accurate, relevant to the compound's therapeutic applications for the symptoms, and includes realistic data and references. Return the paper in clean JSON format (no Markdown or code fences) with fields: title (string), authors (string), abstract (string), keywords (array of strings), introduction (string), methodology (string), resultsAndDiscussion (string), conclusion (string), references (array of strings). Example output:
+        {
+          "title": "Therapeutic Applications of Compound X",
+          "authors": "J. Doe, A. Smith",
+          "abstract": "This paper investigates...",
+          "keywords": ["compound X", "therapeutics", "symptoms"],
+          "introduction": "Introduction text...",
+          "methodology": "Methodology text...",
+          "resultsAndDiscussion": "Results text...",
+          "conclusion": "Conclusion text...",
+          "references": ["Ref 1", "Ref 2"]
+        }
+      `;
+      const response = await axiosInstance.post("/researchPaper/proxy/gemini", { prompt });
+      const content = response.data.content;
+      try {
+        const cleanedContent = cleanGeminiResponse(content);
+        const paper = JSON.parse(cleanedContent);
+        if (!isValidPaper(paper)) throw new Error("Invalid paper format");
+        return paper;
+      } catch (parseError) {
+        console.error("Error parsing Gemini response:", parseError);
+        return null;
+      }
+    } catch (err) {
+      console.error("Error generating research paper:", err.response?.data || err.message);
+      return null;
     }
   };
 
@@ -218,7 +300,60 @@ function Airesearchgenerator() {
     setError(null);
     setResearchPapers([]);
     setResearchSummary("");
-    // ... (Rest of the handleResearchClick function remains unchanged)
+
+    try {
+      const papers = await fetchResearchPapers(selectedSymptoms, selectedSmiles);
+      setResearchPapers(papers);
+      setResearchSummary(`Found ${papers.length} research papers related to the compound with SMILES "${selectedSmiles}" for treating symptoms: ${selectedSymptoms}.`);
+      await savePapers(selectedSymptoms, selectedSmiles, papers);
+    } catch (err) {
+      setError("Failed to fetch research papers. Please try again.");
+      toast.error("Failed to fetch research papers");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGeneratePaperClick = async () => {
+    if (selectedSymptomGroupIndex === "" || !selectedSmiles) {
+      toast.error("Please select both a symptom group and SMILES string");
+      return;
+    }
+    const selectedSymptoms = symptomGroups[selectedSymptomGroupIndex]?.join(", ") || "";
+    setLoading(true);
+    setError(null);
+    setGeneratedPaper(null);
+
+    try {
+      const paperExists = await checkIfGeneratedPaperExists(selectedSymptoms, selectedSmiles);
+      if (paperExists) {
+        const confirmRedirect = window.confirm(
+          "A generated research paper for this SMILES and symptoms already exists. Do you want to view it in Saved Generated Papers?"
+        );
+        if (confirmRedirect) {
+          toast("Redirecting to Saved Generated Papers.", { type: "info" });
+          setActiveTab("savedGenerated");
+          await fetchSavedGeneratedPapers();
+        }
+        return;
+      }
+
+      const paper = await generateResearchPaper(selectedSymptoms, selectedSmiles);
+      if (paper) {
+        setGeneratedPaper(paper);
+        await saveGeneratedPaper(selectedSymptoms, selectedSmiles, paper);
+        toast.success("Research paper generated and saved successfully!");
+      } else {
+        setError("Failed to generate research paper. Please try again.");
+        toast.error("Failed to generate research paper");
+      }
+    } catch (err) {
+      console.error("Error in generating research paper:", err.response?.data || err.message);
+      setError("Failed to generate research paper. Please try again.");
+      toast.error("Failed to generate research paper");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const constructIeeeUrl = (doi) => {
@@ -254,27 +389,6 @@ function Airesearchgenerator() {
         is_simulated: true,
       },
     ];
-  };
-
-  const handleGeneratePaperClick = async () => {
-    if (selectedSymptomGroupIndex === "" || !selectedSmiles) {
-      toast.error("Please select both a symptom group and SMILES string");
-      return;
-    }
-    const selectedSymptoms = symptomGroups[selectedSymptomGroupIndex]?.join(", ") || "";
-    const paperExists = await checkIfGeneratedPaperExists(selectedSymptoms, selectedSmiles);
-    if (paperExists) {
-      toast("Generated paper exists. Redirecting to Saved Generated Papers.", {
-        type: "info",
-      });
-      setActiveTab("savedGenerated");
-      await fetchSavedGeneratedPapers();
-      return;
-    }
-    setLoading(true);
-    setError(null);
-    setGeneratedPaper(null);
-    // ... (Rest of the handleGeneratePaperClick function remains unchanged)
   };
 
   const exportToPDF = (paper) => {
@@ -441,10 +555,11 @@ function Airesearchgenerator() {
           {["related", "saved", "generate", "savedGenerated"].map((tab) => (
             <button
               key={tab}
-              className={`px-4 sm:px-6 py-2 rounded-lg font-label text-sm sm:text-base transition-all duration-300 transform hover:scale-105 ${activeTab === tab
+              className={`px-4 sm:px-6 py-2 rounded-lg font-label text-sm sm:text-base transition-all duration-300 transform hover:scale-105 ${
+                activeTab === tab
                   ? "bg-accent text-primary shadow-lg"
                   : "bg-secondary text-text-secondary hover:bg-accent-secondary"
-                }`}
+              }`}
               onClick={() => handleTabChange(tab)}
             >
               {tab === "related" && "Related Research Papers"}
@@ -604,6 +719,11 @@ function Airesearchgenerator() {
                                 </a>
                               </p>
                             )}
+                            {paper.is_simulated && (
+                              <p className="text-text-secondary font-body text-sm sm:text-base italic">
+                                Note: This is a simulated paper generated for illustrative purposes.
+                              </p>
+                            )}
                           </div>
                         ))}
                       </div>
@@ -622,7 +742,7 @@ function Airesearchgenerator() {
               {savedPapers.length > 0 ? (
                 <div className="space-y-6 sm:space-y-10">
                   {savedPapers.map((entry, index) => {
-                    if (!entry.molecule || !entry.molecule.symptoms || !entry.molecule.smiles || !entry.research) {
+                    if (!entry.molecule || !entry.molecule.symptoms || !entry.molecule.smiles || !entry.papers) {
                       console.warn(`Skipping invalid saved research entry at index ${index}:`, entry);
                       return null;
                     }
@@ -640,7 +760,7 @@ function Airesearchgenerator() {
                           Symptoms: {displaySymptoms} (SMILES: {entry.molecule.smiles})
                         </h3>
                         <div className="space-y-6 sm:space-y-8">
-                          {entry.research.map((paper, paperIndex) => (
+                          {entry.papers.map((paper, paperIndex) => (
                             <div
                               key={paperIndex}
                               className="border-l-4 border-accent pl-4 transform transition-all duration-500 animate-slide-up"
@@ -669,6 +789,11 @@ function Airesearchgenerator() {
                                   >
                                     {paper.doi}
                                   </a>
+                                </p>
+                              )}
+                              {paper.is_simulated && (
+                                <p className="text-text-secondary font-body text-sm sm:text-base italic">
+                                  Note: This is a simulated paper generated for illustrative purposes.
                                 </p>
                               )}
                             </div>
@@ -989,8 +1114,8 @@ function Airesearchgenerator() {
                             </h5>
                             <ul className="list-none text-sm sm:text-base space-y-2 text-text-secondary font-body">
                               {Array.isArray(paper.references) && paper.references.length > 0 ? (
-                                paper.references.map((ref, refIndex) => (
-                                  <li key={refIndex}>{ref}</li>
+                                paper.references.map((ref, index) => (
+                                  <li key={index}>{ref}</li>
                                 ))
                               ) : (
                                 <li>No references available</li>

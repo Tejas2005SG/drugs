@@ -1,11 +1,22 @@
-// researchPapers.model.js
 import mongoose from "mongoose";
 
 const researchPaperSchema = new mongoose.Schema({
-  userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+  userId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User",
+    required: true,
+  },
   molecule: {
-    title: { type: String, required: true },
-    smiles: { type: String, required: true },
+    symptoms: {
+      type: String,
+      required: true,
+    },
+    smiles: {
+      type: String,
+      required: true,
+    },
+    // Remove or make title optional if it exists
+    // title: { type: String }, // Commented out or removed
   },
   papers: [
     {
@@ -15,11 +26,16 @@ const researchPaperSchema = new mongoose.Schema({
       abstract: String,
       doi: String,
       url: String,
+      is_simulated: Boolean,
     },
   ],
-  createdAt: { type: Date, default: Date.now },
+  createdAt: {
+    type: Date,
+    default: Date.now,
+  },
 });
 
-const ResearchPaper = mongoose.model("ResearchPaper", researchPaperSchema);
+// Add index for faster queries
+researchPaperSchema.index({ userId: 1, "molecule.symptoms": 1, "molecule.smiles": 1 });
 
-export default ResearchPaper;
+export default mongoose.model("ResearchPaper", researchPaperSchema);

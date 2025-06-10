@@ -39,7 +39,7 @@ const savedSearchSchema = new mongoose.Schema({
     smiles: { type: String, required: true },   // Store SMILES string
   },
   research: [{
-    title: { type: String, required: true },
+    title: { type: String, required: false },
     authors: { type: String, required: true },
     year: { type: String, required: true },
     abstract: { type: String, default: "Abstract not available" },

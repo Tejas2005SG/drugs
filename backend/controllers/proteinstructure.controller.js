@@ -1180,34 +1180,34 @@ export const getgeneratednewmolecule = async (req, res) => {
   }
 };
 
-export const proxyGeminiRequest = async (req, res) => {
-  try {
-    const { prompt } = req.body;
-    if (!prompt) {
-      return res.status(400).json({ message: "Prompt is required" });
-    }
+// export const proxyGeminiRequest = async (req, res) => {
+//   try {
+//     const { prompt } = req.body;
+//     if (!prompt) {
+//       return res.status(400).json({ message: "Prompt is required" });
+//     }
 
-    const response = await axios.post(
-      `${GEMINI_API_URL}?key=${GEMINI_API_KEY}`,
-      {
-        contents: [{ parts: [{ text: prompt }] }],
-      },
-      {
-        headers: { "Content-Type": "application/json" },
-      }
-    );
+//     const response = await axios.post(
+//       `${GEMINI_API_URL}?key=${GEMINI_API_KEY}`,
+//       {
+//         contents: [{ parts: [{ text: prompt }] }],
+//       },
+//       {
+//         headers: { "Content-Type": "application/json" },
+//       }
+//     );
 
-    const geminiContent = response.data.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!geminiContent) {
-      throw new Error("No content returned from Gemini API");
-    }
+//     const geminiContent = response.data.candidates?.[0]?.content?.parts?.[0]?.text;
+//     if (!geminiContent) {
+//       throw new Error("No content returned from Gemini API");
+//     }
 
-    res.status(200).json({ content: geminiContent });
-  } catch (error) {
-    console.error("Error proxying Gemini request:", error);
-    res.status(500).json({ message: "Failed to fetch Gemini response", error: error.message });
-  }
-};
+//     res.status(200).json({ content: geminiContent });
+//   } catch (error) {
+//     console.error("Error proxying Gemini request:", error);
+//     res.status(500).json({ message: "Failed to fetch Gemini response", error: error.message });
+//   }
+// };
 
 
 
@@ -1318,145 +1318,145 @@ export const proxyGeminiRequest = async (req, res) => {
  // Import the updated SavedSearch model
 
 // // Save related research papers
-export const saveResearchPapers = async (req, res) => {
-  const { userId, molecule, papers } = req.body;
-  try {
-    // Check if a document already exists for this user and molecule
-    const existingDoc = await SavedSearch.findOne({
-      userId,
-      "molecule.symptoms": molecule.symptoms,
-      "molecule.smiles": molecule.smiles,
-    });
+// export const saveResearchPapers = async (req, res) => {
+//   const { userId, molecule, papers } = req.body;
+//   try {
+//     // Check if a document already exists for this user and molecule
+//     const existingDoc = await SavedSearch.findOne({
+//       userId,
+//       "molecule.symptoms": molecule.symptoms,
+//       "molecule.smiles": molecule.smiles,
+//     });
 
-    if (existingDoc) {
-      // Update the existing document by appending or replacing the research papers
-      existingDoc.research = papers; // Replace existing papers
-      existingDoc.createdAt = new Date();
-      await existingDoc.save();
-    } else {
-      // Create a new document
-      const newDoc = new SavedSearch({
-        userId,
-        molecule,
-        research: papers,
-      });
-      await newDoc.save();
-    }
+//     if (existingDoc) {
+//       // Update the existing document by appending or replacing the research papers
+//       existingDoc.research = papers; // Replace existing papers
+//       existingDoc.createdAt = new Date();
+//       await existingDoc.save();
+//     } else {
+//       // Create a new document
+//       const newDoc = new SavedSearch({
+//         userId,
+//         molecule,
+//         research: papers,
+//       });
+//       await newDoc.save();
+//     }
 
-    res.status(200).json({ message: "Papers saved successfully" });
-  } catch (err) {
-    console.error("Error saving research papers:", err);
-    res.status(500).json({ message: "Failed to save papers", error: err.message });
-  }
-};
+//     res.status(200).json({ message: "Papers saved successfully" });
+//   } catch (err) {
+//     console.error("Error saving research papers:", err);
+//     res.status(500).json({ message: "Failed to save papers", error: err.message });
+//   }
+// };
 
-// Fetch saved research papers
-export const getSavedResearchPapers = async (req, res) => {
-  const userId = req.user._id;
-  try {
-    const savedPapers = await SavedSearch.find({
-      userId,
-      research: { $exists: true, $ne: [] }, // Ensure research array exists and is not empty
-    });
-    console.log("Fetched saved research papers:", savedPapers); // Debugging log
-    res.status(200).json({ papers: savedPapers || [] });
-  } catch (err) {
-    console.error("Error fetching saved papers:", err);
-    res.status(500).json({ message: "Failed to fetch saved papers", error: err.message });
-  }
-};
+// // Fetch saved research papers
+// export const getSavedResearchPapers = async (req, res) => {
+//   const userId = req.user._id;
+//   try {
+//     const savedPapers = await SavedSearch.find({
+//       userId,
+//       research: { $exists: true, $ne: [] }, // Ensure research array exists and is not empty
+//     });
+//     console.log("Fetched saved research papers:", savedPapers); // Debugging log
+//     res.status(200).json({ papers: savedPapers || [] });
+//   } catch (err) {
+//     console.error("Error fetching saved papers:", err);
+//     res.status(500).json({ message: "Failed to fetch saved papers", error: err.message });
+//   }
+// };
 
-// Check if saved papers exist for a given molecule
-export const checkSavedPapers = async (req, res) => {
-  const userId = req.user._id;
-  const { symptoms, smiles } = req.query;
-  try {
-    const exists = await SavedSearch.exists({
-      userId,
-      "molecule.symptoms": symptoms,
-      "molecule.smiles": smiles,
-      research: { $exists: true, $ne: [] },
-    });
-    console.log("Check saved papers result:", exists); // Debugging log
-    res.status(200).json({ exists: !!exists });
-  } catch (err) {
-    console.error("Error checking saved papers:", err);
-    res.status(500).json({ message: "Failed to check saved papers", error: err.message });
-  }
-};
+// // Check if saved papers exist for a given molecule
+// export const checkSavedPapers = async (req, res) => {
+//   const userId = req.user._id;
+//   const { symptoms, smiles } = req.query;
+//   try {
+//     const exists = await SavedSearch.exists({
+//       userId,
+//       "molecule.symptoms": symptoms,
+//       "molecule.smiles": smiles,
+//       research: { $exists: true, $ne: [] },
+//     });
+//     console.log("Check saved papers result:", exists); // Debugging log
+//     res.status(200).json({ exists: !!exists });
+//   } catch (err) {
+//     console.error("Error checking saved papers:", err);
+//     res.status(500).json({ message: "Failed to check saved papers", error: err.message });
+//   }
+// };
 
-// Save a generated research paper
-export const saveGeneratedResearchPaper = async (req, res) => {
-  const { userId, molecule, paper } = req.body;
-  try {
-    // Check if a document already exists for this user and molecule
-    const existingDoc = await SavedSearch.findOne({
-      userId,
-      "molecule.symptoms": molecule.symptoms,
-      "molecule.smiles": molecule.smiles,
-    });
+// // Save a generated research paper
+// export const saveGeneratedResearchPaper = async (req, res) => {
+//   const { userId, molecule, paper } = req.body;
+//   try {
+//     // Check if a document already exists for this user and molecule
+//     const existingDoc = await SavedSearch.findOne({
+//       userId,
+//       "molecule.symptoms": molecule.symptoms,
+//       "molecule.smiles": molecule.smiles,
+//     });
 
-    if (existingDoc) {
-      // Update the existing document by adding the generated paper
-      existingDoc.paper = paper;
-      existingDoc.createdAt = new Date();
-      await existingDoc.save();
-    } else {
-      // Create a new document
-      const newDoc = new SavedSearch({
-        userId,
-        molecule,
-        paper,
-      });
-      await newDoc.save();
-    }
+//     if (existingDoc) {
+//       // Update the existing document by adding the generated paper
+//       existingDoc.paper = paper;
+//       existingDoc.createdAt = new Date();
+//       await existingDoc.save();
+//     } else {
+//       // Create a new document
+//       const newDoc = new SavedSearch({
+//         userId,
+//         molecule,
+//         paper,
+//       });
+//       await newDoc.save();
+//     }
 
-    res.status(200).json({ message: "Generated research paper saved successfully" });
-  } catch (err) {
-    console.error("Error saving generated research paper:", err);
-    res.status(500).json({ message: "Failed to save generated research paper", error: err.message });
-  }
-};
+//     res.status(200).json({ message: "Generated research paper saved successfully" });
+//   } catch (err) {
+//     console.error("Error saving generated research paper:", err);
+//     res.status(500).json({ message: "Failed to save generated research paper", error: err.message });
+//   }
+// };
 
-// Fetch saved generated research papers
-export const getSavedGeneratedResearchPapers = async (req, res) => {
-  const userId = req.user._id;
-  try {
-    const savedPapers = await SavedSearch.find({
-      userId,
-      paper: { $exists: true }, // Ensure paper field exists
-    });
-    console.log("Fetched saved generated papers:", savedPapers); // Debugging log
-    res.status(200).json({ papers: savedPapers || [] });
-  } catch (err) {
-    console.error("Error fetching saved generated papers:", err);
-    res.status(500).json({ message: "Failed to fetch saved generated papers", error: err.message });
-  }
-};
+// // Fetch saved generated research papers
+// export const getSavedGeneratedResearchPapers = async (req, res) => {
+//   const userId = req.user._id;
+//   try {
+//     const savedPapers = await SavedSearch.find({
+//       userId,
+//       paper: { $exists: true }, // Ensure paper field exists
+//     });
+//     console.log("Fetched saved generated papers:", savedPapers); // Debugging log
+//     res.status(200).json({ papers: savedPapers || [] });
+//   } catch (err) {
+//     console.error("Error fetching saved generated papers:", err);
+//     res.status(500).json({ message: "Failed to fetch saved generated papers", error: err.message });
+//   }
+// };
 
-// Check if a generated paper exists for a given molecule
-export const checkSavedGeneratedPapers = async (req, res) => {
-  const userId = req.user._id;
-  const { symptoms, smiles } = req.query;
+// // Check if a generated paper exists for a given molecule
+// export const checkSavedGeneratedPapers = async (req, res) => {
+//   const userId = req.user._id;
+//   const { symptoms, smiles } = req.query;
 
-  if (!symptoms || !smiles) {
-    return res.status(400).json({ message: "Symptoms and SMILES are required" });
-  }
+//   if (!symptoms || !smiles) {
+//     return res.status(400).json({ message: "Symptoms and SMILES are required" });
+//   }
 
-  try {
-    const exists = await SavedSearch.exists({
-      userId,
-      "molecule.symptoms": symptoms,
-      "molecule.smiles": smiles,
-      paper: { $exists: true },
-    });
-    console.log("Check saved generated papers result:", exists); // Debugging log
-    res.status(200).json({ exists: !!exists });
-  } catch (err) {
-    console.error("Error checking saved generated papers:", err);
-    res.status(500).json({ message: "Failed to check saved generated papers", error: err.message });
-  }
-};
+//   try {
+//     const exists = await SavedSearch.exists({
+//       userId,
+//       "molecule.symptoms": symptoms,
+//       "molecule.smiles": smiles,
+//       paper: { $exists: true },
+//     });
+//     console.log("Check saved generated papers result:", exists); // Debugging log
+//     res.status(200).json({ exists: !!exists });
+//   } catch (err) {
+//     console.error("Error checking saved generated papers:", err);
+//     res.status(500).json({ message: "Failed to check saved generated papers", error: err.message });
+//   }
+// };
 
 
 
