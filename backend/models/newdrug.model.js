@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { User } from "./auth.model.js";
 
 const predictDiseaseSchema = new mongoose.Schema({
   symptoms: {

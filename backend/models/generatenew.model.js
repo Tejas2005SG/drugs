@@ -1,4 +1,3 @@
-// GeneratenewMoleculeSchema.js
 import mongoose from "mongoose";
 
 const GeneratenewMoleculeSchema = new mongoose.Schema({
@@ -18,6 +17,10 @@ const GeneratenewMoleculeSchema = new mongoose.Schema({
     type: String,
     default: "",
   },
+  originalSmiles: { // New field to store the original SMILES
+    type: String,
+    default: null,
+  },
   newIupacName: {
     type: String,
     default: "",
@@ -31,7 +34,7 @@ const GeneratenewMoleculeSchema = new mongoose.Schema({
     default: "",
   },
   information: {
-    type: String, // Stores the raw streaming response as text
+    type: String,
     default: "",
   },
   created: {

@@ -5,13 +5,11 @@ import { useAuthStore } from "../../Store/auth.store.js";
 import { motion, AnimatePresence } from "framer-motion";
 import "./name.css";
 
-// Utility to handle long SMILES strings with wrapping
 const formatSmiles = (smiles) => {
   if (!smiles) return "";
   return smiles.match(/.{1,60}(?=\s|$)/g)?.join('\n') || "";
 };
 
-// Utility to truncate SMILES strings for display
 const truncateSmiles = (smiles, maxLength = 30) => {
   if (!smiles) return "";
   if (smiles.length <= maxLength) return smiles;
@@ -30,76 +28,118 @@ const AINamingSuggestion = () => {
   const [selectedSmiles, setSelectedSmiles] = useState("");
   const [symptomGroups, setSymptomGroups] = useState([]);
   const [productSmilesGroups, setProductSmilesGroups] = useState([]);
+  const [moleculeDetails, setMoleculeDetails] = useState({});
   const [suggestedNames, setSuggestedNames] = useState([]);
   const [savedNames, setSavedNames] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [fallbackMessage, setFallbackMessage] = useState(null);
   const [copiedText, setCopiedText] = useState(null);
   const [showAcceptModal, setShowAcceptModal] = useState(false);
   const [selectedCandidate, setSelectedCandidate] = useState(null);
   const dropdownRef = useRef(null);
-  const { user, checkAuth, checkingAuth } = useAuthStore();
+  const { user, checkAuth, checkingAuth, setCheckingAuth } = useAuthStore();
   const [isSmilesDropdownOpen, setIsSmilesDropdownOpen] = useState(false);
+  const hasCheckedAuth = useRef(false); // Track if auth has been checked
 
-  // Custom toast theme
   const toastOptions = {
     style: {
-      background: '#172A45', // secondary
-      color: '#E0E0E0', // text-primary
-      border: '1px solid #5E81F4', // accent-secondary
+      background: '#172A45',
+      color: '#E0E0E0',
+      border: '1px solid #5E81F4',
       borderRadius: '8px',
       padding: '12px',
-      fontFamily: 'Roboto, Open Sans, sans-serif', // body font
+      fontFamily: 'Roboto, Open Sans, sans-serif',
     },
-    success: {
-      style: {
-        borderColor: '#70E000', // success
-      },
-      iconTheme: {
-        primary: '#70E000', // success
-        secondary: '#E0E0E0', // text-primary
-      },
-    },
+    success: { style: { borderColor: '#70E000' }, iconTheme: { primary: '#70E000', secondary: '#E0E0E0' } },
+    error: { style: { borderColor: '#FF4C4C' } },
   };
 
   useEffect(() => {
     const initialize = async () => {
-      await checkAuth();
-      if (!user) {
-        setError("Authentication failed. Please log in.");
-        return;
+      if (hasCheckedAuth.current) return; // Skip if already checked
+      hasCheckedAuth.current = true; // Mark as checked
+      setCheckingAuth(true);
+      try {
+        const authTimeout = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error("Authentication check timed out")), 5000)
+        );
+        await Promise.race([checkAuth(), authTimeout]);
+        console.log("Auth check completed, user:", user);
+        if (!user) {
+          setError("Authentication failed. Please log in.");
+          return;
+        }
+        await fetchSymptomsAndProducts();
+        await fetchSavedNames();
+      } catch (err) {
+        console.error("Authentication error:", err.message);
+        setError("Authentication failed: " + err.message);
+        toast.error("Authentication failed. Redirecting to login...", toastOptions);
+        setTimeout(() => (window.location.href = "/login"), 2000);
+      } finally {
+        setCheckingAuth(false);
       }
-      await fetchSymptomsAndProducts();
-      await fetchSavedNames();
     };
     initialize();
-  }, [checkAuth]);
+  }, [checkAuth, setCheckingAuth]); // Removed user from dependencies
 
-  const fetchSymptomsAndProducts = async () => {
-    if (!user?._id) return;
+const fetchSymptomsAndProducts = async (targetOriginalSmiles = null, acceptedName = null) => {
+  if (!user?._id) return;
 
-    setLoading(true);
-    try {
-      const response = await axiosInstance.get(`/getdata/getsymptoms-product/${user._id}`);
-      const { symptoms, productSmiles } = response.data;
-      setSymptomGroups(symptoms || []);
-      setProductSmilesGroups(productSmiles || []);
-      if (symptoms?.length > 0) {
-        setSymptomGroupIndex("0");
-        if (productSmiles?.[0]?.length > 0) {
-          setSelectedSmiles(productSmiles[0][0]);
-        }
-      }
-    } catch (err) {
-      console.error("Error fetching symptoms and products:", err);
-      setError(err.response?.data?.message || "Failed to fetch symptoms and products");
-      setSymptomGroups([]);
-      setProductSmilesGroups([]);
-    } finally {
-      setLoading(false);
+  setLoading(true);
+  try {
+    const response = await axiosInstance.get(`/getdata/getsymptoms-product/${user._id}`);
+    console.log("Symptoms and Products Response:", response.data);
+    const { symptoms, productSmiles, moleculeDetails, message } = response.data;
+
+    if (!symptoms || symptoms.length === 0) {
+      throw new Error(message || "No symptoms returned from server");
     }
-  };
+
+    setSymptomGroups(symptoms);
+    setProductSmilesGroups(productSmiles || []);
+    setMoleculeDetails(moleculeDetails || {});
+    setError(null);
+
+    // If a symptom group is not selected or was reset, default to the first group
+    if (symptoms.length > 0 && (symptomGroupIndex === "" || symptomGroupIndex >= symptoms.length)) {
+      setSymptomGroupIndex("0");
+    }
+
+    // If accepting a name, find and select the updated SMILES (drug name)
+    if (targetOriginalSmiles && acceptedName) {
+      let foundSmiles = null;
+      productSmiles.forEach((group, index) => {
+        const match = group.find(
+          (smiles) =>
+            moleculeDetails[smiles]?.originalSmiles === targetOriginalSmiles ||
+            smiles === acceptedName
+        );
+        if (match) {
+          foundSmiles = match;
+          setSymptomGroupIndex(index.toString());
+        }
+      });
+      if (foundSmiles) {
+        setSelectedSmiles(foundSmiles);
+      } else if (productSmiles[0]?.length > 0) {
+        setSelectedSmiles(productSmiles[0][0]);
+      }
+    } else if (symptoms.length > 0 && productSmiles[symptomGroupIndex]?.length > 0) {
+      // Preserve existing selection if possible
+      setSelectedSmiles(productSmiles[symptomGroupIndex][0]);
+    }
+  } catch (err) {
+    console.error("Error fetching symptoms and products:", err);
+    setError(err.response?.data?.message || "Failed to fetch symptoms and products");
+    setSymptomGroups([]);
+    setProductSmilesGroups([]);
+    setMoleculeDetails({});
+    toast.error(err.response?.data?.message || "Failed to fetch data", toastOptions);
+  } finally {
+    setLoading(false);
+  }
+};
 
   const fetchSavedNames = async () => {
     if (!user?._id) return;
@@ -107,16 +147,15 @@ const AINamingSuggestion = () => {
     try {
       const response = await axiosInstance.get("/drugname/saved-drug-names");
       const drugNames = response.data.drugNames || [];
-      console.log("Fetched saved drug names:", drugNames);
-      const storedSymptomGroups = JSON.parse(localStorage.getItem(`symptomGroups_${user._id}`) || "{}");
-      const updatedDrugNames = drugNames.map((drugName) => ({
+      console.log("Saved Drug Names:", drugNames);
+      setSavedNames(drugNames.map((drugName) => ({
         ...drugName,
-        symptomsGrp: storedSymptomGroups[drugName._id] || drugName.symptoms || "N/A",
-      }));
-      setSavedNames(updatedDrugNames);
+        symptomsGrp: drugName.symptoms || "N/A",
+      })));
     } catch (err) {
-      console.error("Error fetching saved names:", err);
+      console.error("Error fetching saved drug names:", err);
       setError(err.response?.data?.message || "Failed to fetch saved names");
+      toast.error("Failed to fetch saved names", toastOptions);
     }
   };
 
@@ -125,7 +164,6 @@ const AINamingSuggestion = () => {
       const response = await axiosInstance.get("/drugname/check-saved-drug-name", {
         params: { smiles },
       });
-      console.log("Check saved name response:", response.data);
       return response.data.exists;
     } catch (err) {
       console.error("Error checking saved name:", err);
@@ -140,9 +178,10 @@ const AINamingSuggestion = () => {
     }
 
     const symptoms = symptomGroups[symptomGroupIndex]?.join(", ") || "";
-    const nameExists = await checkIfNameExists(selectedSmiles);
+    const originalSmiles = moleculeDetails[selectedSmiles]?.originalSmiles || selectedSmiles;
+    const nameExists = await checkIfNameExists(originalSmiles);
     if (nameExists) {
-      const savedName = savedNames.find((n) => n.smiles === selectedSmiles);
+      const savedName = savedNames.find((n) => n.smiles === originalSmiles);
       if (savedName?.status === "accepted") {
         toast("An accepted drug name already exists for this SMILES.", {
           ...toastOptions,
@@ -156,14 +195,12 @@ const AINamingSuggestion = () => {
     setLoading(true);
     setError(null);
     setSuggestedNames([]);
-    setFallbackMessage(null);
 
     try {
       const response = await axiosInstance.post(`/drugname/generate-drug-name/${user._id}`, {
-        smiles: selectedSmiles,
+        smiles: originalSmiles,
         symptoms,
       });
-      console.log("Generate drug name response:", response.data);
 
       if (response.status === 409) {
         toast("An accepted drug name already exists. Redirecting to Saved Names.", {
@@ -175,12 +212,7 @@ const AINamingSuggestion = () => {
       }
 
       setSuggestedNames(response.data.allCandidates);
-      setFallbackMessage(response.data.fallback);
       toast.success("Drug names generated successfully!", toastOptions);
-
-      const storedSymptomGroups = JSON.parse(localStorage.getItem(`symptomGroups_${user._id}`) || "{}");
-      storedSymptomGroups[response.data.drugName._id || `temp_${Date.now()}`] = symptoms;
-      localStorage.setItem(`symptomGroups_${user._id}`, JSON.stringify(storedSymptomGroups));
     } catch (err) {
       console.error("Error generating drug name:", err);
       setError(err.response?.data?.message || "Failed to generate drug name");
@@ -195,41 +227,39 @@ const AINamingSuggestion = () => {
     setShowAcceptModal(true);
   };
 
-  const confirmAcceptName = async () => {
-    if (!selectedCandidate) return;
+ const confirmAcceptName = async () => {
+  if (!selectedCandidate) return;
 
-    const symptoms = symptomGroupIndex !== "" ? symptomGroups[symptomGroupIndex]?.join(", ") || "" : "";
-    setLoading(true);
-    setShowAcceptModal(false);
+  const symptoms = symptomGroups[symptomGroupIndex]?.join(", ") || "";
+  const originalSmiles = moleculeDetails[selectedSmiles]?.originalSmiles || selectedSmiles;
+  setLoading(true);
+  setShowAcceptModal(false);
 
-    try {
-      const response = await axiosInstance.post(`/drugname/accept-drug-name/${user._id}`, {
-        smiles: selectedSmiles,
-        symptoms,
-        selectedName: selectedCandidate.name,
-        rationale: selectedCandidate.rationale,
-        compliance: selectedCandidate.compliance,
-      });
-      console.log("Accept drug name response:", response.data);
+  try {
+    const response = await axiosInstance.post(`/drugname/accept-drug-name/${user._id}`, {
+      smiles: originalSmiles,
+      symptoms,
+      selectedName: selectedCandidate.name,
+      rationale: selectedCandidate.rationale,
+      compliance: selectedCandidate.compliance,
+    });
 
-      const storedSymptomGroups = JSON.parse(localStorage.getItem(`symptomGroups_${user._id}`) || "{}");
-      storedSymptomGroups[response.data.drugName._id || selectedCandidate.name] = symptoms;
-      localStorage.setItem(`symptomGroups_${user._id}`, JSON.stringify(storedSymptomGroups));
-
-      setSuggestedNames([]);
-      setSymptomGroupIndex("");
-      setSelectedSmiles("");
-      await fetchSymptomsAndProducts();
-      await fetchSavedNames();
-    } catch (err) {
-      console.error("Error accepting drug name:", err);
-      setError(err.response?.data?.message || "Failed to accept drug name");
-      toast.error("Failed to accept drug name", toastOptions);
-    } finally {
-      setLoading(false);
-      setSelectedCandidate(null);
-    }
-  };
+    setSuggestedNames([]);
+    // Do not reset symptomGroupIndex: setSymptomGroupIndex("");
+    // Do not reset selectedSmiles yet: setSelectedSmiles("");
+    await fetchSymptomsAndProducts(originalSmiles, selectedCandidate.name); // Pass params to select updated SMILES
+    await fetchSavedNames();
+    toast.success("Drug name accepted successfully!", toastOptions);
+  } catch (err) {
+    console.error("Error accepting drug name:", err);
+    const errorMessage = err.response?.data?.message || "Failed to accept drug name";
+    setError(errorMessage);
+    toast.error(errorMessage, toastOptions);
+  } finally {
+    setLoading(false);
+    setSelectedCandidate(null);
+  }
+};
 
   const handleRejectName = () => {
     setSuggestedNames([]);
@@ -239,15 +269,12 @@ const AINamingSuggestion = () => {
     if (activeTab === "generate" && suggestedNames.length > 0) {
       try {
         const symptoms = symptomGroups[symptomGroupIndex]?.join(", ") || "";
-        const response = await axiosInstance.post(`/drugname/save-pending-drug-name/${user._id}`, {
-          smiles: selectedSmiles,
+        const originalSmiles = moleculeDetails[selectedSmiles]?.originalSmiles || selectedSmiles;
+        await axiosInstance.post(`/drugname/save-pending-drug-name/${user._id}`, {
+          smiles: originalSmiles,
           symptoms,
           candidates: suggestedNames,
         });
-        console.log("Save pending drug name response:", response.data);
-        const storedSymptomGroups = JSON.parse(localStorage.getItem(`symptomGroups_${user._id}`) || "{}");
-        storedSymptomGroups[response.data.drugName._id || `temp_${Date.now()}`] = symptoms;
-        localStorage.setItem(`symptomGroups_${user._id}`, JSON.stringify(storedSymptomGroups));
       } catch (err) {
         console.error("Error saving pending drug name:", err);
         toast.error("Failed to save pending drug name", toastOptions);
@@ -256,15 +283,6 @@ const AINamingSuggestion = () => {
     setActiveTab(tab);
     setSuggestedNames([]);
     setError(null);
-    setFallbackMessage(null);
-  };
-
-  const getComplianceText = (compliance) => {
-    if (typeof compliance === "string") return compliance;
-    if (compliance && typeof compliance === "object") {
-      return compliance.status || JSON.stringify(compliance);
-    }
-    return "Unknown";
   };
 
   const copyToClipboard = (text) => {
@@ -274,7 +292,7 @@ const AINamingSuggestion = () => {
   };
 
   const toggleSmilesDropdown = () => {
-    if (!loading && symptomGroupIndex && productSmilesGroups[symptomGroupIndex]?.length > 0) {
+    if (!loading && symptomGroupIndex !== "" && productSmilesGroups[symptomGroupIndex]?.length > 0) {
       setIsSmilesDropdownOpen(!isSmilesDropdownOpen);
     }
   };
@@ -292,7 +310,8 @@ const AINamingSuggestion = () => {
           animate={{ opacity: 1 }}
           className="text-center py-10 text-accent"
         >
-          Verifying authentication...
+          <p>Verifying authentication...</p>
+          <p className="text-sm text-text-secondary mt-2">Please wait a moment.</p>
         </motion.div>
       </div>
     );
@@ -341,10 +360,11 @@ const AINamingSuggestion = () => {
               key={tab}
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              className={`px-6 py-3 rounded-lg font-medium transition-all duration-300 ${activeTab === tab
-                ? "bg-accent text-primary shadow-lg"
-                : "bg-secondary text-text-primary hover:bg-opacity-80"
-                }`}
+              className={`px-6 py-3 rounded-lg font-medium transition-all duration-300 ${
+                activeTab === tab
+                  ? "bg-accent text-primary shadow-lg"
+                  : "bg-secondary text-text-primary hover:bg-opacity-80"
+              }`}
               onClick={() => handleTabChange(tab)}
             >
               {tab === "generate" && "Generate Drug Name"}
@@ -372,8 +392,10 @@ const AINamingSuggestion = () => {
                     <select
                       value={symptomGroupIndex}
                       onChange={(e) => {
-                        setSymptomGroupIndex(e.target.value);
-                        setSelectedSmiles(productSmilesGroups[e.target.value]?.[0] || "");
+                        const index = e.target.value;
+                        setSymptomGroupIndex(index);
+                        setSelectedSmiles(productSmilesGroups[index]?.[0] || "");
+                        console.log("Selected symptom group:", symptomGroups[index]);
                       }}
                       className="w-full p-3 bg-primary border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent text-text-primary font-mono"
                       disabled={loading || symptomGroups.length === 0}
@@ -383,7 +405,7 @@ const AINamingSuggestion = () => {
                       ) : (
                         symptomGroups.map((group, index) => (
                           <option key={index} value={index}>
-                            {group.join(", ")}
+                            {group.join(", ") || "Unnamed Group"}
                           </option>
                         ))
                       )}
@@ -392,17 +414,18 @@ const AINamingSuggestion = () => {
 
                   <div className="relative" ref={dropdownRef}>
                     <label className="block text-sm font-medium text-text-secondary mb-2">
-                      Select SMILES String
+                      Select Drug Name / SMILES
                     </label>
                     <div
-                      className={`w-full p-3 bg-primary border border-gray-600 rounded-lg text-text-primary font-mono flex justify-between items-center cursor-pointer ${loading || !symptomGroupIndex || productSmilesGroups[symptomGroupIndex]?.length === 0
-                        ? "opacity-50 cursor-not-allowed"
-                        : "hover:bg-gray-700"
-                        }`}
+                      className={`w-full p-3 bg-primary border border-gray-600 rounded-lg text-text-primary font-mono flex justify-between items-center cursor-pointer ${
+                        loading || symptomGroupIndex === "" || productSmilesGroups[symptomGroupIndex]?.length === 0
+                          ? "opacity-50 cursor-not-allowed"
+                          : "hover:bg-gray-700"
+                      }`}
                       onClick={toggleSmilesDropdown}
                     >
                       <span className="truncate">
-                        {selectedSmiles ? truncateSmiles(selectedSmiles) : "Select a SMILES string"}
+                        {selectedSmiles ? truncateSmiles(selectedSmiles) : "Select a drug name / SMILES"}
                       </span>
                       <svg
                         className={`w-4 h-4 transform transition-transform ${isSmilesDropdownOpen ? "rotate-180" : ""}`}
@@ -417,7 +440,7 @@ const AINamingSuggestion = () => {
                     {isSmilesDropdownOpen && (
                       <div className="absolute z-10 w-full mt-1 bg-primary border border-gray-600 rounded-lg shadow-lg max-h-60 overflow-y-auto">
                         {productSmilesGroups[symptomGroupIndex]?.length === 0 ? (
-                          <div className="p-3 text-text-secondary">No SMILES available</div>
+                          <div className="p-3 text-text-secondary">No entries available</div>
                         ) : (
                           productSmilesGroups[symptomGroupIndex]?.map((smiles, index) => (
                             <div
@@ -426,9 +449,11 @@ const AINamingSuggestion = () => {
                               onClick={() => handleSmilesSelect(smiles)}
                             >
                               <span className="truncate block">{truncateSmiles(smiles)}</span>
-                              <div className="absolute left-0 top-full mt-1 hidden group-hover:block bg-gray-800 text-white text-xs rounded p-2 z-20 max-w-md whitespace-pre-wrap">
-                                {smiles}
-                              </div>
+                              {moleculeDetails[smiles]?.originalSmiles && (
+                                <div className="absolute left-0 top-full mt-1 hidden group-hover:block bg-gray-800 text-white text-xs rounded p-2 z-20 max-w-md whitespace-pre-wrap">
+                                  Original SMILES: {moleculeDetails[smiles].originalSmiles}
+                                </div>
+                              )}
                             </div>
                           ))
                         )}
@@ -441,10 +466,11 @@ const AINamingSuggestion = () => {
                     whileTap={{ scale: 0.98 }}
                     onClick={handleGenerateName}
                     disabled={loading || symptomGroupIndex === "" || !selectedSmiles}
-                    className={`w-full py-3 px-6 rounded-lg transition-all duration-300 ${loading || symptomGroupIndex === "" || !selectedSmiles
-                      ? "bg-gray-600 cursor-not-allowed"
-                      : "bg-accent hover:bg-accent-secondary text-primary"
-                      } font-medium`}
+                    className={`w-full py-3 px-6 rounded-lg transition-all duration-300 ${
+                      loading || symptomGroupIndex === "" || !selectedSmiles
+                        ? "bg-gray-600 cursor-not-allowed"
+                        : "bg-accent hover:bg-accent-secondary text-primary"
+                    } font-medium`}
                   >
                     {loading ? (
                       <span className="flex items-center justify-center">
@@ -472,18 +498,25 @@ const AINamingSuggestion = () => {
                 {selectedSmiles && (
                   <div className="bg-primary p-4 rounded-lg border border-gray-600">
                     <div className="flex justify-between items-center mb-3">
-                      <h3 className="text-lg font-medium text-accent">Selected SMILES</h3>
+                      <h3 className="text-lg font-medium text-accent">Selected Drug Name / SMILES</h3>
                       <motion.button
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
-                        onClick={() => copyToClipboard(selectedSmiles)}
+                        onClick={() => copyToClipboard(moleculeDetails[selectedSmiles]?.originalSmiles || selectedSmiles)}
                         className="text-xs bg-accent-secondary text-primary px-2 py-1 rounded"
                       >
-                        {copiedText === selectedSmiles ? "Copied!" : "Copy"}
+                        {copiedText === (moleculeDetails[selectedSmiles]?.originalSmiles || selectedSmiles) ? "Copied!" : "Copy"}
                       </motion.button>
                     </div>
                     <div className="bg-gray-900 p-3 rounded font-mono text-sm text-green-400 whitespace-pre-wrap overflow-y-auto max-h-60">
-                      {selectedSmiles}
+                      {moleculeDetails[selectedSmiles]?.originalSmiles ? (
+                        <>
+                          <div>Drug Name: {selectedSmiles}</div>
+                          <div>Original SMILES: {moleculeDetails[selectedSmiles].originalSmiles}</div>
+                        </>
+                      ) : (
+                        selectedSmiles
+                      )}
                     </div>
                   </div>
                 )}
@@ -543,15 +576,24 @@ const AINamingSuggestion = () => {
                             >
                               Accept
                             </motion.button>
-                            <motion.button
-                              whileHover={{ scale: 1.05 }}
-                              whileTap={{ scale: 0.95 }}
-                              onClick={handleRejectName}
-                              className="px-4 py-2 bg-error text-primary rounded-lg hover:bg-opacity-90 transition-colors font-medium"
-                              disabled={loading}
-                            >
-                              Reject
-                            </motion.button>
+                          <motion.button
+  whileHover={{ scale: 1.05 }}
+  whileTap={{ scale: 0.95 }}
+  onClick={async () => {
+    try {
+      await axiosInstance.delete(`/drugname/delete-drug-name/${drugName._id}`);
+      await Promise.all([fetchSavedNames(), fetchSymptomsAndProducts()]); // Refresh both
+      toast.success("Drug name deleted successfully!", toastOptions);
+    } catch (err) {
+      console.error("Error deleting drug name:", err);
+      toast.error("Failed to delete drug name", toastOptions);
+    }
+  }}
+  className="px-4 py-2 bg-error text-primary rounded-lg hover:bg-opacity-90 transition-colors font-medium"
+  disabled={loading}
+>
+  Reject
+</motion.button>
                           </div>
                         </motion.div>
                       ))}
@@ -582,10 +624,11 @@ const AINamingSuggestion = () => {
                               {drugName.suggestedName}
                             </h3>
                             <span
-                              className={`text-xs px-2 py-1 rounded ${drugName.status === "accepted"
-                                ? "bg-success bg-opacity-20 text-success"
-                                : "bg-accent-secondary bg-opacity-20 text-accent-secondary"
-                                }`}
+                              className={`text-xs px-2 py-1 rounded ${
+                                drugName.status === "accepted"
+                                  ? "bg-success bg-opacity-20 text-success"
+                                  : "bg-accent-secondary bg-opacity-20 text-accent-secondary"
+                              }`}
                             >
                               {drugName.status.charAt(0).toUpperCase() + drugName.status.slice(1)}
                             </span>
@@ -630,7 +673,7 @@ const AINamingSuggestion = () => {
                               onClick={() =>
                                 handleAcceptName({
                                   name: drugName.suggestedName,
-                                  rationale: drugName.namingDetails.split(" | Compliance: ")[0],
+                                  rationale: drugName.namingDetails.split(" | Compliance: ")[0].replace("Rationale: ", ""),
                                   compliance: drugName.namingDetails.split(" | Compliance: ")[1],
                                 })
                               }
@@ -670,7 +713,6 @@ const AINamingSuggestion = () => {
           )}
         </motion.div>
 
-        {/* Accept Confirmation Modal */}
         <AnimatePresence>
           {showAcceptModal && selectedCandidate && (
             <motion.div
@@ -687,7 +729,7 @@ const AINamingSuggestion = () => {
               >
                 <h3 className="text-xl font-semibold text-accent mb-4">Confirm Acceptance</h3>
                 <p className="text-text-primary mb-6">
-                  By accepting "<span className="font-bold">{selectedCandidate.name}</span>", this name will become the final title for this SMILES across the database and cannot be changed later. Proceed?
+                  By accepting "<span className="font-bold">{selectedCandidate.name}</span>", this name will become the final title for this SMILES across the database. Proceed?
                 </p>
                 <div className="flex justify-end space-x-4">
                   <motion.button

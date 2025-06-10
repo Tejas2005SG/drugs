@@ -3,6 +3,8 @@ import GeneratenewMolecule from '../models/generatenew.model.js'; // Added Gener
 import axios from 'axios';
 
 import drugName from '../models/drugName.model.js';
+import { User } from '../models/auth.model.js';
+import drugNameModel from '../models/drugName.model.js';
 
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
@@ -271,44 +273,63 @@ export const generateDrugName = async (req, res) => {
 
 export const acceptDrugName = async (req, res) => {
   try {
-    const { id } = req.params;
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized: No user authenticated" });
+    }
+    const userId = req.user._id; // Use req.user._id instead of req.params.userId
     const { smiles, symptoms, selectedName, rationale, compliance } = req.body;
 
-    if (!id || !smiles || !symptoms || !selectedName) {
-      return res.status(400).json({ message: "User ID, SMILES, symptoms, and selected name are required" });
+    // Verify user exists (optional, since req.user is already validated)
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
     }
 
-    const existingAcceptedName = await drugName.findOne({ userId: id, smiles, symptoms, status: "accepted" });
-    if (existingAcceptedName) {
-      return res.status(409).json({ message: "An accepted name already exists for this SMILES and symptoms" });
+    // Check if an accepted name already exists
+    const existingAccepted = await drugNameModel.findOne({ smiles, userId, status: "accepted" });
+    if (existingAccepted) {
+      return res.status(409).json({ message: "An accepted drug name already exists for this SMILES" });
     }
 
-    // Update molecule in GeneratenewMolecule to use the selected name as the new title
-    await GeneratenewMolecule.updateMany(
-      { userId: id, newSmiles: smiles },
-      { $set: { newmoleculetitle: selectedName } }
-    );
-
-    const drugNameEntry = await drugName.findOneAndUpdate(
-      { userId: id, smiles, symptoms },
+    // Update or create GeneratenewMolecule document
+    const molecule = await GeneratenewMolecule.findOneAndUpdate(
+      { userId, $or: [{ originalSmiles: smiles }, { newSmiles: smiles }] },
       {
-        smiles,
-        symptoms,
-        suggestedName: selectedName,
-        namingDetails: `${rationale} | Compliance: ${compliance}`,
-        userId: id,
-        status: "accepted",
+        $set: {
+          newSmiles: selectedName,
+          originalSmiles: smiles,
+          newmoleculetitle: selectedName,
+          potentialDiseases: symptoms || "",
+        },
       },
       { upsert: true, new: true }
     );
 
-    res.status(200).json({
-      message: "Drug name accepted and molecule title updated successfully",
-      drugName: drugNameEntry,
+    // Save to DrugName collection
+    const drugName = new drugNameModel({
+      userId,
+      smiles,
+      symptoms: symptoms || "",
+      suggestedName: selectedName,
+      namingDetails: `Rationale: ${rationale} | Compliance: ${compliance}`,
+      status: "accepted",
+    });
+    await drugName.save();
+
+    // Delete pending drug names for this SMILES
+    await drugNameModel.deleteMany({ smiles, userId, status: "pending" });
+
+    return res.status(201).json({
+      drugName,
+      molecule,
+      message: "Drug name accepted successfully",
     });
   } catch (error) {
-    console.error("Error accepting drug name:", error);
-    res.status(500).json({ message: "Server error while accepting drug name", error: error.message });
+    console.error("Error in acceptDrugName:", error);
+    return res.status(500).json({
+      message: "Failed to accept drug name",
+      error: error.message,
+    });
   }
 };
 
@@ -322,10 +343,10 @@ export const savePendingDrugName = async (req, res) => {
     }
 
     const topCandidate = candidates.find((c) => c.rank === 1);
-    const existingPendingName = await drugName.findOne({ userId: id, smiles, symptoms, status: "pending" });
+    const existingPendingName = await drugNameModel.findOne({ userId: id, smiles, symptoms, status: "pending" });
 
     if (!existingPendingName) {
-      const newDrugName = new drugName({
+      const newDrugName = new drugNameModel({
         smiles,
         symptoms,
         suggestedName: topCandidate.name,
@@ -347,7 +368,7 @@ export const savePendingDrugName = async (req, res) => {
 export const getSavedDrugNames = async (req, res) => {
   try {
     const userId = req.user._id;
-    const savedNames = await drugName.find({ userId }).sort({ createdAt: -1 });
+    const savedNames = await drugNameModel.find({ userId }).sort({ createdAt: -1 });
     res.status(200).json({ drugNames: savedNames });
   } catch (error) {
     console.error("Error fetching saved drug names:", error);
@@ -365,7 +386,7 @@ export const checkSavedDrugName = async (req, res) => {
     }
 
     const normalizedSmiles = smiles.trim();
-    const exists = await drugName.findOne({ userId, smiles: normalizedSmiles, symptoms });
+    const exists = await drugNameModel.findOne({ userId, smiles: normalizedSmiles, symptoms });
     res.status(200).json({ exists: !!exists });
   } catch (error) {
     console.error("Error checking saved drug name:", error);
@@ -376,9 +397,31 @@ export const checkSavedDrugName = async (req, res) => {
 export const deleteDrugName = async (req, res) => {
   try {
     const drugNameId = req.params.id;
-    await drugName.findByIdAndDelete(drugNameId);
+    // Find the drug name document before deleting
+    const drugName = await drugNameModel.findById(drugNameId);
+    if (!drugName) {
+      return res.status(404).json({ message: "Drug name not found" });
+    }
+
+    const { smiles, userId } = drugName;
+
+    // Delete the drug name document
+    await drugNameModel.findByIdAndDelete(drugNameId);
+
+    // Update the corresponding GeneratenewMolecule document
+    await GeneratenewMolecule.findOneAndUpdate(
+      { userId, $or: [{ originalSmiles: smiles }, { newSmiles: smiles }] },
+      {
+        $set: {
+          newSmiles: drugName.smiles, // Reset to original SMILES
+          newmoleculetitle: drugName.smiles, // Reset to original SMILES
+        },
+      }
+    );
+
     res.status(200).json({ message: "Drug name deleted successfully" });
   } catch (error) {
+    console.error("Error deleting drug name:", error);
     res.status(500).json({ message: "Error deleting drug name", error: error.message });
   }
-}
+};

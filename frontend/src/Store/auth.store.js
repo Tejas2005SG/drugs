@@ -1,4 +1,3 @@
-// auth.store.js
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import axios from 'axios';
@@ -16,7 +15,9 @@ export const useAuthStore = create(
       user: null,
       loading: false,
       checkingAuth: true,
-      phoneNumber: null, // Added to store phoneNumber during signup
+      phoneNumber: null,
+
+      setCheckingAuth: (status) => set({ checkingAuth: status }),
 
       signup: async ({ firstName, lastName, username, email, phoneNumber, password, confirmPassword }) => {
         set({ loading: true });
@@ -35,16 +36,16 @@ export const useAuthStore = create(
             confirmPassword 
           });
           set({ 
-            phoneNumber: res.data.phoneNumber, // Store phoneNumber from response
+            phoneNumber: res.data.phoneNumber,
             loading: false 
           });
           console.log('Signup - Updated State:', get());
           toast.success('OTP sent to your phone number');
-          return res.data; // Return response for navigation in component
+          return res.data;
         } catch (error) {
           set({ loading: false });
           toast.error(error.response?.data?.message || 'An error occurred during signup');
-          throw error; // Throw error to handle navigation in component
+          throw error;
         }
       },
 
@@ -56,17 +57,17 @@ export const useAuthStore = create(
             otp 
           });
           set({ 
-            user: res.data.user, // Set user after successful verification
-            phoneNumber: null, // Clear phoneNumber after verification
+            user: res.data.user,
+            phoneNumber: null,
             loading: false 
           });
           console.log('VerifyPhone - Updated State:', get());
           toast.success('Phone number verified successfully');
-          return res.data; // Return response for navigation in component
+          return res.data;
         } catch (error) {
           set({ loading: false });
           toast.error(error.response?.data?.message || 'OTP verification failed');
-          throw error; // Throw error to handle navigation in component
+          throw error;
         }
       },
 
@@ -88,7 +89,7 @@ export const useAuthStore = create(
       logout: async () => {
         try {
           await axiosInstance.post(`${API_BASE_URL}/auth/logout`);
-          set({ user: null, phoneNumber: null }); // Clear phoneNumber on logout
+          set({ user: null, phoneNumber: null });
           console.log('Logout - Updated State:', get().user);
           toast.success('Logged out successfully');
         } catch (error) {
@@ -113,8 +114,8 @@ export const useAuthStore = create(
       },
     }),
     {
-      name: 'auth-storage', // Name for localStorage key
-      partialize: (state) => ({ user: state.user }), // Only persist user, not phoneNumber
+      name: 'auth-storage',
+      partialize: (state) => ({ user: state.user }),
     }
   )
 );
