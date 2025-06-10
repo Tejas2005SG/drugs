@@ -1,5 +1,3 @@
-"use client"
-
 import { useState, useEffect, useRef } from "react"
 import { useNavigate, useLocation } from "react-router-dom"
 import {
@@ -25,6 +23,8 @@ import {
   FileBox,
   Newspaper,
   BrainCog,
+  Sparkles,
+  Zap,
 } from "lucide-react"
 import { useAuthStore } from "../../Store/auth.store.js"
 
@@ -60,14 +60,6 @@ export default function Chatbot() {
 
   // Updated dashboard routes with detailed descriptions
   const dashboardRoutes = [
-    // {
-    //   path: "/dashboard",
-    //   name: "Dashboard Home",
-    //   icon: "Home",
-    //   description: "Central hub for accessing all drug discovery tools and features",
-    //   details:
-    //     "Your main workspace where you can access all available tools, view project summaries, and navigate to different sections of the platform.",
-    // },
     {
       path: "/dashboard/newdrug-discovery",
       name: "Discover New Drugs",
@@ -800,79 +792,77 @@ export default function Chatbot() {
   }
 
   return (
-    <div className="font-sans">
-      {/* Trigger Button */}
+    <div className="font-body">
+      {/* Trigger Button with enhanced design */}
       <button
         onClick={() => setIsPanelOpen(true)}
         disabled={isPanelOpen}
         onMouseEnter={() => setTooltipVisible("trigger")}
         onMouseLeave={() => setTooltipVisible("")}
         aria-label={isPanelOpen ? "Close Jarvis Assistant" : "Open Jarvis Assistant"}
-        className={`fixed bottom-6 right-6 h-16 w-16 rounded-full shadow-lg transition-all duration-200 transform hover:scale-105 flex items-center justify-center z-50 ${
-          isPanelOpen
-            ? "bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700"
-            : "bg-gradient-to-br from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700"
-        }`}
+        className={`fixed bottom-6 right-6 h-16 w-16 rounded-full shadow-2xl transition-all duration-300 transform hover:scale-110 flex items-center justify-center z-50 group animate-float ${isPanelOpen
+            ? "bg-gradient-to-br from-accent to-accent-secondary hover:shadow-accent/30"
+            : "bg-gradient-to-br from-accent to-accent-secondary hover:shadow-accent/30 animate-pulse-glow"
+          }`}
       >
-        <Bot className="h-6 w-6 text-white" />
+        <Bot className="h-7 w-7 text-primary transition-transform duration-300 group-hover:rotate-12" />
+        <div className="absolute inset-0 rounded-full bg-gradient-to-br from-accent/20 to-accent-secondary/20 animate-gradient-shift"></div>
       </button>
+
+      {/* Enhanced Tooltip */}
       {tooltipVisible === "trigger" && (
-        <div className="fixed bottom-20 right-4 px-2 py-1 bg-gray-800 text-white text-xs rounded-lg shadow-sm z-50">
-          {isPanelOpen ? "Close Jarvis" : "Ask Jarvis"}
+        <div className="fixed bottom-24 right-4 px-3 py-2 bg-secondary/95 border border-accent/20 text-text-primary text-sm rounded-xl shadow-xl z-50 backdrop-blur-sm animate-slide-up">
+          <div className="flex items-center space-x-2">
+            <Sparkles className="h-4 w-4 text-accent" />
+            <span className="font-label">{isPanelOpen ? "Close Jarvis" : "Ask Jarvis"}</span>
+          </div>
         </div>
       )}
 
-      {/* Pointing Message */}
+      {/* Enhanced Pointing Message */}
       {!isPanelOpen && (
-        <div className="fixed bottom-24 right-6 z-40">
-          <div
-            className="relative bg-white rounded-lg shadow-lg p-3 mb-2"
-            style={{ animation: "pulse-scale 2s infinite" }}
-          >
-            <div className="absolute right-4 bottom-2 transform translate-y-full w-3 h-3 bg-white rotate-45"></div>
-            <div className="flex items-center space-x-2">
-              <div className="bg-blue-500/20 p-1.5 rounded-full">
-                <Bot className="h-4 w-4 text-blue-600" />
+        <div className="fixed bottom-24 right-6 z-40 animate-bounce-subtle">
+          <div className="relative bg-gradient-to-br from-secondary to-secondary/80 backdrop-blur-sm rounded-2xl shadow-2xl p-4 mb-2 border border-accent/20 animate-scale-in">
+            <div className="absolute right-6 bottom-0 transform translate-y-full w-4 h-4 bg-secondary  border-r border-b border-accent/20"></div>
+            <div className="flex items-center space-x-3">
+              <div className="bg-gradient-to-br from-accent/30 to-accent-secondary/30 p-2 rounded-full animate-pulse-glow">
+                <Bot className="h-6 w-6 text-accent" />
               </div>
               <div>
-                <div className="text-sm font-semibold text-gray-800">Drug Discovery Assistant</div>
-                <div className="text-xs text-gray-500">Click to interact with Jarvis</div>
+                <div className="text-base font-heading font-semibold text-text-primary">Jarvis AI Assistant</div>
+                <div className="text-sm text-text-secondary font-body">Your pharmaceutical research companion</div>
               </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* Right Side Panel - Increased width from w-96 to w-[28rem] */}
-      {/* Increased overall panel height from h-[80vh] to h-[85vh] */}
+      {/* Enhanced Right Side Panel */}
       {isPanelOpen && (
-        <div className="fixed top-12 right-4 h-[85vh] w-[28rem] bg-white shadow-2xl z-50 flex flex-col border border-gray-200 rounded-xl animate-in slide-in-from-right duration-300 backdrop-blur-sm bg-white/95">
-          <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-t-xl">
-            <div className="flex items-center space-x-2">
+        <div className="fixed top-16 right-4 h-[92vh] w-[32rem]  bg-gradient-to-br from-secondary to-secondary/95 backdrop-blur-xl shadow-2xl z-50 flex flex-col border border-accent/20 rounded-2xl animate-slide-down">
+          {/* Enhanced Header */}
+          <div className="flex items-center justify-between p-5 border-b border-accent/20 bg-gradient-to-r from-accent/10 to-accent-secondary/10 rounded-t-2xl">
+            <div className="flex items-center space-x-3">
               {mode && (
                 <button
                   onClick={resetToInitialSelection}
                   aria-label="Back to initial selection"
-                  className="rounded-full h-8 w-8 bg-white/80 hover:bg-white text-gray-600 flex items-center justify-center shadow-sm transition-all duration-200"
+                  className="rounded-full h-10 w-10 bg-primary/80 hover:bg-primary text-accent flex items-center justify-center shadow-lg transition-all duration-300 hover:scale-110 border border-accent/20"
                 >
-                  <ArrowLeft className="h-4 w-4" />
+                  <ArrowLeft className="h-5 w-5" />
                 </button>
               )}
-              <div className="bg-blue-100 p-1.5 rounded-full">
-                <Dna className="h-5 w-5 text-blue-600" />
+              <div className="bg-gradient-to-br from-accent/30 to-accent-secondary/30 p-2 rounded-full animate-pulse-glow">
+                <Dna className="h-7 w-7 text-accent" />
               </div>
-              <h2 className="text-xl font-semibold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-                Jarvis
-              </h2>
+              <div>
+                <h2 className="text-2xl font-heading font-bold bg-gradient-to-r from-accent to-accent-secondary bg-clip-text text-transparent">
+                  JARVIS
+                </h2>
+                <div className="text-xs text-text-secondary font-code">AI Research Assistant</div>
+              </div>
             </div>
             <div className="flex items-center space-x-2">
-              {/* <button
-                  onClick={() => setIsMinimized(!isMinimized)}
-                  aria-label={isMinimized ? "Maximize panel" : "Minimize panel"}
-                  className="rounded-full h-8 w-8 bg-white/80 hover:bg-white text-gray-600 flex items-center justify-center shadow-sm transition-all duration-200"
-                >
-                  {isMinimized ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
-                </button> */}
               <button
                 onClick={() => {
                   const helpPrompt =
@@ -881,59 +871,64 @@ export default function Chatbot() {
                   speakResponse(helpPrompt)
                 }}
                 aria-label="Help"
-                className="rounded-full h-8 w-8 bg-white/80 hover:bg-white text-gray-600 flex items-center justify-center shadow-sm transition-all duration-200"
+                className="rounded-full h-10 w-10 bg-primary/80 hover:bg-primary text-accent-secondary flex items-center justify-center shadow-lg transition-all duration-300 hover:scale-110 border border-accent/20"
               >
-                <HelpCircle className="h-4 w-4" />
+                <HelpCircle className="h-5 w-5" />
               </button>
               <button
                 onClick={stopConversation}
                 aria-label="Close panel"
-                className="rounded-full h-8 w-8 bg-white/80 hover:bg-white text-red-500 flex items-center justify-center shadow-sm transition-all duration-200"
+                className="rounded-full h-10 w-10 bg-primary/80 hover:bg-primary text-error flex items-center justify-center shadow-lg transition-all duration-300 hover:scale-110 border border-error/20"
               >
-                <X className="h-4 w-4" />
+                <X className="h-5 w-5" />
               </button>
             </div>
           </div>
 
           {!isMinimized && (
             <div className="flex flex-col h-full overflow-hidden">
+              {/* Enhanced Welcome Screen */}
               {!mode && (
-                <div className="flex-1 p-4 flex flex-col items-center justify-center space-y-4 overflow-y-auto">
-                  <div className="text-center">
-                    <div className="bg-gradient-to-br from-blue-100 to-indigo-100 p-4 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center">
-                      <Bot className="h-8 w-8 text-blue-600" />
+                <div className="flex-1 p-6 flex flex-col items-center justify-center space-y-6 overflow-y-auto bg-gradient-to-br from-primary/20 to-accent/5">
+                  <div className="text-center animate-scale-in">
+                    <div className="bg-gradient-to-br from-accent/20 to-accent-secondary/20 p-6 rounded-2xl w-20 h-20 mx-auto mb-6 flex items-center justify-center  border border-accent/30">
+                      <Bot className="h-10 w-10 text-accent" />
                     </div>
-                    <h3 className="text-lg font-semibold text-gray-800 mb-2">Welcome to Jarvis</h3>
-                    <p className="text-sm text-gray-600">Choose an option to start your drug discovery journey.</p>
+                    <h3 className="text-2xl font-heading font-bold text-text-primary mb-3">Welcome to Jarvis</h3>
                   </div>
+                    <p className="text-base text-text-secondary font-body leading-relaxed">Choose an option to start your drug discovery journey.</p>
+                    <p className="text-base text-text-secondary font-body leading-relaxed">Please be clear & load enough in conversation
+                    </p>
 
-                  <div className="w-full space-y-3">
+                  <div className="w-full space-y-4 max-w-sm">
                     <button
                       onClick={() => startConversation("beginner")}
-                      className="w-full py-3 px-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 text-sm font-semibold shadow-lg transform hover:scale-105"
+                      className="w-full py-4 px-6 bg-gradient-to-r from-accent to-accent-secondary text-primary rounded-2xl hover:from-accent/90 hover:to-accent-secondary/90 transition-all duration-300 text-base font-heading font-semibold shadow-2xl transform hover:scale-105 hover:shadow-accent/30 border border-accent/30"
                       aria-label="Start as a beginner"
                     >
-                      <div className="flex items-center justify-center space-x-2">
-                        <Brain className="h-5 w-5" />
+                      <div className="flex items-center justify-center space-x-3">
+                        <Brain className="h-6 w-6" />
                         <span>Beginner Guide</span>
+                        <Sparkles className="h-5 w-5 animate-pulse" />
                       </div>
                     </button>
 
                     <button
                       onClick={() => startConversation("doubt")}
-                      className="w-full py-3 px-4 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl hover:from-green-700 hover:to-emerald-700 transition-all duration-200 text-sm font-semibold shadow-lg transform hover:scale-105"
+                      className="w-full py-4 px-6 bg-gradient-to-r from-accent-secondary to-accent text-primary rounded-2xl hover:from-accent-secondary/90 hover:to-accent/90 transition-all duration-300 text-base font-heading font-semibold shadow-2xl transform hover:scale-105 hover:shadow-accent-secondary/30 border border-accent-secondary/30"
                       aria-label="Ask a question"
                     >
-                      <div className="flex items-center justify-center space-x-2">
-                        <Mic className="h-5 w-5" />
+                      <div className="flex items-center justify-center space-x-3">
+                        <Mic className="h-6 w-6" />
                         <span>Voice Questions</span>
+                        <Zap className="h-5 w-5 animate-pulse" />
                       </div>
                     </button>
                   </div>
 
-                  <div className="w-full pt-4 border-t border-gray-200">
-                    <h4 className="text-xs font-medium text-gray-500 mb-2">Quick Actions</h4>
-                    <div className="grid grid-cols-2 gap-2">
+                  <div className="w-full pt-6 border-t border-accent/20 max-w-sm">
+                    <h4 className="text-sm font-label font-medium text-text-secondary mb-4 text-center">Quick Actions</h4>
+                    <div className="grid grid-cols-2 gap-3">
                       <button
                         onClick={() => {
                           const helpPrompt =
@@ -942,7 +937,7 @@ export default function Chatbot() {
                           speakResponse(helpPrompt)
                           setMode("doubt")
                         }}
-                        className="p-2 bg-gray-50 rounded-lg text-xs text-gray-600 hover:bg-gray-100 transition-all duration-200"
+                        className="p-3 bg-primary/60 rounded-xl text-sm text-text-secondary hover:bg-primary/80 hover:text-text-primary transition-all duration-300 font-body border border-accent/10 hover:border-accent/30"
                       >
                         Examples
                       </button>
@@ -955,7 +950,7 @@ export default function Chatbot() {
                           setMode("beginner")
                           setSubMode("waiting_for_selection")
                         }}
-                        className="p-2 bg-gray-50 rounded-lg text-xs text-gray-600 hover:bg-gray-100 transition-all duration-200"
+                        className="p-3 bg-primary/60 rounded-xl text-sm text-text-secondary hover:bg-primary/80 hover:text-text-primary transition-all duration-300 font-body border border-accent/10 hover:border-accent/30"
                       >
                         Tutorial
                       </button>
@@ -966,59 +961,75 @@ export default function Chatbot() {
 
               {mode && (
                 <div className="flex flex-col h-full overflow-hidden">
-                  {/* Header with progress bar for drug discovery */}
+                  {/* Enhanced Progress Header for drug discovery */}
                   {mode === "beginner" &&
                     selectedOption === "drugDiscovery" &&
                     subMode !== "waiting_for_selection" &&
                     subMode !== "waiting_for_step_selection" &&
                     subMode !== "process_ended" && (
-                      <div className="p-3 bg-blue-50 border-b border-gray-200 flex-shrink-0">
-                        <div className="flex items-center justify-between mb-2">
-                          <h3 className="text-sm font-medium text-blue-600">Drug Discovery Process</h3>
-                          <div className="text-xs text-blue-600">
+                      <div className="p-4 bg-gradient-to-r from-accent/10 to-accent-secondary/10 border-b border-accent/20 flex-shrink-0 animate-slide-down">
+                        <div className="flex items-center justify-between mb-3">
+                          <h3 className="text-base font-heading font-medium text-accent">Drug Discovery Process</h3>
+                          <div className="text-sm text-accent-secondary font-code">
                             Step {currentToolIndex + 1} of {drugDiscoverySteps.length}
                           </div>
                         </div>
-                        <div className="w-full bg-gray-200 border rounded-full h-2">
+                        <div className="w-full bg-primary/40 border border-accent/20 rounded-full h-3 overflow-hidden">
                           <div
-                            className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                            className="bg-gradient-to-r from-accent to-accent-secondary h-3 rounded-full transition-all duration-700 animate-gradient-shift"
                             style={{ width: `${((currentToolIndex + 1) / drugDiscoverySteps.length) * 100}%` }}
                           ></div>
                         </div>
-                        <div className="flex items-center space-x-2 overflow-x-auto pb-2 mt-2">
+                        <div className="flex items-center space-x-2 overflow-x-auto pb-2 mt-3">
                           {drugDiscoverySteps.map((step, index) => (
                             <div
                               key={index}
-                              className={`flex-shrink-0 flex items-center ${completedSteps.includes(step.path) ? "text-green-600" : index === currentToolIndex ? "text-blue-600" : "text-gray-400"}`}
+                              className={`flex-shrink-0 flex items-center transition-all duration-300 ${completedSteps.includes(step.path)
+                                  ? "text-success"
+                                  : index === currentToolIndex
+                                    ? "text-accent"
+                                    : "text-text-secondary"
+                                }`}
                             >
                               <div
-                                className={`h-6 w-6 rounded-full flex items-center justify-center text-xs ${completedSteps.includes(step.path) ? "bg-green-100 border border-green-300" : index === currentToolIndex ? "bg-blue-100 border border-blue-500" : "bg-gray-100"}`}
+                                className={`h-8 w-8 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-300 ${completedSteps.includes(step.path)
+                                    ? "bg-success/20 border-2 border-success animate-pulse-glow"
+                                    : index === currentToolIndex
+                                      ? "bg-accent/20 border-2 border-accent animate-pulse-glow"
+                                      : "bg-primary/40 border border-text-secondary/30"
+                                  }`}
                               >
-                                {completedSteps.includes(step.path) ? <CheckCircle className="h-3 w-3" /> : index + 1}
+                                {completedSteps.includes(step.path) ? (
+                                  <CheckCircle className="h-4 w-4" />
+                                ) : (
+                                  <span className="font-code">{index + 1}</span>
+                                )}
                               </div>
-                              {index < drugDiscoverySteps.length - 1 && <ChevronRight className="h-3 w-3 mx-1" />}
+                              {index < drugDiscoverySteps.length - 1 && (
+                                <ChevronRight className="h-4 w-4 mx-2 text-text-secondary" />
+                              )}
                             </div>
                           ))}
                         </div>
                       </div>
                     )}
 
-                  {/* Current step details */}
+                  {/* Enhanced Current step details */}
                   {mode === "beginner" &&
                     selectedOption === "drugDiscovery" &&
                     subMode !== "waiting_for_selection" &&
                     subMode !== "waiting_for_step_selection" &&
                     subMode !== "process_ended" && (
-                      <div className="p-3 bg-blue-50 border-b border-gray-200 flex-shrink-0">
-                        <div className="flex items-start space-x-3">
-                          <div className="bg-blue-100 p-2 rounded-full">
+                      <div className="p-4 bg-gradient-to-r from-secondary/80 to-primary/20 border-b border-accent/20 flex-shrink-0 animate-slide-down">
+                        <div className="flex items-start space-x-4">
+                          <div className="bg-gradient-to-br from-accent/20 to-accent-secondary/20 p-3 rounded-xl border border-accent/30 animate-pulse-glow">
                             {iconMap[drugDiscoverySteps[currentToolIndex]?.icon]}
                           </div>
                           <div className="min-w-0 flex-1">
-                            <h4 className="text-sm font-medium text-gray-800 truncate">
+                            <h4 className="text-lg font-heading font-medium text-text-primary truncate mb-1">
                               {drugDiscoverySteps[currentToolIndex]?.name}
                             </h4>
-                            <p className="text-xs text-gray-600 line-clamp-2">
+                            <p className="text-sm text-text-secondary line-clamp-2 font-body leading-relaxed">
                               {drugDiscoverySteps[currentToolIndex]?.description}
                             </p>
                           </div>
@@ -1026,16 +1037,16 @@ export default function Chatbot() {
                       </div>
                     )}
 
-                  {/* Manual navigation buttons */}
+                  {/* Enhanced Manual navigation buttons */}
                   {mode === "beginner" &&
                     selectedOption === "drugDiscovery" &&
                     subMode !== "waiting_for_selection" &&
                     subMode !== "waiting_for_step_selection" &&
                     subMode !== "process_ended" && (
-                      <div className="flex justify-between p-3 bg-white border-b border-gray-200 flex-shrink-0">
+                      <div className="flex justify-between p-4 bg-secondary/60 border-b border-accent/20 flex-shrink-0">
                         <button
-                          disabled={true} // Disable Previous button
-                          className="flex items-center space-x-1 px-3 py-2 rounded-md text-sm font-medium text-gray-400 cursor-not-allowed"
+                          disabled={true}
+                          className="flex items-center space-x-2 px-4 py-2 rounded-xl text-sm font-heading font-medium text-text-secondary/50 cursor-not-allowed bg-primary/20 border border-text-secondary/20"
                           aria-label="Previous step (disabled)"
                         >
                           <ChevronLeft className="h-4 w-4" />
@@ -1045,17 +1056,23 @@ export default function Chatbot() {
                           <button
                             onClick={endProcess}
                             disabled={isSpeaking}
-                            className={`flex items-center space-x-1 px-3 py-2 rounded-md text-sm font-medium ${isSpeaking ? "text-gray-400 cursor-not-allowed" : "text-blue-600 hover:bg-blue-50"}`}
+                            className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-sm font-heading font-medium transition-all duration-300 ${isSpeaking
+                                ? "text-text-secondary/50 cursor-not-allowed bg-primary/20"
+                                : "text-primary bg-gradient-to-r from-success to-accent hover:from-success/90 hover:to-accent/90 transform hover:scale-105 shadow-lg hover:shadow-success/30"
+                              } border border-success/30`}
                             aria-label="End drug discovery process"
                           >
-                            <span>End Process</span>
-                            <ChevronRight className="h-4 w-4" />
+                            <span>Complete</span>
+                            <Sparkles className="h-4 w-4" />
                           </button>
                         ) : (
                           <button
                             onClick={proceedToNextStep}
                             disabled={isSpeaking}
-                            className={`flex items-center space-x-1 px-3 py-2 rounded-md text-sm font-medium ${isSpeaking ? "text-gray-400 cursor-not-allowed" : "text-blue-600 hover:bg-blue-50"}`}
+                            className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-sm font-heading font-medium transition-all duration-300 ${isSpeaking
+                                ? "text-text-secondary/50 cursor-not-allowed bg-primary/20"
+                                : "text-primary bg-gradient-to-r from-accent to-accent-secondary hover:from-accent/90 hover:to-accent-secondary/90 transform hover:scale-105 shadow-lg hover:shadow-accent/30"
+                              } border border-accent/30`}
                             aria-label="Next step"
                           >
                             <span>Next</span>
@@ -1065,40 +1082,44 @@ export default function Chatbot() {
                       </div>
                     )}
 
-                  {/* Manual selection for beginner mode */}
+                  {/* Enhanced Manual selection for beginner mode */}
                   {mode === "beginner" && subMode === "waiting_for_selection" && (
-                    <div className="p-4 flex-shrink-0 overflow-y-auto">
-                      <h3 className="text-sm font-medium text-gray-800 mb-3">Select an option to continue:</h3>
-                      <div className="grid grid-cols-1 gap-3">
+                    <div className="p-5 flex-shrink-0 overflow-y-auto bg-gradient-to-br from-primary/10 to-accent/5 animate-slide-up">
+                      <h3 className="text-lg font-heading font-medium text-text-primary mb-4">Select an option to continue:</h3>
+                      <div className="grid grid-cols-1 gap-4">
                         <button
                           onClick={() => handleDashboardSelection()}
-                          className="flex items-center space-x-3 p-3 bg-white rounded-lg border border-gray-200 hover:border-blue-300 hover:bg-blue-50 transition-all duration-200"
+                          className="flex items-center space-x-4 p-4 bg-gradient-to-r from-secondary/80 to-secondary/60 rounded-2xl border border-accent/20 hover:border-accent/40 hover:bg-secondary/90 transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-accent/20"
                           aria-label="Explore dashboard tools"
                         >
-                          <div className="bg-blue-100 p-2 rounded-full">{iconMap["Home"]}</div>
+                          <div className="bg-gradient-to-br from-accent/20 to-accent-secondary/20 p-3 rounded-xl border border-accent/30 animate-pulse-glow">
+                            {iconMap["Home"]}
+                          </div>
                           <div className="text-left min-w-0 flex-1">
-                            <div className="text-sm font-medium text-gray-800">Dashboard Tools</div>
-                            <div className="text-xs text-gray-500">Explore all available tools and features</div>
+                            <div className="text-base font-heading font-medium text-text-primary">Dashboard Tools</div>
+                            <div className="text-sm text-text-secondary font-body">Explore all available tools and features</div>
                           </div>
                         </button>
                         <button
                           onClick={() => handleDrugDiscoverySelection()}
-                          className="flex items-center space-x-3 p-3 bg-white rounded-lg border border-gray-200 hover:border-blue-300 hover:bg-blue-50 transition-all duration-200"
+                          className="flex items-center space-x-4 p-4 bg-gradient-to-r from-secondary/80 to-secondary/60 rounded-2xl border border-accent/20 hover:border-accent/40 hover:bg-secondary/90 transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-accent/20"
                         >
-                          <div className="bg-blue-100 p-2 rounded-full">{iconMap["FlaskConical"]}</div>
+                          <div className="bg-gradient-to-br from-accent/20 to-accent-secondary/20 p-3 rounded-xl border border-accent/30 animate-pulse-glow">
+                            {iconMap["FlaskConical"]}
+                          </div>
                           <div className="text-left min-w-0 flex-1">
-                            <div className="text-sm font-medium text-gray-800">Drug Discovery Process</div>
-                            <div className="text-xs text-gray-500">Guided step-by-step drug development journey</div>
+                            <div className="text-base font-heading font-medium text-text-primary">Drug Discovery Process</div>
+                            <div className="text-sm text-text-secondary font-body">Guided step-by-step drug development journey</div>
                           </div>
                         </button>
                       </div>
-                      <div className="flex justify-between gap-2 mt-4">
+                      <div className="flex justify-between gap-3 mt-6">
                         <button
                           onClick={() => {
                             stopConversation()
                             setIsPanelOpen(false)
                           }}
-                          className="flex-1 px-4 py-2 rounded-lg text-sm font-semibold text-white bg-red-600 hover:bg-red-700 transition-all duration-200"
+                          className="flex-1 px-5 py-3 rounded-xl text-sm font-heading font-semibold text-primary bg-gradient-to-r from-error to-error/80 hover:from-error/90 hover:to-error/70 transition-all duration-300 shadow-lg hover:shadow-error/30 transform hover:scale-105 border border-error/30"
                           aria-label="End conversation"
                         >
                           End Conversation
@@ -1107,28 +1128,30 @@ export default function Chatbot() {
                     </div>
                   )}
 
-                  {/* Tool selection for dashboard */}
+                  {/* Enhanced Tool selection for dashboard */}
                   {mode === "beginner" && subMode === "waiting_for_tool_selection" && (
-                    <div className="p-5 bg-blue-50 border-b border-gray-200 flex-shrink-0 overflow-y-auto max-h-56">
-                      <h3 className="text-sm font-medium text-gray-800 mb-4">Select a tool to explore:</h3>
-                      <div className="grid grid-cols-1 gap-3 max-h-36 overflow-y-auto pb-2">
+                    <div className="p-5 bg-gradient-to-br from-primary/10 to-accent/5 border-b border-accent/20 flex-shrink-0 overflow-y-auto max-h-72 animate-slide-up">
+                      <h3 className="text-lg font-heading font-medium text-text-primary mb-4">Select a tool to explore:</h3>
+                      <div className="grid grid-cols-1 gap-3 max-h-48 overflow-y-auto pb-2 space-y-2">
                         {dashboardRoutes.map((tool, index) => (
                           <button
                             key={index}
                             onClick={() => handleToolSelection(tool)}
-                            className="flex items-center space-x-4 p-4 bg-white rounded-lg border border-gray-200 hover:border-blue-300 hover:bg-blue-50 transition-all duration-200"
+                            className="flex items-center space-x-4 p-4 bg-gradient-to-r from-secondary/70 to-secondary/50 rounded-xl border border-accent/20 hover:border-accent/40 hover:bg-secondary/80 transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-accent/20 group"
                             aria-label={`Select ${tool.name} tool`}
                             title={tool.description}
                           >
-                            <div className="bg-blue-100 p-1.5 rounded-full">{iconMap[tool.icon]}</div>
+                            <div className="bg-gradient-to-br from-accent/20 to-accent-secondary/20 p-2 rounded-lg border border-accent/30 group-hover:animate-pulse-glow transition-all duration-300">
+                              {iconMap[tool.icon]}
+                            </div>
                             <div className="text-left min-w-0 flex-1">
-                              <div className="text-sm font-medium truncate">{tool.name}</div>
-                              <div className="text-xs text-gray-500 line-clamp-1">{tool.description}</div>
+                              <div className="text-sm font-heading font-medium truncate text-text-primary">{tool.name}</div>
+                              <div className="text-xs text-text-secondary line-clamp-1 font-body">{tool.description}</div>
                             </div>
                           </button>
                         ))}
                       </div>
-                      <div className="flex justify-between gap-2 mt-3">
+                      <div className="flex justify-between gap-3 mt-4">
                         <button
                           onClick={async () => {
                             const prompt = "Returning to option selection."
@@ -1137,7 +1160,7 @@ export default function Chatbot() {
                             setSubMode("waiting_for_selection")
                             setSelectedOption(null)
                           }}
-                          className="flex-1 px-4 py-2 rounded-lg text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 transition-all duration-200"
+                          className="flex-1 px-4 py-2 rounded-xl text-sm font-heading font-semibold text-primary bg-gradient-to-r from-accent to-accent-secondary hover:from-accent/90 hover:to-accent-secondary/90 transition-all duration-300 shadow-lg hover:shadow-accent/30 transform hover:scale-105 border border-accent/30"
                           aria-label="Go back to option selection"
                           title="Go back to option selection"
                         >
@@ -1148,7 +1171,7 @@ export default function Chatbot() {
                             stopConversation()
                             setIsPanelOpen(false)
                           }}
-                          className="flex-1 px-4 py-2 rounded-lg text-sm font-semibold text-white bg-red-600 hover:bg-red-700 transition-all duration-200"
+                          className="flex-1 px-4 py-2 rounded-xl text-sm font-heading font-semibold text-primary bg-gradient-to-r from-error to-error/80 hover:from-error/90 hover:to-error/70 transition-all duration-300 shadow-lg hover:shadow-error/30 transform hover:scale-105 border border-error/30"
                           aria-label="End conversation for tool selection"
                         >
                           End Conversation
@@ -1157,35 +1180,46 @@ export default function Chatbot() {
                     </div>
                   )}
 
-                  {/* Step selection for drug discovery */}
+                  {/* Enhanced Step selection for drug discovery */}
                   {mode === "beginner" && subMode === "waiting_for_step_selection" && (
-                    <div className="p-5 bg-blue-50 border-b border-gray-200 flex-shrink-0 overflow-y-auto max-h-80">
-                      <h3 className="text-sm font-medium text-gray-800 mb-4">Select a step to explore:</h3>
+                    <div className="p-5 bg-gradient-to-br from-primary/10 to-accent/5 border-b border-accent/20 flex-shrink-0 overflow-y-auto max-h-96 animate-slide-up">
+                      <h3 className="text-lg font-heading font-medium text-text-primary mb-4">Select a step to explore:</h3>
                       <div className="grid grid-cols-1 gap-3">
                         {drugDiscoverySteps.map((step, index) => (
                           <button
                             key={index}
                             onClick={() => handleStepSelection(step)}
                             disabled={index !== currentToolIndex || completedSteps.includes(step.path)}
-                            className={`flex items-center space-x-4 p-4 bg-white rounded-lg border border-gray-200 transition-all duration-200 ${index !== currentToolIndex || completedSteps.includes(step.path) ? "opacity-50 cursor-not-allowed" : "hover:border-blue-300 hover:bg-blue-50"}`}
-                            aria-label={`${index !== currentToolIndex || completedSteps.includes(step.path) ? `${step.name} (locked)` : `Select ${step.name}`}`}
+                            className={`flex items-center space-x-4 p-4 bg-gradient-to-r rounded-xl border transition-all duration-300 transform ${index !== currentToolIndex || completedSteps.includes(step.path)
+                                ? "from-primary/30 to-primary/20 border-text-secondary/20 opacity-50 cursor-not-allowed"
+                                : "from-secondary/70 to-secondary/50 border-accent/20 hover:border-accent/40 hover:bg-secondary/80 hover:scale-105 shadow-lg hover:shadow-accent/20 group"
+                              }`}
+                            aria-label={`${index !== currentToolIndex || completedSteps.includes(step.path)
+                                ? `${step.name} (locked)`
+                                : `Select ${step.name}`
+                              }`}
                             title={step.description}
                           >
-                            <div className="bg-blue-100 p-1.5 rounded-full">
+                            <div className={`p-2 rounded-lg border transition-all duration-300 ${completedSteps.includes(step.path)
+                                ? "bg-success/20 border-success/30"
+                                : index === currentToolIndex
+                                  ? "bg-gradient-to-br from-accent/20 to-accent-secondary/20 border-accent/30 group-hover:animate-pulse-glow"
+                                  : "bg-primary/20 border-text-secondary/20"
+                              }`}>
                               {completedSteps.includes(step.path) ? (
-                                <CheckCircle className="h-4 w-4 text-green-600" />
+                                <CheckCircle className="h-4 w-4 text-success" />
                               ) : (
-                                iconMap[step.icon]
+                                <div className="text-accent">{iconMap[step.icon]}</div>
                               )}
                             </div>
                             <div className="text-left min-w-0 flex-1">
-                              <div className="text-sm font-medium truncate">{step.name}</div>
-                              <div className="text-xs text-gray-500 line-clamp-2">{step.description}</div>
+                              <div className="text-sm font-heading font-medium truncate text-text-primary">{step.name}</div>
+                              <div className="text-xs text-text-secondary line-clamp-2 font-body">{step.description}</div>
                             </div>
                           </button>
                         ))}
                       </div>
-                      <div className="flex justify-between gap-2 mt-4">
+                      <div className="flex justify-between gap-3 mt-4">
                         <button
                           onClick={async () => {
                             const prompt = "Returning to option selection."
@@ -1194,7 +1228,7 @@ export default function Chatbot() {
                             setSubMode("waiting_for_selection")
                             setSelectedOption(null)
                           }}
-                          className="flex-1 px-4 py-2 rounded-lg text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 transition-all duration-200"
+                          className="flex-1 px-4 py-2 rounded-xl text-sm font-heading font-semibold text-primary bg-gradient-to-r from-accent to-accent-secondary hover:from-accent/90 hover:to-accent-secondary/90 transition-all duration-300 shadow-lg hover:shadow-accent/30 transform hover:scale-105 border border-accent/30"
                           aria-label="Go back to option selection"
                           title="Go back to option selection"
                         >
@@ -1205,7 +1239,7 @@ export default function Chatbot() {
                             stopConversation()
                             setIsPanelOpen(false)
                           }}
-                          className="flex-1 px-4 py-2 rounded-lg text-sm font-semibold text-white bg-red-600 hover:bg-red-700 transition-all duration-200"
+                          className="flex-1 px-4 py-2 rounded-xl text-sm font-heading font-semibold text-primary bg-gradient-to-r from-error to-error/80 hover:from-error/90 hover:to-error/70 transition-all duration-300 shadow-lg hover:shadow-error/30 transform hover:scale-105 border border-error/30"
                           aria-label="End conversation for step selection"
                         >
                           End Conversation
@@ -1214,31 +1248,41 @@ export default function Chatbot() {
                     </div>
                   )}
 
-                  {/* Process ended options */}
+                  {/* Enhanced Process ended options */}
                   {mode === "beginner" && subMode === "process_ended" && (
-                    <div className="p-4 bg-blue-50 border-b border-gray-200 flex-shrink-0 overflow-y-auto">
-                      <h3 className="text-sm font-medium text-gray-800 mb-3">Drug Discovery Completed!</h3>
+                    <div className="p-5 bg-gradient-to-br from-success/10 to-accent/5 border-b border-success/20 flex-shrink-0 overflow-y-auto animate-slide-up">
+                      <div className="text-center mb-4">
+                        <div className="bg-gradient-to-br from-success/20 to-accent/20 p-4 rounded-2xl w-16 h-16 mx-auto mb-3 flex items-center justify-center animate-pulse-glow border border-success/30">
+                          <Sparkles className="h-8 w-8 text-success" />
+                        </div>
+                        <h3 className="text-xl font-heading font-bold text-success mb-2">Process Completed!</h3>
+                        <p className="text-sm text-text-secondary font-body">Congratulations on completing the drug discovery journey</p>
+                      </div>
                       <div className="grid grid-cols-1 gap-3">
                         <button
                           onClick={() => restartProcess()}
-                          className="flex items-center space-x-3 p-3 bg-white rounded-lg border border-gray-200 hover:border-blue-300 hover:bg-blue-50 transition-all duration-200"
+                          className="flex items-center space-x-3 p-4 bg-gradient-to-r from-secondary/70 to-secondary/50 rounded-xl border border-accent/20 hover:border-accent/40 hover:bg-secondary/80 transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-accent/20"
                           aria-label="Restart drug discovery process"
                         >
-                          <div className="bg-blue-100 p-2 rounded-full">{iconMap["FlaskConical"]}</div>
+                          <div className="bg-gradient-to-br from-accent/20 to-accent-secondary/20 p-2 rounded-lg border border-accent/30 animate-pulse-glow">
+                            {iconMap["FlaskConical"]}
+                          </div>
                           <div className="text-left min-w-0 flex-1">
-                            <div className="text-sm font-medium text-gray-800">Restart Drug Discovery</div>
-                            <div className="text-xs text-gray-500">Start the process again from the beginning</div>
+                            <div className="text-sm font-heading font-medium text-text-primary">Restart Drug Discovery</div>
+                            <div className="text-xs text-text-secondary font-body">Start the process again from the beginning</div>
                           </div>
                         </button>
                         <button
                           onClick={() => handleDashboardSelection()}
-                          className="flex items-center space-x-3 p-3 bg-white rounded-lg border border-gray-200 hover:border-blue-300 hover:bg-blue-50 transition-all duration-200"
+                          className="flex items-center space-x-3 p-4 bg-gradient-to-r from-secondary/70 to-secondary/50 rounded-xl border border-accent/20 hover:border-accent/40 hover:bg-secondary/80 transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-accent/20"
                           aria-label="Explore dashboard tools"
                         >
-                          <div className="bg-blue-100 p-2 rounded-full">{iconMap["Home"]}</div>
+                          <div className="bg-gradient-to-br from-accent/20 to-accent-secondary/20 p-2 rounded-lg border border-accent/30 animate-pulse-glow">
+                            {iconMap["Home"]}
+                          </div>
                           <div className="text-left min-w-0 flex-1">
-                            <div className="text-sm font-medium text-gray-800">Explore Dashboard Tools</div>
-                            <div className="text-xs text-gray-500">Try other available tools and features</div>
+                            <div className="text-sm font-heading font-medium text-text-primary">Explore Dashboard Tools</div>
+                            <div className="text-xs text-text-secondary font-body">Try other available tools and features</div>
                           </div>
                         </button>
                         <button
@@ -1248,23 +1292,25 @@ export default function Chatbot() {
                             setConversationHistory((prev) => [...prev, { type: "jarvis", text: prompt }])
                             speakResponse(prompt)
                           }}
-                          className="flex items-center space-x-3 p-3 bg-white rounded-lg border border-gray-200 hover:border-blue-300 hover:bg-blue-50 transition-all duration-200"
+                          className="flex items-center space-x-3 p-4 bg-gradient-to-r from-secondary/70 to-secondary/50 rounded-xl border border-accent/20 hover:border-accent/40 hover:bg-secondary/80 transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-accent/20"
                           aria-label="Return to option selection"
                         >
-                          <div className="bg-blue-100 p-2 rounded-full">{iconMap["Bot"]}</div>
+                          <div className="bg-gradient-to-br from-accent/20 to-accent-secondary/20 p-2 rounded-lg border border-accent/30 animate-pulse-glow">
+                            {iconMap["Bot"]}
+                          </div>
                           <div className="text-left min-w-0 flex-1">
-                            <div className="text-sm font-medium text-gray-800">Back to Options</div>
-                            <div className="text-xs text-gray-500">Choose between dashboard or drug discovery</div>
+                            <div className="text-sm font-heading font-medium text-text-primary">Back to Options</div>
+                            <div className="text-xs text-text-secondary font-body">Choose between dashboard or drug discovery</div>
                           </div>
                         </button>
                       </div>
-                      <div className="flex justify-between gap-2 mt-4">
+                      <div className="flex justify-between gap-3 mt-4">
                         <button
                           onClick={() => {
                             stopConversation()
                             setIsPanelOpen(false)
                           }}
-                          className="flex-1 px-4 py-2 rounded-lg text-sm font-semibold text-white bg-red-600 hover:bg-red-700 transition-all duration-200"
+                          className="flex-1 px-4 py-2 rounded-xl text-sm font-heading font-semibold text-primary bg-gradient-to-r from-error to-error/80 hover:from-error/90 hover:to-error/70 transition-all duration-300 shadow-lg hover:shadow-error/30 transform hover:scale-105 border border-error/30"
                           aria-label="End conversation for step selection"
                         >
                           End Conversation
@@ -1273,41 +1319,48 @@ export default function Chatbot() {
                     </div>
                   )}
 
-                  {/* Conversation History */}
-                  {/* Increased max height and added more space */}
+                  {/* Enhanced Conversation History */}
                   <div
                     ref={conversationRef}
-                    className="flex-1 overflow-y-auto p-4 space-y-4 min-h-[200px] max-h-[50vh]"
+                    className="flex-1 overflow-y-auto p-5 space-y-4 min-h-[200px] max-h-[50vh] bg-gradient-to-br from-primary/5 to-accent/5"
                   >
                     {conversationHistory.map((msg, index) => (
-                      <div key={index} className={`flex ${msg.type === "user" ? "justify-end" : "justify-start"}`}>
-                        {/* Increased message bubble padding and spacing */}
+                      <div key={index} className={`flex ${msg.type === "user" ? "justify-end" : "justify-start"} animate-slide-up`}>
                         <div
-                          className={`max-w-[85%] ${msg.type === "user" ? "bg-blue-600 text-white rounded-tr-none" : "bg-white text-gray-800 rounded-tl-none border border-gray-200 shadow-sm"} rounded-2xl px-4 py-4 mb-2 transition-all duration-200`}
+                          className={`max-w-[85%] ${msg.type === "user"
+                              ? "bg-gradient-to-br from-accent to-accent-secondary text-primary rounded-tr-none shadow-lg border border-accent/30"
+                              : "bg-gradient-to-br from-secondary/90 to-secondary/70 text-text-primary rounded-tl-none border border-accent/20 shadow-lg backdrop-blur-sm"
+                            } rounded-2xl px-5 py-4 mb-2 transition-all duration-300 hover:shadow-xl`}
                         >
                           {msg.type === "jarvis" && (
-                            <div className="flex items-center space-x-2 mb-1 pb-1 border-b border-gray-200">
-                              <Bot className="h-3 w-3 text-blue-600" />
-                              <span className="text-xs font-medium text-blue-600">JARVIS</span>
+                            <div className="flex items-center space-x-2 mb-2 pb-2 border-b border-accent/20">
+                              <Bot className="h-4 w-4 text-accent animate-pulse" />
+                              <span className="text-xs font-code font-bold text-accent">JARVIS AI</span>
+                              <div className="flex space-x-1">
+                                <div className="w-1 h-1 bg-accent rounded-full animate-pulse"></div>
+                                <div className="w-1 h-1 bg-accent-secondary rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
+                                <div className="w-1 h-1 bg-accent rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}></div>
+                              </div>
                             </div>
                           )}
-                          <p className="text-sm whitespace-pre-wrap break-words">{msg.text}</p>
+                          <p className="text-sm whitespace-pre-wrap break-words font-body leading-relaxed">{msg.text}</p>
                         </div>
                       </div>
                     ))}
                     {(isLoading || isSpeaking) && (
-                      <div className="flex justify-start">
-                        <div className="max-w-[85%] w-full py-2 px-3 bg-white border rounded-2xl border-gray-200 shadow-sm">
-                          <div className="flex items-center space-x-2 pb-0">
-                            <Bot className="h-3 w-3 text-blue-600" />
-                            <span className="text-xs font-semibold text-blue-600">JARVIS</span>
+                      <div className="flex justify-start animate-slide-up">
+                        <div className="max-w-[85%] w-full py-4 px-5 bg-gradient-to-br from-secondary/90 to-secondary/70 border border-accent/20 rounded-2xl shadow-lg backdrop-blur-sm">
+                          <div className="flex items-center space-x-2 pb-2 border-b border-accent/20 mb-3">
+                            <Bot className="h-4 w-4 text-accent animate-pulse" />
+                            <span className="text-xs font-code font-bold text-accent">JARVIS AI</span>
+                            <div className="text-xs text-text-secondary font-body">Processing...</div>
                           </div>
-                          <div className="flex space-x-1 items-center">
-                            <div className="h-3 w-1 bg-blue-400 animate-wave"></div>
-                            <div className="h-4 w-1 bg-blue-400 animate-wave" style={{ animationDelay: "100ms" }}></div>
-                            <div className="h-5 w-1 bg-blue-400 animate-wave" style={{ animationDelay: "200ms" }}></div>
-                            <div className="h-4 w-1 bg-blue-400 animate-wave" style={{ animationDelay: "300ms" }}></div>
-                            <div className="h-3 w-1 bg-blue-400 animate-wave" style={{ animationDelay: "400ms" }}></div>
+                          <div className="flex space-x-2 items-center">
+                            <div className="h-3 w-2 bg-accent rounded-full animate-wave"></div>
+                            <div className="h-4 w-2 bg-accent-secondary rounded-full animate-wave" style={{ animationDelay: '0.1s' }}></div>
+                            <div className="h-5 w-2 bg-accent rounded-full animate-wave" style={{ animationDelay: '0.2s' }}></div>
+                            <div className="h-4 w-2 bg-accent-secondary rounded-full animate-wave" style={{ animationDelay: '0.3s' }}></div>
+                            <div className="h-3 w-2 bg-accent rounded-full animate-wave" style={{ animationDelay: '0.4s' }}></div>
                           </div>
                         </div>
                       </div>
@@ -1315,48 +1368,80 @@ export default function Chatbot() {
                   </div>
 
                   {mode && (
-                    // Added more space between the conversation area and status bar
-                    <div className="px-4 py-3 mt-2 bg-gray-50 border-t border-gray-200 flex-shrink-0">
-                      <div className="flex items-center justify-between text-xs text-gray-500">
-                        <div className="flex items-center space-x-2">
-                          <div
-                            className={`w-2 h-2 rounded-full ${isListening ? "bg-green-400 animate-pulse" : isSpeaking ? "bg-blue-400 animate-pulse" : "bg-gray-300"}`}
-                          ></div>
-                          <span>{isListening ? "Listening" : isSpeaking ? "Speaking" : "Ready"}</span>
-                        </div>
-                        <div className="flex items-center space-x-1">
-                          <span>{conversationHistory.length} messages</span>
+                    // Wrap the entire block in a fragment so the comment is inside valid JSX
+                    <>
+                      {/* Enhanced Status Bar */}
+                      <div className="px-5 py-3 mt-2 bg-gradient-to-r from-secondary/60 to-primary/40 border-t border-accent/20 flex-shrink-0 backdrop-blur-sm">
+                        <div className="flex items-center justify-between text-sm">
+                          <div className="flex items-center space-x-3">
+                            <div
+                              className={`w-3 h-3 rounded-full transition-all duration-300 ${isListening
+                                  ? "bg-success animate-pulse shadow-lg shadow-success/50"
+                                  : isSpeaking
+                                    ? "bg-accent animate-pulse shadow-lg shadow-accent/50"
+                                    : "bg-text-secondary/50"
+                                }`}
+                            ></div>
+                            <span
+                              className={`font-label font-medium ${isListening
+                                  ? "text-success"
+                                  : isSpeaking
+                                    ? "text-accent"
+                                    : "text-text-secondary"
+                                }`}
+                            >
+                              {isListening ? "Listening..." : isSpeaking ? "Speaking..." : "Ready"}
+                            </span>
+                          </div>
+                          <div className="flex items-center space-x-2 text-text-secondary">
+                            <span className="font-code text-xs">
+                              {conversationHistory.length} messages
+                            </span>
+                            {mode === "doubt" && (
+                              <div className="flex items-center space-x-1">
+                                <Mic className="h-3 w-3" />
+                                <span className="text-xs font-code">Voice Mode</span>
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </div>
-                    </div>
+                    </>
                   )}
 
-                  {/* Input Area */}
-                  {/* Input Area */}
-                  <div className="p-4 border-t border-gray-200 flex-shrink-0">
+
+                  {/* Enhanced Input Area */}
+                  <div className="p-5 border-t border-accent/20 flex-shrink-0 bg-gradient-to-r from-secondary/40 to-primary/20 backdrop-blur-sm">
                     {mode === "doubt" && (
-                      <div className="flex items-center justify-between px-4 py-2 rounded-full bg-white border border-gray-200 shadow-sm">
-                        <div className="flex items-center space-x-2 text-sm text-gray-600">
+                      <div className="flex items-center justify-between px-5 py-3 rounded-2xl bg-gradient-to-r from-secondary/80 to-secondary/60 border border-accent/20 shadow-lg backdrop-blur-sm">
+                        <div className="flex items-center space-x-3 text-sm">
                           {isListening && mode === "doubt" ? (
                             <>
                               <div className="relative">
-                                <div className="absolute inset-0 bg-green-100 rounded-full animate-ping"></div>
-                                <Mic className="h-5 w-5 text-green-600" />
+                                <div className="absolute inset-0 bg-success/20 rounded-full animate-ping"></div>
+                                <Mic className="h-6 w-6 text-success animate-pulse" />
                               </div>
-                              <span className="text-sm">Listening...</span>
+                              <div>
+                                <span className="text-base font-heading font-medium text-success">Listening...</span>
+                                <div className="text-xs text-text-secondary font-body">Speak your question now</div>
+                              </div>
                             </>
                           ) : (
                             <>
-                              <MicOff className="h-5 w-5 text-red-600" />
-                              <span className="text-sm">Voice recognition paused</span>
+                              <MicOff className="h-6 w-6 text-error animate-pulse" />
+                              <div>
+                                <span className="text-base font-heading font-medium text-error">Voice Paused</span>
+                                <div className="text-xs text-text-secondary font-body">Click Start to begin</div>
+                              </div>
                             </>
                           )}
                         </div>
                         <button
                           onClick={() => (isListening ? stopConversation() : startConversation("doubt"))}
-                          className={`flex items-center px-4 py-2 rounded-lg text-sm font-semibold text-white ${
-                            isListening ? "bg-red-600 hover:bg-red-700" : "bg-blue-600 hover:bg-blue-700"
-                          } transition-all duration-200`}
+                          className={`flex items-center px-5 py-2 rounded-xl text-sm font-heading font-semibold text-primary transition-all duration-300 transform hover:scale-105 shadow-lg border ${isListening
+                              ? "bg-gradient-to-r from-error to-error/80 hover:from-error/90 hover:to-error/70 hover:shadow-error/30 border-error/30"
+                              : "bg-gradient-to-r from-success to-accent hover:from-success/90 hover:to-accent/90 hover:shadow-success/30 border-success/30"
+                            }`}
                           aria-label="Start or stop voice conversation"
                         >
                           {isListening ? "Stop" : "Start"}
@@ -1364,11 +1449,11 @@ export default function Chatbot() {
                       </div>
                     )}
                     {mode === "beginner" && subMode === "waiting_for_question" && (
-                      <div className="flex flex-col space-y-3">
+                      <div className="flex flex-col space-y-4">
                         <input
                           type="text"
                           placeholder="Ask a question about this tool..."
-                          className="w-full px-4 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                          className="w-full px-5 py-3 rounded-2xl border border-accent/20 focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent/40 text-sm bg-secondary/60 text-text-primary placeholder-text-secondary/70 font-body backdrop-blur-sm transition-all duration-300"
                           onKeyDown={async (e) => {
                             if (e.key === "Enter" && e.target.value.trim()) {
                               setSubMode("resolving_doubt")
@@ -1390,7 +1475,7 @@ export default function Chatbot() {
                                   setConversationHistory((prev) => [...prev, { type: "user", text: q }])
                                   fetchResponse(q)
                                 }}
-                                className="px-3 py-1 bg-blue-100 text-blue-600 rounded-full text-xs hover:bg-blue-200 transition-all duration-200"
+                                className="px-4 py-2 bg-gradient-to-r from-accent/20 to-accent-secondary/20 text-accent-secondary rounded-xl text-xs hover:from-accent/30 hover:to-accent-secondary/30 hover:text-accent transition-all duration-300 font-body border border-accent/20 hover:border-accent/40 transform hover:scale-105"
                                 aria-label={`Ask suggested question: ${q}`}
                                 title={`Ask suggested question: ${q}`}
                               >
@@ -1399,12 +1484,12 @@ export default function Chatbot() {
                             ))}
                           </div>
                         )}
-                        <div className="flex justify-end gap-2">
+                        <div className="flex justify-end gap-3">
                           {selectedOption === "drugDiscovery" && (
                             <button
                               onClick={() => proceedToNextStep()}
                               disabled={isSpeaking}
-                              className="flex-1 px-4 py-2 rounded-lg bg-blue-600 text-sm font-semibold text-white hover:bg-blue-700 transition-all duration-200"
+                              className="flex-1 px-5 py-3 rounded-xl bg-gradient-to-r from-accent to-accent-secondary text-sm font-heading font-semibold text-primary hover:from-accent/90 hover:to-accent-secondary/90 transition-all duration-300 shadow-lg hover:shadow-accent/30 transform hover:scale-105 border border-accent/30"
                               aria-label="Proceed to next step in drug discovery"
                             >
                               Next Step
@@ -1422,7 +1507,7 @@ export default function Chatbot() {
                               )
                             }}
                             disabled={isSpeaking}
-                            className="flex-1 px-4 py-2 rounded-lg text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 transition-all duration-200"
+                            className="flex-1 px-5 py-3 rounded-xl text-sm font-heading font-semibold text-primary bg-gradient-to-r from-accent-secondary to-accent hover:from-accent-secondary/90 hover:to-accent/90 transition-all duration-300 shadow-lg hover:shadow-accent-secondary/30 transform hover:scale-105 border border-accent-secondary/30"
                             aria-label={`Select another ${selectedOption === "drugDiscovery" ? "step" : "tool"}`}
                           >
                             Select Another {selectedOption === "drugDiscovery" ? "Step" : "Tool"}
@@ -1431,75 +1516,15 @@ export default function Chatbot() {
                       </div>
                     )}
 
-                    {/* Help text - now properly positioned and more visible */}
-                    <div className="mt-2 py-2 px-4 bg-blue-50/50 rounded-lg border-t border-gray-100">
-                      <div className="text-xs text-center text-gray-600 leading-relaxed">
-                        Jarvis can assist with molecular structures, drug discovery processes, and medical queries.
+                    {/* Enhanced Help text */}
+                    <div className="mt-4 py-3 px-5 bg-gradient-to-r from-accent/10 to-accent-secondary/10 rounded-xl border border-accent/20 backdrop-blur-sm">
+                      <div className="text-xs text-center text-text-secondary leading-relaxed font-body flex items-center justify-center space-x-2">
+                        <Sparkles className="h-4 w-4 text-accent animate-pulse" />
+                        <span>Jarvis specializes in molecular structures, drug discovery, and pharmaceutical research</span>
+                        <Zap className="h-4 w-4 text-accent-secondary animate-pulse" />
                       </div>
                     </div>
                   </div>
-                  <style jsx>{`
-                      @keyframes pulse-scale {
-                        0%, 100% {
-                          transform: scale(1);
-                        }
-                        50% {
-                          transform: scale(1.05);
-                        }
-                      }
-                      @keyframes wave {
-                        0%, 100% {
-                          transform: translateY(0);
-                        }
-                        50% {
-                          transform: translateY(-4px);
-                        }
-                      }
-
-                      .animate-wave {
-                        animation: wave 0.8s infinite;
-                      }
-
-                      .animate-wave:nth-child(2) {
-                        animation-delay: 100ms;
-                      }
-
-                      .animate-wave:nth-child(3) {
-                        animation-delay: 200ms;
-                      }
-
-                      .animate-wave:nth-child(4) {
-                        animation-delay: 300ms;
-                      }
-
-                      .animate-wave:nth-child(5) {
-                        animation-delay: 400ms;
-                      }
-
-                      @keyframes ping {
-                        75%, 100% {
-                          transform: scale(2);
-                          opacity: 0;
-                        }
-                      }
-                      .animate-ping {
-                        animation: ping 1s cubic-bezier(0, 0, 0.2, 1) infinite;
-                      }
-
-                      .line-clamp-1 {
-                        overflow: hidden;
-                        display: -webkit-box;
-                        -webkit-line-clamp: 1;
-                        -webkit-box-orient: vertical;
-                      }
-
-                      .line-clamp-2 {
-                        overflow: hidden;
-                        display: -webkit-box;
-                        -webkit-line-clamp: 2;
-                        -webkit-box-orient: vertical;
-                      }
-                    `}</style>
                 </div>
               )}
             </div>
