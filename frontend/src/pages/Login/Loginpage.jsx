@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../Store/auth.store.js';
+import { Mail, Lock, Copy, UserPlus, Shield } from 'lucide-react';
+import loginImage from './meetImage.avif'; // Make sure to place your image in the assets folder and update the path
 
 function Loginpage() {
   const [formData, setFormData] = useState({
@@ -29,187 +31,175 @@ function Loginpage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-100 to-indigo-100">
-      <div className="max-w-md w-full space-y-8 p-10 bg-white/90 backdrop-blur-sm rounded-xl shadow-2xl border border-white/20">
-        <div className="text-center">
-          <div className="flex justify-center mb-4">
-            <div className="bg-blue-100 p-3 rounded-full">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-10 w-10 text-blue-600"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"
-                />
-              </svg>
-            </div>
-          </div>
-          <h2 className="text-3xl font-bold text-gray-900">
-            Welcome to BioGenAI
-          </h2>
-          <p className="mt-2 text-sm text-gray-600">
-            Accelerating drug discovery with generative AI
-          </p>
+    <div className="min-h-screen flex items-center justify-center bg-primary text-text-primary">
+      <div className="flex w-full max-w-6xl mx-auto rounded-xl shadow-lg overflow-hidden border border-accent/20 bg-secondary">
+        {/* Left side with image */}
+        <div className="hidden md:block md:w-1/2 relative">
+          <img
+            src={loginImage}
+            alt="Human DNA helix"
+            className="w-full h-full object-cover"
+          />
+          <div className="absolute inset-0 bg-primary opacity-20"></div>
         </div>
 
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          <div className="space-y-4">
-            <div>
-              <label
-                htmlFor="email"
-                className="block text-sm font-medium text-gray-700"
-              >
-                Researcher Email
-              </label>
-              <input
-                id="email"
-                name="email"
-                type="email"
-                required
-                className="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                value={formData.email}
-                onChange={handleChange}
-                placeholder="your@research.institution"
-              />
+        {/* Right side with Login Form */}
+        <div className="w-full md:w-1/2 p-8 flex items-center justify-center">
+          <div className="w-full max-w-md">
+            <div className="text-center mb-8">
+              <h2 className="text-3xl font-bold text-text-primary font-heading mb-2">
+                SignIn to Research Portal
+              </h2>
+              <p className="text-text-secondary font-body">                    Where drug dicovery meet technology
+              </p>
             </div>
 
-            <div>
-              <label
-                htmlFor="password"
-                className="block text-sm font-medium text-gray-700"
-              >
-                Access Code
-              </label>
-              <input
-                id="password"
-                name="password"
-                type="password"
-                required
-                className="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                value={formData.password}
-                onChange={handleChange}
-                placeholder="••••••••"
-              />
-            </div>
-          </div>
+            <form className="space-y-6" onSubmit={handleSubmit}>
+              <div className="space-y-4">
+                <div>
+                  <label
+                    htmlFor="email"
+                    className="block text-sm font-medium text-text-primary font-label mb-2"
+                  >
+                    Researcher Email
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <Mail className="h-5 w-5 text-text-secondary" />
+                    </div>
+                    <input
+                      id="email"
+                      name="email"
+                      type="email"
+                      required
+                      className="block w-full pl-10 pr-3 py-3 border border-secondary bg-primary text-text-primary rounded-lg focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent font-body"
+                      value={formData.email}
+                      onChange={handleChange}
+                      placeholder="you@research.institution"
+                    />
+                  </div>
+                </div>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-lg font-medium text-white bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-70 transition-all duration-200"
-          >
-            {loading ? (
-              <>
-                <svg
-                  className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                >
-                  <circle
-                    className="opacity-25"
-                    cx="12"
-                    cy="12"
-                    r="10"
-                    stroke="currentColor"
-                    strokeWidth="4"
-                  ></circle>
-                  <path
-                    className="opacity-75"
-                    fill="currentColor"
-                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                  ></path>
-                </svg>
-                Authenticating...
-              </>
-            ) : (
-              "Access Research Portal"
-            )}
-          </button>
+                <div>
+                  <label
+                    htmlFor="password"
+                    className="block text-sm font-medium text-text-primary font-label mb-2"
+                  >
+                    Access Code
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <Lock className="h-5 w-5 text-text-secondary" />
+                    </div>
+                    <input
+                      id="password"
+                      name="password"
+                      type="password"
+                      required
+                      className="block w-full pl-10 pr-3 py-3 border border-secondary bg-primary text-text-primary rounded-lg focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent font-body"
+                      value={formData.password}
+                      onChange={handleChange}
+                      placeholder="••••••••"
+                    />
+                  </div>
+                </div>
+              </div>
 
-          <div className="text-center text-sm">
-            <span className="text-gray-600">New researcher? </span>
-            <Link
-              to="/signup"
-              className="font-medium text-blue-600 hover:text-blue-500"
-            >
-              Sign up
-            </Link>
-          </div>
-        </form>
-
-        {/* Test Credentials Section */}
-        <div className="mt-6 border-t border-gray-200 pt-6">
-          <h3 className="text-sm font-medium text-gray-700 mb-4">
-            Use below test credentials for testing, can't Signup due to use of demo Twilio account.
-          </h3>
-          <div className="space-y-3">
-            <div className="flex items-center justify-between bg-gray-50 p-3 rounded-lg">
-              <span className="text-sm text-gray-600">
-                Email: test@gmail.com
-              </span>
               <button
-                onClick={() => copyToClipboard("test@gmail.com")}
-                className="p-1 hover:bg-gray-200 rounded"
-                title="Copy email"
+                type="submit"
+                disabled={loading}
+                className="w-full flex justify-center items-center py-3 px-4 rounded-lg shadow-sm text-lg font-medium text-primary bg-accent hover:bg-accent/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-accent disabled:opacity-70 transition-all duration-200 font-heading"
               >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-5 w-5 text-gray-500"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
-                  />
-                </svg>
+                {loading ? (
+                  <>
+                    <svg
+                      className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      ></circle>
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      ></path>
+                    </svg>
+                    Authenticating...
+                  </>
+                ) : (
+                  "Access Research Portal"
+                )}
               </button>
-            </div>
-            <div className="flex items-center justify-between bg-gray-50 p-3 rounded-lg">
-              <span className="text-sm text-gray-600">Password: 1</span>
-              <button
-                onClick={() => copyToClipboard("1")}
-                className="p-1 hover:bg-gray-200 rounded"
-                title="Copy password"
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-5 w-5 text-gray-500"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
-                  />
-                </svg>
-              </button>
-            </div>
-          </div>
-        </div>
 
-        <div className="mt-6">
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-300"></div>
+              <div className="text-center flex justify-center gap-4 text-sm font-body">
+                <span className="text-text-secondary">New researcher? </span>
+                <Link
+                  to="/signup"
+                  className="font-medium text-accent hover:text-accent/80 flex items-center justify-center gap-1"
+                >
+                  <UserPlus className="h-4 w-4" />
+                  <span>Sign up</span>
+                </Link>
+              </div>
+            </form>
+
+            {/* Test Credentials Section */}
+            <div className="mt-8 border-t border-primary pt-6">
+              <h3 className="text-sm font-medium text-text-secondary font-body mb-4">
+                Use below test credentials for testing, can't Signup due to use of demo Twilio account.
+              </h3>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between bg-primary/50 p-3 rounded-lg">
+                  <div className="flex items-center gap-2">
+                    <Mail className="h-4 w-4 text-text-secondary" />
+                    <span className="text-sm text-text-primary font-body">
+                      test@gmail.com
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => copyToClipboard("test@gmail.com")}
+                    className="p-1 hover:bg-accent/10 rounded text-text-secondary hover:text-accent"
+                    title="Copy email"
+                  >
+                    <Copy className="h-4 w-4" />
+                  </button>
+                </div>
+                <div className="flex items-center justify-between bg-primary/50 p-3 rounded-lg">
+                  <div className="flex items-center gap-2">
+                    <Lock className="h-4 w-4 text-text-secondary" />
+                    <span className="text-sm text-text-primary font-body">1</span>
+                  </div>
+                  <button
+                    onClick={() => copyToClipboard("1")}
+                    className="p-1 hover:bg-accent/10 rounded text-text-secondary hover:text-accent"
+                    title="Copy password"
+                  >
+                    <Copy className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
             </div>
-            <div className="relative flex justify-center text-sm">
-              <span className="px-2 bg-white text-gray-500">
-                Secure AI-powered platform
-              </span>
+
+            <div className="mt-8">
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-primary"></div>
+                </div>
+                <div className="relative flex justify-center">
+                  <span className="px-3 bg-secondary text-sm text-text-secondary flex items-center gap-1 font-body">
+                    <Shield className="h-4 w-4 text-accent" />
+                    Secure AI-powered platform
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
         </div>

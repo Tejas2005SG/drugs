@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import * as NGL from 'ngl';
 import { Atom, Database, History, Loader2, AlertCircle, CheckCircle, Eye, EyeOff, RotateCcw, Zap } from 'lucide-react';
-
+import toast from 'react-hot-toast';
 const AlphaFoldExplorer = () => {
   const [uniprotId, setUniprotId] = useState('');
   const [predictionResult, setPredictionResult] = useState(null);
@@ -48,12 +48,32 @@ const AlphaFoldExplorer = () => {
       setLoading(false);
     }
   };
-
+  // Custom toast theme
+  const toastOptions = {
+    style: {
+      background: '#172A45', // secondary
+      color: '#E0E0E0', // text-primary
+      border: '1px solid #5E81F4', // accent-secondary
+      borderRadius: '8px',
+      padding: '12px',
+      fontFamily: 'Roboto, Open Sans, sans-serif', // body font
+    },
+    success: {
+      style: {
+        borderColor: '#70E000', // success
+      },
+      iconTheme: {
+        primary: '#70E000', // success
+        secondary: '#E0E0E0', // text-primary
+      },
+    },
+  };
   // Handle UniProt data fetch
   const handleUniProtSubmit = async (e) => {
     e.preventDefault();
     if (!uniprotId || !/^[A-Z0-9]{5,10}$/i.test(uniprotId)) {
       setError('Please enter a valid UniProt ID (5-10 alphanumeric characters)');
+      toast.error("Please enter a valid UniProt ID (5-10 alphanumeric characters)", toastOptions);
       return;
     }
     setLoading(true);
@@ -70,6 +90,7 @@ const AlphaFoldExplorer = () => {
       setAnnotations(annotationsRes.data);
     } catch (err) {
       setError(err.response?.data?.error || err.message || 'Failed to fetch UniProt data');
+      toast.error('Failed to fetch UniProt data', toastOptions);
     } finally {
       setLoading(false);
     }

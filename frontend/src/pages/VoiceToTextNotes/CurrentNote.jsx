@@ -9,11 +9,11 @@ const CurrentNote = ({ currentNote, setCurrentNote, sentiment, summary, isEditin
     
     switch(sentiment) {
       case 'positive':
-        return <CheckCircle size={16} className="text-green-500" />;
+        return <CheckCircle size={16} className="text-success" />;
       case 'negative':
-        return <AlertTriangle size={16} className="text-red-500" />;
+        return <AlertTriangle size={16} className="text-error" />;
       default:
-        return <Info size={16} className="text-yellow-500" />;
+        return <Info size={16} className="text-accent" />;
     }
   };
   
@@ -22,86 +22,50 @@ const CurrentNote = ({ currentNote, setCurrentNote, sentiment, summary, isEditin
   };
   
   return (
-    <div className={`p-4 md:p-6 border-b ${
-      theme === 'light' ? 'border-gray-200' : 'border-gray-700'
-    }`}>
-      <div className="flex justify-between items-center mb-4">
-        <h2 className={`flex items-center gap-2 text-lg font-semibold ${
-          theme === 'light' ? 'text-gray-700' : 'text-gray-200'
-        }`}>
-          <MessageSquare size={18} />
+    <div className="p-6 md:p-8 border-b border-secondary/50 bg-gradient-to-r from-secondary/30 to-secondary/20">
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="flex items-center gap-3 text-xl font-heading font-semibold text-text-primary">
+          <div className="p-2 rounded-lg bg-accent/20 border border-accent/30">
+            <MessageSquare size={20} className="text-accent" />
+          </div>
           {isEditing ? 'Edit Note' : 'Current Note'}
         </h2>
-        {/* <button
-          className={`text-sm ${
-            theme === 'light' 
-              ? 'text-indigo-600 hover:bg-indigo-50' 
-              : 'text-indigo-400 hover:bg-indigo-900/30'
-          } rounded px-2 py-1 transition-colors`}
-          onClick={() => setShowMarkdownHelp(!showMarkdownHelp)}
-        >
-          Formatting Help
-        </button> */}
       </div>
       
-      {/* {showMarkdownHelp && (
-        <div className={`mb-4 p-3 rounded-md text-sm ${
-          theme === 'light' ? 'bg-gray-50' : 'bg-gray-700/50'
-        }`}>
-          <h3 className="font-medium mb-1">Markdown Formatting</h3>
-          <ul className="pl-5 list-disc">
-            <li><code className={`px-1 py-0.5 rounded ${
-              theme === 'light' ? 'bg-gray-200' : 'bg-gray-600'
-            }`}># Heading</code> - Creates a heading</li>
-            <li><code className={`px-1 py-0.5 rounded ${
-              theme === 'light' ? 'bg-gray-200' : 'bg-gray-600'
-            }`}>**Bold**</code> - Makes text bold</li>
-            <li><code className={`px-1 py-0.5 rounded ${
-              theme === 'light' ? 'bg-gray-200' : 'bg-gray-600'
-            }`}>*Italic*</code> - Makes text italic</li>
-            <li><code className={`px-1 py-0.5 rounded ${
-              theme === 'light' ? 'bg-gray-200' : 'bg-gray-600'
-            }`}>- Item</code> - Creates a list item</li>
-          </ul>
-        </div>
-      )} */}
-      
-      <div className="mb-4">
+      <div className="mb-6">
         <textarea
           value={currentNote}
           onChange={handleNoteChange}
           placeholder="Start speaking or type your note here..."
-          className={`w-full min-h-[150px] p-4 border rounded-lg resize-y focus:ring-2 focus:outline-none ${
-            theme === 'light'
-              ? 'bg-white border-gray-300 text-gray-800 focus:ring-indigo-200 focus:border-indigo-500'
-              : 'bg-gray-700 border-gray-600 text-gray-100 focus:ring-indigo-500/30 focus:border-indigo-500'
-          }`}
+          className="w-full min-h-[200px] p-6 bg-primary/50 border border-secondary/50 text-text-primary placeholder-text-secondary rounded-xl resize-y focus:ring-2 focus:ring-accent/50 focus:border-accent/50 focus:outline-none transition-all duration-300 font-body text-base leading-relaxed backdrop-blur-sm"
         ></textarea>
       </div>
       
-      <div className={`flex flex-wrap gap-4 text-sm ${
-        theme === 'light' ? 'text-gray-600' : 'text-gray-400'
-      }`}>
-        <div className="flex items-center">
-          {currentNote.trim() ? currentNote.trim().split(/\s+/).length : 0} words
+      <div className="flex flex-wrap gap-6 text-sm text-text-secondary font-label">
+        <div className="flex items-center gap-2 px-3 py-2 bg-secondary/30 rounded-lg border border-secondary/50">
+          <span className="font-medium text-text-primary">
+            {currentNote.trim() ? currentNote.trim().split(/\s+/).length : 0}
+          </span>
+          <span>words</span>
         </div>
         
         {sentiment && (
-          <div className={`flex items-center gap-1 ${
+          <div className={`flex items-center gap-2 px-3 py-2 rounded-lg border ${
             sentiment === 'positive' 
-              ? 'text-green-500' 
+              ? 'bg-success/10 border-success/30 text-success' 
               : sentiment === 'negative' 
-                ? 'text-red-500' 
-                : 'text-yellow-500'
+                ? 'bg-error/10 border-error/30 text-error' 
+                : 'bg-accent/10 border-accent/30 text-accent'
           }`}>
             {renderSentimentIcon()}
-            <span>Sentiment: {sentiment}</span>
+            <span className="font-medium">Sentiment: {sentiment}</span>
           </div>
         )}
         
         {summary && (
-          <div className="flex items-center">
-            <span>Summary: {summary}</span>
+          <div className="flex items-center gap-2 px-3 py-2 bg-accent-secondary/10 border border-accent-secondary/30 rounded-lg text-accent-secondary">
+            <span className="font-medium">Summary:</span>
+            <span>{summary}</span>
           </div>
         )}
       </div>

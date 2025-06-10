@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Mic, MicOff, AlertCircle, Sun, Moon } from 'lucide-react';
+import { Mic, MicOff, AlertCircle, Sun, Moon, Sparkles } from 'lucide-react';
 import RecordingControls from './RecordingControls';
 import CurrentNote from './CurrentNote';
 import NotesList from './NotesList';
@@ -10,7 +10,7 @@ import { useSpeechCommands } from './hooks/useSpeechCommands';
 function VoiceToTextNotes() {
   const [theme, setTheme] = useState(() => {
     const savedTheme = localStorage.getItem('voice_notes_theme');
-    return savedTheme || 'light';
+    return savedTheme || 'dark';
   });
   const [showAlert, setShowAlert] = useState(false);
   const [alertMessage, setAlertMessage] = useState('');
@@ -26,7 +26,7 @@ function VoiceToTextNotes() {
     audioLevel,
     isEditing,
     setShowContinue,
-    setWasLastActionSave, // Add setWasLastActionSave from useVoiceRecognition
+    setWasLastActionSave,
   } = useVoiceRecognition();
 
   const {
@@ -82,10 +82,10 @@ function VoiceToTextNotes() {
     const result = await saveNote();
     if (result) {
       displayAlert('Note saved successfully!');
-      localStorage.removeItem('voice_notes_draft'); // Clear draft
+      localStorage.removeItem('voice_notes_draft');
       setCurrentNote('');
-      setShowContinue(false); // Disable continue recording
-      setWasLastActionSave(true); // Mark last action as save
+      setShowContinue(false);
+      setWasLastActionSave(true);
     } else {
       displayAlert('Failed to save note. Please try again.');
     }
@@ -106,54 +106,55 @@ function VoiceToTextNotes() {
   }, [hasUnsavedChanges, currentNote]);
 
   return (
-    <div className={`min-h-screen transition-colors duration-300 ${
-      theme === 'light' 
-        ? 'bg-gradient-to-br from-blue-50 to-purple-50 text-gray-800' 
-        : 'bg-gradient-to-br from-gray-900 to-indigo-900 text-gray-100'
-    }`}>
-      <div className="max-w-4xl mx-auto p-4 md:p-6">
-        <div className={`rounded-xl overflow-hidden shadow-xl ${
-          theme === 'light' ? 'bg-white' : 'bg-gray-800'
-        }`}>
-          <header className={`px-6 py-4 border-b ${
-            theme === 'light' ? 'border-gray-200' : 'border-gray-700'
-          } flex justify-between items-center`}>
-            <div className="flex items-center gap-2">
-              {isRecording ? (
-                <Mic className="h-5 w-5 text-red-500 animate-pulse" />
-              ) : (
-                <MicOff className="h-5 w-5" />
-              )}
-              <h1 className={`text-xl font-bold bg-gradient-to-r ${
-                theme === 'light'
-                  ? 'from-purple-600 to-blue-600'
-                  : 'from-purple-400 to-blue-400'
-              } bg-clip-text text-transparent`}>
-                Voice-to-Text Notes
-              </h1>
+    <div className="min-h-screen bg-gradient-to-br transition-all duration-500">
+      <div className="max-w-7xl mx-auto p-6 md:p-8">
+        <div className="rounded-3xl overflow-hidden shadow-2xl bg-gradient-to-br from-secondary/60 to-secondary/40 backdrop-blur-xl border border-secondary/50">
+          <header className="px-8 py-6 border-b border-secondary/50 bg-gradient-to-r from-secondary/40 to-secondary/60 backdrop-blur-sm">
+            <div className="flex justify-between items-center">
+              <div className="flex items-center gap-4">
+                <div className="relative">
+                  <div className="p-3 rounded-2xl bg-gradient-to-br from-accent/20 to-accent-secondary/20 border border-accent/30">
+                    {isRecording ? (
+                      <Mic className="h-8 w-8 text-accent animate-pulse" />
+                    ) : (
+                      <MicOff className="h-8 w-8 text-text-secondary" />
+                    )}
+                  </div>
+                  {isRecording && (
+                    <div className="absolute -top-1 -right-1 h-4 w-4 bg-error rounded-full animate-ping"></div>
+                  )}
+                </div>
+                <div>
+                  <h1 className="text-3xl font-heading font-bold bg-gradient-to-r from-accent via-accent-secondary to-accent bg-clip-text text-transparent">
+                    Voice-to-Text Notes
+                  </h1>
+                  <p className="text-text-secondary font-body mt-1">
+                    Capture your thoughts with AI-powered voice recognition
+                  </p>
+                </div>
+              </div>
+              
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 px-4 py-2 bg-secondary/50 rounded-xl border border-secondary/50">
+                  <Sparkles size={16} className="text-accent" />
+                  <span className="text-sm text-text-secondary font-body">
+                    {notes.length} notes saved
+                  </span>
+                </div>
+              </div>
             </div>
-            
-            {/* <button 
-              onClick={toggleTheme}
-              className={`p-2 rounded-full transition-colors ${
-                theme === 'light'
-                  ? 'hover:bg-gray-100 text-gray-700'
-                  : 'hover:bg-gray-700 text-gray-300'
-              }`}
-              aria-label="Toggle theme"
-            >
-              {theme === 'light' ? <Moon size={18} /> : <Sun size={18} />}
-            </button> */}
           </header>
 
           {showAlert && (
-            <div className={`mx-4 mt-4 px-4 py-3 rounded-md flex items-center gap-2 ${
+            <div className={`mx-8 mt-6 px-6 py-4 rounded-2xl flex items-center gap-3 backdrop-blur-sm border transition-all duration-300 ${
               alertMessage.includes('Failed') 
-                ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' 
-                : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                ? 'bg-error/10 text-error border-error/30' 
+                : 'bg-success/10 text-success border-success/30'
             }`}>
-              <AlertCircle size={16} />
-              <span>{alertMessage}</span>
+              <div className="p-1 rounded-full bg-current/20">
+                <AlertCircle size={18} />
+              </div>
+              <span className="font-medium font-body">{alertMessage}</span>
             </div>
           )}
 
@@ -206,7 +207,7 @@ function VoiceToTextNotes() {
             setCurrentNote={setCurrentNote}
             stopRecording={stopRecording}
             setShowContinue={setShowContinue}
-            setWasLastActionSave={setWasLastActionSave} // Pass setWasLastActionSave to NotesList
+            setWasLastActionSave={setWasLastActionSave}
           />
         </div>
       </div>

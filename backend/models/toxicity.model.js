@@ -1,4 +1,3 @@
-// models/toxicity.model.js
 import mongoose from 'mongoose';
 
 const toxicitySchema = new mongoose.Schema({
@@ -6,8 +5,13 @@ const toxicitySchema = new mongoose.Schema({
     type: String,
     required: true,
   },
+  symptoms: {
+    type: String,
+    required: true,
+  },
   toxicityResult: {
     smiles: String,
+    symptoms: String,
     acuteToxicity: {
       LD50: String,
       toxicityClass: String,
@@ -16,6 +20,12 @@ const toxicitySchema = new mongoose.Schema({
       hepatotoxicity: String,
       carcinogenicity: String,
     },
+    sideEffects: [
+      {
+        name: String,
+        description: String,
+      },
+    ],
   },
   userId: {
     type: mongoose.Schema.Types.ObjectId,

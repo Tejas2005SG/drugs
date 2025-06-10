@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Edit, Mic, Save, X, Tag, Download, Search } from 'lucide-react';
+import { Edit, Mic, Save, X, Tag, Download, Search, Calendar,MessagesSquare } from 'lucide-react';
 
 const NotesList = ({
   notes,
@@ -15,7 +15,7 @@ const NotesList = ({
   currentNote,
   setCurrentNote,
   stopRecording,
-  setShowContinue, // Add setShowContinue to props
+  setShowContinue,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedTag, setSelectedTag] = useState('');
@@ -50,40 +50,34 @@ const NotesList = ({
   };
 
   return (
-    <div className="p-4 md:p-6">
-      <div className="flex flex-wrap justify-between items-center mb-6 gap-4">
-        <h2 className={`text-lg font-semibold ${
-          theme === 'light' ? 'text-gray-700' : 'text-gray-200'
-        }`}>
+    <div className="p-6 md:p-8 bg-gradient-to-b from-primary/50 to-primary/30">
+      <div className="flex flex-wrap justify-between items-center mb-8 gap-6">
+        <h2 className="text-2xl font-heading font-semibold text-text-primary flex items-center gap-3">
+          <div className="p-2 rounded-lg bg-accent-secondary/20 border border-accent-secondary/30">
+            <Calendar size={24} className="text-accent-secondary" />
+          </div>
           Your Notes
+          <span className="text-sm font-body text-text-secondary bg-secondary/50 px-3 py-1 rounded-full border border-secondary/50">
+            {filteredNotes.length} notes
+          </span>
         </h2>
 
-        <div className="flex flex-wrap items-center gap-3">
-          <div className={`relative flex items-center rounded-md ${
-            theme === 'light' ? 'bg-gray-100' : 'bg-gray-700'
-          }`}>
-            <Search size={16} className="absolute left-3 text-gray-400" />
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="relative flex items-center rounded-xl bg-secondary/50 border border-secondary/50 backdrop-blur-sm">
+            <Search size={18} className="absolute left-4 text-text-secondary" />
             <input
               type="text"
               placeholder="Search notes..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className={`py-2 pl-9 pr-3 rounded-md w-full sm:w-auto ${
-                theme === 'light' 
-                  ? 'bg-gray-100 text-gray-800 placeholder-gray-400 focus:ring-indigo-300 focus:border-indigo-500' 
-                  : 'bg-gray-700 text-gray-100 placeholder-gray-400 focus:ring-indigo-500'
-              } border-none focus:outline-none focus:ring-2`}
+              className="py-3 pl-12 pr-4 rounded-xl w-full sm:w-64 bg-transparent text-text-primary placeholder-text-secondary border-none focus:outline-none focus:ring-2 focus:ring-accent/50 font-body"
             />
           </div>
 
           <select
             value={selectedTag}
             onChange={(e) => setSelectedTag(e.target.value)}
-            className={`py-2 px-3 rounded-md border ${
-              theme === 'light'
-                ? 'bg-white border-gray-300 text-gray-700'
-                : 'bg-gray-700 border-gray-600 text-gray-200'
-            }`}
+            className="py-3 px-4 rounded-xl bg-secondary/50 border border-secondary/50 text-text-primary font-body focus:outline-none focus:ring-2 focus:ring-accent/50 backdrop-blur-sm"
           >
             <option value="">All Tags</option>
             {tags.map(tag => (
@@ -93,164 +87,121 @@ const NotesList = ({
 
           <button
             onClick={() => exportNotes(filteredNotes)}
-            className={`flex items-center gap-1 py-2 px-3 rounded-md ${
-              theme === 'light'
-                ? 'bg-gray-100 hover:bg-gray-200 text-gray-700'
-                : 'bg-gray-700 hover:bg-gray-600 text-gray-200'
-            } transition-colors`}
+            className="flex items-center gap-2 py-3 px-6 rounded-xl bg-accent/20 hover:bg-accent/30 text-accent border border-accent/30 transition-all duration-300 font-medium font-body backdrop-blur-sm hover:scale-105"
             title="Export notes"
           >
-            <Download size={16} />
+            <Download size={18} />
             <span className="hidden sm:inline">Export</span>
           </button>
         </div>
       </div>
 
       {filteredNotes.length === 0 && (
-        <div className={`text-center py-8 ${
-          theme === 'light' ? 'text-gray-500' : 'text-gray-400'
-        }`}>
-          {searchTerm || selectedTag ? 'No matching notes found.' : 'No notes saved yet.'}
+        <div className="text-center py-16 text-text-secondary font-body">
+          <div className="p-6 rounded-2xl bg-secondary/30 border border-secondary/50 inline-block backdrop-blur-sm">
+            <MessagesSquare size={48} className="mx-auto mb-4 text-text-secondary/50" />
+            <p className="text-lg">
+              {searchTerm || selectedTag ? 'No matching notes found.' : 'No notes saved yet.'}
+            </p>
+            <p className="text-sm mt-2">Start recording to create your first note!</p>
+          </div>
         </div>
       )}
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-6 sm:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3">
         {filteredNotes.map((note) => (
           <div 
             key={note._id} 
-            className={`rounded-lg overflow-hidden border ${
+            className={`rounded-2xl overflow-hidden border backdrop-blur-sm transition-all duration-300 hover:scale-105 ${
               editingNoteId === note._id 
-                ? theme === 'light' ? 'border-indigo-300 ring-2 ring-indigo-200' : 'border-indigo-500 ring-2 ring-indigo-500/30'
-                : theme === 'light' ? 'border-gray-200 hover:border-gray-300' : 'border-gray-700 hover:border-gray-600'
-            } transition-all`}
+                ? 'border-accent/50 ring-2 ring-accent/30 bg-secondary/60' 
+                : 'border-secondary/50 hover:border-accent/30 bg-secondary/40 hover:bg-secondary/60'
+            }`}
           >
             {editingNoteId === note._id ? (
-              <div className={`p-4 ${
-                theme === 'light' ? 'bg-white' : 'bg-gray-800'
-              }`}>
+              <div className="p-6">
                 <textarea
                   value={currentNote}
                   onChange={(e) => setCurrentNote(e.target.value)}
-                  className={`w-full min-h-[120px] p-3 mb-3 border rounded resize-y ${
-                    theme === 'light'
-                      ? 'bg-white border-gray-300 text-gray-800 focus:ring-indigo-300 focus:border-indigo-500'
-                      : 'bg-gray-700 border-gray-600 text-gray-100 focus:ring-indigo-500/30 focus:border-indigo-500'
-                  } focus:outline-none focus:ring-2`}
+                  className="w-full min-h-[150px] p-4 mb-4 bg-primary/50 border border-secondary/50 text-text-primary rounded-xl resize-y focus:outline-none focus:ring-2 focus:ring-accent/50 font-body leading-relaxed"
                 ></textarea>
 
-                <div className="flex items-center gap-2 mb-3">
+                <div className="flex items-center gap-3 mb-4">
                   <input
                     type="text"
                     placeholder="Add tag..."
                     value={newTag}
                     onChange={(e) => setNewTag(e.target.value)}
-                    className={`flex-1 p-2 text-sm border rounded ${
-                      theme === 'light'
-                        ? 'bg-white border-gray-300 text-gray-800 focus:ring-indigo-300 focus:border-indigo-500'
-                        : 'bg-gray-700 border-gray-600 text-gray-100 focus:ring-indigo-500/30 focus:border-indigo-500'
-                    } focus:outline-none focus:ring-2`}
+                    className="flex-1 p-3 text-sm bg-primary/50 border border-secondary/50 text-text-primary rounded-xl focus:outline-none focus:ring-2 focus:ring-accent/50 font-body"
                   />
                   <button
                     onClick={() => handleAddTag(note._id)}
-                    className={`p-2 rounded ${
+                    className={`p-3 rounded-xl transition-all duration-300 ${
                       !newTag.trim()
-                        ? 'opacity-50 cursor-not-allowed'
-                        : theme === 'light'
-                          ? 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200'
-                          : 'bg-indigo-900/50 text-indigo-400 hover:bg-indigo-900/70'
-                    } transition-colors`}
+                        ? 'opacity-50 cursor-not-allowed bg-secondary/30'
+                        : 'bg-accent/20 text-accent hover:bg-accent/30 border border-accent/30'
+                    }`}
                     disabled={!newTag.trim()}
                   >
                     <Tag size={16} />
                   </button>
                 </div>
 
-                <div className="flex gap-2">
+                <div className="flex gap-3">
                   <button
                     onClick={async () => {
-                      stopRecording(); // Stop any active recording
+                      stopRecording();
                       const success = await updateNote(note._id, currentNote);
                       if (success) {
                         cancelEditing();
-                        setShowContinue(false); // Prevent "Continue Recording" button
-                        localStorage.removeItem('voice_notes_draft'); // Clear draft to avoid continue option
+                        setShowContinue(false);
+                        localStorage.removeItem('voice_notes_draft');
                       }
                     }}
-                    className={`flex items-center gap-1 py-1 px-3 rounded font-medium ${
-                      theme === 'light'
-                        ? 'bg-green-100 text-green-700 hover:bg-green-200'
-                        : 'bg-green-900/30 text-green-400 hover:bg-green-900/50'
-                    } transition-colors`}
+                    className="flex items-center gap-2 py-2 px-4 rounded-xl font-medium bg-success/20 text-success hover:bg-success/30 border border-success/30 transition-all duration-300 font-body"
                   >
-                    <Save size={14} />
+                    <Save size={16} />
                     <span>Save</span>
                   </button>
 
                   <button
                     onClick={() => startEditingWithRecording(note._id)}
-                    className={`flex items-center gap-1 py-1 px-3 rounded font-medium ${
-                      theme === 'light'
-                        ? 'bg-blue-100 text-blue-700 hover:bg-blue-200'
-                        : 'bg-blue-900/30 text-blue-400 hover:bg-blue-900/50'
-                    } transition-colors`}
+                    className="flex items-center gap-2 py-2 px-4 rounded-xl font-medium bg-accent-secondary/20 text-accent-secondary hover:bg-accent-secondary/30 border border-accent-secondary/30 transition-all duration-300 font-body"
                   >
-                    <Mic size={14} />
+                    <Mic size={16} />
                     <span>Record</span>
                   </button>
 
                   <button
                     onClick={cancelEditing}
-                    className={`flex items-center gap-1 py-1 px-3 rounded font-medium ${
-                      theme === 'light'
-                        ? 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                        : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                    } transition-colors`}
+                    className="flex items-center gap-2 py-2 px-4 rounded-xl font-medium bg-error/20 text-error hover:bg-error/30 border border-error/30 transition-all duration-300 font-body"
                   >
-                    <X size={14} />
+                    <X size={16} />
                     <span>Cancel</span>
                   </button>
                 </div>
               </div>
             ) : (
-              <div className={`p-4 h-full flex flex-col ${
-                theme === 'light' ? 'bg-white' : 'bg-gray-800'
-              }`}>
-                <div className="mb-2 flex-grow">
-                  <p className={theme === 'light' ? 'text-gray-800' : 'text-gray-200'}>
-                    {note.content.length > 200 
-                      ? `${note.content.substring(0, 200)}...` 
+              <div className="p-6 h-full flex flex-col">
+                <div className="mb-4 flex-grow">
+                  <p className="text-text-primary font-body leading-relaxed">
+                    {note.content.length > 250 
+                      ? `${note.content.substring(0, 250)}...` 
                       : note.content}
                   </p>
                 </div>
 
-                <div className={`text-xs mb-2 ${
-                  theme === 'light' ? 'text-gray-500' : 'text-gray-400'
-                }`}>
-                  {formatDate(note.createdAt)}
+                <div className="flex items-center gap-2 text-xs text-text-secondary mb-4 font-label">
+                  <Calendar size={14} />
+                  <span>{formatDate(note.createdAt)}</span>
                 </div>
 
-                {/* {note.sentiment && (
-                  <div className={`text-xs mb-1 ${
-                    note.sentiment === 'positive' 
-                      ? 'text-green-500' 
-                      : note.sentiment === 'negative' 
-                        ? 'text-red-500' 
-                        : 'text-yellow-500'
-                  }`}>
-                    Sentiment: {note.sentiment}
-                  </div>
-                )} */}
-
                 {note.tags && note.tags.length > 0 && (
-                  <div className="flex flex-wrap gap-1 mb-2">
+                  <div className="flex flex-wrap gap-2 mb-4">
                     {note.tags.map(tag => (
                       <span 
                         key={tag} 
-                        className={`text-xs px-2 py-0.5 rounded-full ${
-                          theme === 'light'
-                            ? 'bg-indigo-100 text-indigo-700'
-                            : 'bg-indigo-900/50 text-indigo-300'
-                        }`}
+                        className="text-xs px-3 py-1 rounded-full bg-accent/20 text-accent border border-accent/30 font-label"
                       >
                         {tag}
                       </span>
@@ -258,37 +209,23 @@ const NotesList = ({
                   </div>
                 )}
 
-                {/* {note.summary && (
-                  <div className={`text-xs mb-3 ${
-                    theme === 'light' ? 'text-gray-600' : 'text-gray-300'
-                  }`}>
-                    <span className="font-medium">Summary:</span> {note.summary}
-                  </div>
-                )} */}
-
-                <div className="flex gap-2 mt-auto pt-2">
+                <div className="flex gap-3 mt-auto pt-4 border-t border-secondary/30">
                   <button
                     onClick={() => editNote(note._id)}
-                    className={`p-2 rounded ${
-                      theme === 'light'
-                        ? 'bg-blue-50 text-blue-600 hover:bg-blue-100'
-                        : 'bg-blue-900/20 text-blue-400 hover:bg-blue-900/30'
-                    } transition-colors`}
+                    className="flex-1 p-3 rounded-xl bg-accent-secondary/20 text-accent-secondary hover:bg-accent-secondary/30 border border-accent-secondary/30 transition-all duration-300 flex items-center justify-center gap-2 font-body"
                     title="Edit note"
                   >
                     <Edit size={16} />
+                    <span>Edit</span>
                   </button>
 
                   <button
                     onClick={() => startEditingWithRecording(note._id)}
-                    className={`p-2 rounded ${
-                      theme === 'light'
-                        ? 'bg-indigo-50 text-indigo-600 hover:bg-indigo-100'
-                        : 'bg-indigo-900/20 text-indigo-400 hover:bg-indigo-900/30'
-                    } transition-colors`}
+                    className="flex-1 p-3 rounded-xl bg-accent/20 text-accent hover:bg-accent/30 border border-accent/30 transition-all duration-300 flex items-center justify-center gap-2 font-body"
                     title="Continue recording"
                   >
                     <Mic size={16} />
+                    <span>Record</span>
                   </button>
                 </div>
               </div>
