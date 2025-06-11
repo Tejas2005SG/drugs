@@ -1,3 +1,4 @@
+// controllers/summary.controllers.js
 import { v4 as uuidv4 } from 'uuid';
 import GeneratenewMolecule from '../models/generatenew.model.js';
 import CostEstimation from '../models/costestimination.model.js';
@@ -7,19 +8,41 @@ import { SavedSearch } from '../models/savedSearch.model.js';
 import Toxicity from '../models/toxicity.model.js';
 import GeneratedResearchPaper from '../models/GeneratedResearchPaper.js';
 import SummarySavedItem from '../models/summarySavedItems.js';
+import { PredictDisease } from '../models/newdrug.model.js';
+import { TargetProtein} from '../models/newdrug.model.js'
+import DrugDevelopmentProgress from '../models/DrugDevelopmentProgress.model.js';
 
-// Valid types for validation
 const VALID_TYPES = [
   'newDrug',
   'costEstimation',
   'drugName',
   'researchPaper',
   'generatedResearchPaper',
-  'targetPrediction',
   'toxicityResult',
+  'predictDisease',
+  'targetProtein',
 ];
 
-// Get summary data (no auto-saving)
+const updateProgress = async (userId, moleculeId, type) => {
+  const progress = await DrugDevelopmentProgress.findOne({ userId, moleculeId });
+  const allSections = VALID_TYPES;
+
+  if (progress) {
+    if (!progress.completedSections.includes(type)) {
+      progress.completedSections.push(type);
+      progress.progress = Math.round((progress.completedSections.length / allSections.length) * 100);
+      await progress.save();
+    }
+  } else {
+    await DrugDevelopmentProgress.create({
+      userId,
+      moleculeId,
+      completedSections: [type],
+      progress: Math.round((1 / allSections.length) * 100),
+    });
+  }
+};
+
 export const getSummary = async (req, res) => {
   try {
     const userId = req.user?._id;
@@ -27,15 +50,15 @@ export const getSummary = async (req, res) => {
       return res.status(401).json({ success: false, message: 'User not authenticated' });
     }
 
-    // Fetch all relevant data for the user
     const [
       newDrugs,
       costEstimations,
       drugNames,
       researchPapers,
-      targetPredictions,
       toxicityResults,
-      GeneratedResearchPaperDetails,
+      generatedResearchPapers,
+      predictDiseases,
+      targetProteins,
     ] = await Promise.all([
       GeneratenewMolecule.find({ userId }).sort({ createdAt: -1 }).lean(),
       CostEstimation.find({ userId }).sort({ createdAt: -1 }).lean(),
@@ -44,6 +67,8 @@ export const getSummary = async (req, res) => {
       SavedSearch.find({ userId }).sort({ createdAt: -1 }).lean(),
       Toxicity.find({ userId }).sort({ createdAt: -1 }).lean(),
       GeneratedResearchPaper.find({ userId }).sort({ createdAt: -1 }).lean(),
+      PredictDisease.find({ userId }).sort({ createdAt: -1 }).lean(),
+      TargetProtein.find({ userId }).sort({ createdAt: -1 }).lean(),
     ]);
 
     res.status(200).json({
@@ -53,9 +78,10 @@ export const getSummary = async (req, res) => {
         costEstimations,
         drugNames,
         researchPapers,
-        targetPredictions,
         toxicityResults,
-        GeneratedResearchPaperDetails,
+        generatedResearchPapers,
+        predictDiseases,
+        targetProteins,
       },
     });
   } catch (error) {
@@ -68,7 +94,6 @@ export const getSummary = async (req, res) => {
   }
 };
 
-// Save a single summary item
 export const saveItem = async (req, res) => {
   try {
     const { item, type, moleculeId } = req.body;
@@ -89,9 +114,11 @@ export const saveItem = async (req, res) => {
     const savedItem = await SummarySavedItem.create({
       userId,
       type,
-      moleculeId: moleculeId || uuidv4(), // Generate a new moleculeId if not provided
+      moleculeId: moleculeId || uuidv4(),
       data: item,
     });
+
+    await updateProgress(userId, savedItem.moleculeId, type);
 
     res.status(201).json({ success: true, data: savedItem });
   } catch (error) {
@@ -100,37 +127,6 @@ export const saveItem = async (req, res) => {
   }
 };
 
-// Get saved items (grouped by moleculeId)
-export const getSavedItems = async (req, res) => {
-  try {
-    const userId = req.user?._id;
-
-    if (!userId) {
-      return res.status(401).json({ success: false, message: 'User not authenticated' });
-    }
-
-    const savedItems = await SummarySavedItem.find({ userId })
-      .sort({ createdAt: -1 })
-      .lean();
-
-    // Group items by moleculeId
-    const groupedItems = savedItems.reduce((acc, item) => {
-      const key = item.moleculeId || 'ungrouped';
-      if (!acc[key]) {
-        acc[key] = [];
-      }
-      acc[key].push(item);
-      return acc;
-    }, {});
-
-    res.status(200).json({ success: true, data: groupedItems });
-  } catch (error) {
-    console.error('Error fetching saved items:', error);
-    res.status(500).json({ success: false, message: 'Failed to fetch saved items', error: error.message });
-  }
-};
-
-// Bulk save summary items
 export const bulkSaveItems = async (req, res) => {
   try {
     const items = req.body;
@@ -144,7 +140,6 @@ export const bulkSaveItems = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Items array is required and cannot be empty' });
     }
 
-    // Validate all items
     for (const { item, type, moleculeId } of items) {
       if (!item || !type) {
         return res.status(400).json({ success: false, message: 'Each item must have item and type' });
@@ -154,7 +149,6 @@ export const bulkSaveItems = async (req, res) => {
       }
     }
 
-    // Prepare items for bulk insert
     const itemsToSave = items.map(({ item, type, moleculeId }) => ({
       userId,
       type,
@@ -164,6 +158,18 @@ export const bulkSaveItems = async (req, res) => {
 
     const savedItems = await SummarySavedItem.insertMany(itemsToSave);
 
+    const progressUpdates = itemsToSave.reduce((acc, { type, moleculeId }) => {
+      if (!acc[moleculeId]) acc[moleculeId] = new Set();
+      acc[moleculeId].add(type);
+      return acc;
+    }, {});
+
+    for (const [moleculeId, types] of Object.entries(progressUpdates)) {
+      for (const type of types) {
+        await updateProgress(userId, moleculeId, type);
+      }
+    }
+
     res.status(201).json({ success: true, data: savedItems });
   } catch (error) {
     console.error('Error bulk saving items:', error);
@@ -171,36 +177,61 @@ export const bulkSaveItems = async (req, res) => {
   }
 };
 
-// Get new molecule generation progress
-export const getNewMoleculeProgress = async (req, res) => {
+export const getSavedItems = async (req, res) => {
   try {
     const userId = req.user?._id;
+    if (!userId) {
+      return res.status(401).json({ success: false, message: 'User not authenticated' });
+    }
+
+    const savedItems = await SummarySavedItem.find({ userId }).sort({ createdAt: -1 }).lean();
+
+    const groupedItems = savedItems.reduce((acc, item) => {
+      if (!acc[item.moleculeId]) {
+        acc[item.moleculeId] = [];
+      }
+      acc[item.moleculeId].push(item);
+      return acc;
+    }, {});
+
+    res.status(200).json({
+      success: true,
+      data: groupedItems,
+    });
+  } catch (error) {
+    console.error('Error fetching saved items:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch saved items',
+      error: error.message,
+    });
+  }
+};
+
+export const getMoleculeProgress = async (req, res) => {
+  try {
+    const userId = req.user?._id;
+    const { moleculeId } = req.query;
 
     if (!userId) {
       return res.status(401).json({ success: false, message: 'User not authenticated' });
     }
 
-    const latestMolecule = await GeneratenewMolecule.findOne({ userId })
-      .sort({ createdAt: -1 })
-      .lean();
-
-    const progress = {
-      status: latestMolecule ? 'Completed' : 'Idle',
-      percentage: latestMolecule ? 100 : 0,
-    };
+    const progress = await DrugDevelopmentProgress.findOne({ userId, moleculeId }).lean();
+    const latestMolecule = await GeneratenewMolecule.findOne({ userId }).sort({ createdAt: -1 }).lean();
 
     res.status(200).json({
       success: true,
       data: {
-        progress,
-        data: latestMolecule || null,
+        progress: progress ? { percentage: progress.progress, completedSections: progress.completedSections } : { percentage: 0, completedSections: [] },
+        molecule: latestMolecule || null,
       },
     });
   } catch (error) {
-    console.error('Error fetching new molecule progress:', error);
+    console.error('Error fetching molecule progress:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to fetch new molecule progress',
+      message: 'Failed to fetch molecule progress',
       error: error.message,
     });
   }

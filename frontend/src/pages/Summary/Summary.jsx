@@ -1,3 +1,4 @@
+// src/components/Summary.jsx
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { jsPDF } from 'jspdf';
@@ -54,8 +55,9 @@ const Summary = () => {
         costEstimations: filterField(data.costEstimations, 'costEstimation'),
         drugNames: filterField(data.drugNames, 'drugName'),
         researchPapers: filterField(data.researchPapers, 'researchPaper'),
-        GeneratedResearchPaperDetails: filterField(data.GeneratedResearchPaperDetails, 'generatedResearchPaper'),
-        targetPredictions: filterField(data.targetPredictions, 'targetPrediction'),
+        generatedResearchPapers: filterField(data.generatedResearchPapers, 'generatedResearchPaper'),
+        predictDiseases: filterField(data.predictDiseases, 'predictDisease'),
+        targetProteins: filterField(data.targetProteins, 'targetProtein'),
         toxicityResults: filterField(data.toxicityResults, 'toxicityResult'),
       };
 
@@ -89,8 +91,9 @@ const Summary = () => {
         summaryData.costEstimations,
         summaryData.drugNames,
         summaryData.researchPapers,
-        summaryData.GeneratedResearchPaperDetails,
-        summaryData.targetPredictions,
+        summaryData.generatedResearchPapers,
+        summaryData.predictDiseases,
+        summaryData.targetProteins,
         summaryData.toxicityResults,
       ];
       const nonEmptyFields = fields.filter(field => field?.length > 0).length;
@@ -102,7 +105,6 @@ const Summary = () => {
   }, [summaryData]);
 
   useEffect(() => {
-    // Re-filter all summaryData fields when savedItems changes
     if (summaryData) {
       const filterField = (fieldData, type) => {
         if (!fieldData) return [];
@@ -117,8 +119,9 @@ const Summary = () => {
         costEstimations: filterField(prev.costEstimations, 'costEstimation'),
         drugNames: filterField(prev.drugNames, 'drugName'),
         researchPapers: filterField(prev.researchPapers, 'researchPaper'),
-        GeneratedResearchPaperDetails: filterField(prev.GeneratedResearchPaperDetails, 'generatedResearchPaper'),
-        targetPredictions: filterField(prev.targetPredictions, 'targetPrediction'),
+        generatedResearchPapers: filterField(prev.generatedResearchPapers, 'generatedResearchPaper'),
+        predictDiseases: filterField(prev.predictDiseases, 'predictDisease'),
+        targetProteins: filterField(prev.targetProteins, 'targetProtein'),
         toxicityResults: filterField(prev.toxicityResults, 'toxicityResult'),
       }));
     }
@@ -138,8 +141,9 @@ const Summary = () => {
       addItems(summaryData?.costEstimations, 'costEstimation');
       addItems(summaryData?.drugNames, 'drugName');
       addItems(summaryData?.researchPapers, 'researchPaper');
-      addItems(summaryData?.GeneratedResearchPaperDetails, 'generatedResearchPaper');
-      addItems(summaryData?.targetPredictions, 'targetPrediction');
+      addItems(summaryData?.generatedResearchPapers, 'generatedResearchPaper');
+      addItems(summaryData?.predictDiseases, 'predictDisease');
+      addItems(summaryData?.targetProteins, 'targetProtein');
       addItems(summaryData?.toxicityResults, 'toxicityResult');
 
       if (savePromises.length > 0) {
@@ -147,15 +151,15 @@ const Summary = () => {
         toast.success('Summary data saved successfully');
         await fetchSavedItems();
         setCurrentMoleculeId(uuidv4());
-        setGenerationProgress(0); // Reset progress
-        // Reset summaryData to empty state
+        setGenerationProgress(0);
         setSummaryData({
           newDrugs: [],
           costEstimations: [],
           drugNames: [],
           researchPapers: [],
-          GeneratedResearchPaperDetails: [],
-          targetPredictions: [],
+          generatedResearchPapers: [],
+          predictDiseases: [],
+          targetProteins: [],
           toxicityResults: [],
         });
       } else {
@@ -191,8 +195,9 @@ const Summary = () => {
     addSection('costEstimations', data.costEstimations, 'Cost Estimation');
     addSection('drugNames', data.drugNames, 'Drug Name');
     addSection('researchPapers', data.researchPapers, 'Research Paper');
-    addSection('generatedResearchPapers', data.GeneratedResearchPaperDetails, 'Generated Research Paper');
-    addSection('targetPredictions', data.targetPredictions, 'Target Prediction');
+    addSection('generatedResearchPapers', data.generatedResearchPapers, 'Generated Research Paper');
+    addSection('predictDiseases', data.predictDiseases, 'Predict Disease');
+    addSection('targetProteins', data.targetProteins, 'Target Protein');
     addSection('toxicityResults', data.toxicityResults, 'Toxicity Result');
     return rows;
   };
@@ -287,18 +292,18 @@ const Summary = () => {
       let y = margin;
 
       const styles = {
-        title: { size: 24, bold: true, color: [59, 130, 246] },
-        sectionTitle: { size: 18, bold: true, color: [31, 41, 55] },
+        title: { size: 24, bold: true, color: [10, 25, 47] }, // primary
+        sectionTitle: { size: 18, bold: true, color: [23, 42, 69] }, // secondary
         subsectionTitle: { size: 14, bold: true, color: [55, 65, 81] },
-        tableHeader: { size: 10, bold: true, color: [255, 255, 255], fill: [59, 130, 246] },
+        tableHeader: { size: 10, bold: true, color: [255, 255, 255], fill: [94, 129, 244] }, // accent-secondary
         tableRow: { size: 10, color: [0, 0, 0] },
-        footer: { size: 8, color: [100, 116, 139] },
+        footer: { size: 8, color: [160, 160, 160] }, // text-secondary
       };
 
       const addText = (text, options = {}) => {
         const { size = 12, bold = false, x = margin, color = [0, 0, 0], maxWidth = contentWidth, spacing = 1.2, align = 'left' } = options;
         doc.setFontSize(size);
-        doc.setFont(bold ? 'helvetica-bold' : 'helvetica');
+        doc.setFont(bold ? 'Inter-bold' : 'Inter', 'normal', bold ? 'bold' : 'normal');
         doc.setTextColor(...color);
         const words = text.split(' ');
         let currentLine = '';
@@ -342,7 +347,7 @@ const Summary = () => {
         const drawHeader = () => {
           let x = margin;
           doc.setFontSize(fontSize);
-          doc.setFont('helvetica-bold');
+          doc.setFont('Inter-bold', 'normal', 'bold');
           doc.setTextColor(...headerColor);
           doc.setFillColor(...headerFill);
           headers.forEach((header, i) => {
@@ -352,7 +357,7 @@ const Summary = () => {
           });
           currentY += headerRowHeight;
           doc.setTextColor(...styles.tableRow.color);
-          doc.setFont('helvetica');
+          doc.setFont('Inter', 'normal', 'normal');
         };
         drawHeader();
         processedRows.forEach((row, rowIndex) => {
@@ -363,7 +368,7 @@ const Summary = () => {
           }
           let x = margin;
           if (alternateRows && rowIndex % 2 === 0) {
-            doc.setFillColor(243, 244, 246);
+            doc.setFillColor(23, 42, 69); // secondary
             doc.rect(margin, currentY, columnWidths.reduce((a, b) => a + b, 0), row.height, 'F');
           }
           row.cells.forEach((cell, i) => {
@@ -390,11 +395,11 @@ const Summary = () => {
       };
 
       doc.setFontSize(styles.title.size);
-      doc.setFont('helvetica-bold');
+      doc.setFont('Inter-bold', 'normal', 'bold');
       doc.setTextColor(...styles.title.color);
       doc.text('Drug Discovery Report', pageWidth / 2, 60, { align: 'center' });
       doc.setFontSize(14);
-      doc.setTextColor(75, 85, 99);
+      doc.setTextColor(160, 160, 160); // text-secondary
       doc.text(`Generated on: ${new Date().toLocaleString()}`, pageWidth / 2, 90, { align: 'center' });
 
       if (data.newDrugs?.length > 0) {
@@ -484,11 +489,11 @@ const Summary = () => {
         });
       }
 
-      if (data.GeneratedResearchPaperDetails?.length > 0) {
+      if (data.generatedResearchPapers?.length > 0) {
         doc.addPage();
         y = margin;
         addText('Generated Research Papers', { size: styles.sectionTitle.size, bold: true, color: styles.sectionTitle.color });
-        data.GeneratedResearchPaperDetails.forEach((paper, index) => {
+        data.generatedResearchPapers.forEach((paper, index) => {
           if (y > pageHeight - 100) {
             doc.addPage();
             y = margin;
@@ -511,46 +516,46 @@ const Summary = () => {
         });
       }
 
-      if (data.targetPredictions?.length > 0) {
+      if (data.predictDiseases?.length > 0) {
         doc.addPage();
         y = margin;
-        addText('Target Predictions', { size: styles.sectionTitle.size, bold: true, color: styles.sectionTitle.color });
-        data.targetPredictions.forEach((prediction, index) => {
+        addText('Disease Predictions', { size: styles.sectionTitle.size, bold: true, color: styles.sectionTitle.color });
+        data.predictDiseases.forEach((prediction, index) => {
           if (y > pageHeight - 100) {
             doc.addPage();
             y = margin;
           }
           addText(`Prediction ${index + 1}`, { size: styles.subsectionTitle.size, bold: true });
           addText(`SMILES: ${prediction.smiles || 'N/A'}`);
-          if (prediction.targets?.length > 0) {
-            prediction.targets.forEach((target, tIndex) => {
-              if (y > pageHeight - 100) {
-                doc.addPage();
-                y = margin;
-              }
-              const rows = [
-                ['Protein', target.protein || 'N/A'],
-                ['Confidence', target.confidence || 'N/A'],
-                ['MOA', target.moa || 'N/A'],
-                ['Pathways', safeStringify(target.pathways)],
-                ['Diseases', safeStringify(target.diseases)],
-                ['Interactions', safeStringify(target.knownInteractions)],
-              ];
-              y = addTable(['Field', 'Value'], rows, [50, contentWidth - 50], { startY: y });
-            });
+          const rows = [
+            ['Disease', prediction.disease || 'N/A'],
+            ['Confidence', prediction.confidence || 'N/A'],
+            ['Details', safeStringify(prediction.details)],
+          ];
+          y = addTable(['Field', 'Value'], rows, [50, contentWidth - 50], { startY: y });
+        });
+      }
+
+      if (data.targetProteins?.length > 0) {
+        doc.addPage();
+        y = margin;
+        addText('Target Proteins', { size: styles.sectionTitle.size, bold: true, color: styles.sectionTitle.color });
+        data.targetProteins.forEach((target, index) => {
+          if (y > pageHeight - 100) {
+            doc.addPage();
+            y = margin;
           }
-          if (prediction.docking) {
-            if (y > pageHeight - 100) {
-              doc.addPage();
-              y = margin;
-            }
-            const rows = [
-              ['Binding Energy', prediction.docking.bindingEnergy || 'N/A'],
-              ['Pose', prediction.docking.pose || 'N/A'],
-              ['Details', safeStringify(prediction.docking.details)],
-            ];
-            y = addTable(['Field', 'Value'], rows, [50, contentWidth - 50], { startY: y });
-          }
+          addText(`Target ${index + 1}`, { size: styles.subsectionTitle.size, bold: true });
+          addText(`SMILES: ${target.smiles || 'N/A'}`);
+          const rows = [
+            ['Protein', target.protein || 'N/A'],
+            ['Confidence', target.confidence || 'N/A'],
+            ['MOA', target.moa || 'N/A'],
+            ['Pathways', safeStringify(target.pathways)],
+            ['Diseases', safeStringify(target.diseases)],
+            ['Interactions', safeStringify(target.knownInteractions)],
+          ];
+          y = addTable(['Field', 'Value'], rows, [50, contentWidth - 50], { startY: y });
         });
       }
 
@@ -632,18 +637,18 @@ const Summary = () => {
         return (
           <table className="w-full border-collapse">
             <thead>
-              <tr className="bg-blue-500 text-white">
+              <tr className="bg-accent-secondary text-white">
                 <th className="p-2 border">Field</th>
                 <th className="p-2 border">Value</th>
               </tr>
             </thead>
             <tbody>
-              <tr className="bg-gray-50"><td className="p-2 border">Title</td><td className="p-2 border">{data.newmoleculetitle || 'N/A'}</td></tr>
-              <tr><td className="p-2 border">SMILES</td><td className="p-2 border">{data.newSmiles || 'N/A'}</td></tr>
-              <tr className="bg-gray-50"><td className="p-2 border">IUPAC Name</td><td className="p-2 border">{data.newIupacName || 'Not available'}</td></tr>
-              <tr><td className="p-2 border">Potential Diseases</td><td className="p-2 border">{data.potentialDiseases || 'Not specified'}</td></tr>
-              <tr className="bg-gray-50"><td className="p-2 border">Conversion Details</td><td className="p-2 border">{data.conversionDetails || 'N/A'}</td></tr>
-              <tr><td className="p-2 border">Additional Info</td><td className="p-2 border">{data.information || 'N/A'}</td></tr>
+              <tr className="bg-secondary"><td className="p-2 border text-text-primary">Title</td><td className="p-2 border text-text-primary">{data.newmoleculetitle || 'N/A'}</td></tr>
+              <tr><td className="p-2 border text-text-primary">SMILES</td><td className="p-2 border text-text-primary">{data.newSmiles || 'N/A'}</td></tr>
+              <tr className="bg-secondary"><td className="p-2 border text-text-primary">IUPAC Name</td><td className="p-2 border text-text-primary">{data.newIupacName || 'Not available'}</td></tr>
+              <tr><td className="p-2 border text-text-primary">Potential Diseases</td><td className="p-2 border text-text-primary">{data.potentialDiseases || 'Not specified'}</td></tr>
+              <tr className="bg-secondary"><td className="p-2 border text-text-primary">Conversion Details</td><td className="p-2 border text-text-primary">{data.conversionDetails || 'N/A'}</td></tr>
+              <tr><td className="p-2 border text-text-primary">Additional Info</td><td className="p-2 border text-text-primary">{data.information || 'N/A'}</td></tr>
             </tbody>
           </table>
         );
@@ -651,17 +656,17 @@ const Summary = () => {
         return (
           <table className="w-full border-collapse">
             <thead>
-              <tr className="bg-blue-500 text-white">
+              <tr className="bg-accent-secondary text-white">
                 <th className="p-2 border">SMILES</th>
                 <th className="p-2 border">Estimated Cost</th>
                 <th className="p-2 border">Information</th>
               </tr>
             </thead>
             <tbody>
-              <tr className="bg-gray-50">
-                <td className="p-2 border">{data.smiles || 'N/A'}</td>
-                <td className="p-2 border">{data.estimatedcost || 'N/A'}</td>
-                <td className="p-2 border">{data.information || 'N/A'}</td>
+              <tr className="bg-secondary">
+                <td className="p-2 border text-text-primary">{data.smiles || 'N/A'}</td>
+                <td className="p-2 border text-text-primary">{data.estimatedcost || 'N/A'}</td>
+                <td className="p-2 border text-text-primary">{data.information || 'N/A'}</td>
               </tr>
             </tbody>
           </table>
@@ -670,40 +675,40 @@ const Summary = () => {
         return (
           <table className="w-full border-collapse">
             <thead>
-              <tr className="bg-blue-500 text-white">
+              <tr className="bg-accent-secondary text-white">
                 <th className="p-2 border">Field</th>
                 <th className="p-2 border">Value</th>
               </tr>
             </thead>
             <tbody>
-              <tr className="bg-gray-50"><td className="p-2 border">Suggested Name</td><td className="p-2 border">{data.suggestedName || 'N/A'}</td></tr>
-              <tr><td className="p-2 border">Molecule Title</td><td className="p-2 border">{data.moleculeTitle || 'N/A'}</td></tr>
-              <tr className="bg-gray-50"><td className="p-2 border">SMILES</td><td className="p-2 border">{data.smiles || 'N/A'}</td></tr>
-              <tr><td className="p-2 border">Status</td><td className="p-2 border">{data.status || 'N/A'}</td></tr>
-              <tr className="bg-gray-50"><td className="p-2 border">Details</td><td className="p-2 border">{data.namingDetails || 'N/A'}</td></tr>
+              <tr className="bg-secondary"><td className="p-2 border text-text-primary">Suggested Name</td><td className="p-2 border text-text-primary">{data.suggestedName || 'N/A'}</td></tr>
+              <tr><td className="p-2 border text-text-primary">Molecule Title</td><td className="p-2 border text-text-primary">{data.moleculeTitle || 'N/A'}</td></tr>
+              <tr className="bg-secondary"><td className="p-2 border text-text-primary">SMILES</td><td className="p-2 border text-text-primary">{data.smiles || 'N/A'}</td></tr>
+              <tr><td className="p-2 border text-text-primary">Status</td><td className="p-2 border text-text-primary">{data.status || 'N/A'}</td></tr>
+              <tr className="bg-secondary"><td className="p-2 border text-text-primary">Details</td><td className="p-2 border text-text-primary">{data.namingDetails || 'N/A'}</td></tr>
             </tbody>
           </table>
         );
       case 'researchPaper':
         return (
           <div>
-            <h4 className="text-lg font-semibold">Molecule: {data.molecule?.title || 'N/A'}</h4>
-            <p>SMILES: {data.molecule?.smiles || 'N/A'}</p>
+            <h4 className="text-lg font-semibold font-heading text-text-primary">Molecule: {data.molecule?.title || 'N/A'}</h4>
+            <p className="font-body text-text-secondary">SMILES: {data.molecule?.smiles || 'N/A'}</p>
             {data.papers?.map((p, i) => (
               <table key={i} className="w-full border-collapse mt-4">
                 <thead>
-                  <tr className="bg-blue-500 text-white">
+                  <tr className="bg-accent-secondary text-white">
                     <th className="p-2 border">Field</th>
                     <th className="p-2 border">Value</th>
                   </tr>
                 </thead>
                 <tbody>
-                  <tr className="bg-gray-50"><td className="p-2 border">Paper Title</td><td className="p-2 border">{p.title || 'N/A'}</td></tr>
-                  <tr><td className="p-2 border">Authors</td><td className="p-2 border">{p.authors || 'N/A'}</td></tr>
-                  <tr className="bg-gray-50"><td className="p-2 border">Year</td><td className="p-2 border">{p.year || 'N/A'}</td></tr>
-                  <tr><td className="p-2 border">Abstract</td><td className="p-2 border">{p.abstract || 'N/A'}</td></tr>
-                  <tr className="bg-gray-50"><td className="p-2 border">DOI</td><td className="p-2 border">{p.doi || 'N/A'}</td></tr>
-                  <tr><td className="p-2 border">URL</td><td className="p-2 border">{p.url || 'N/A'}</td></tr>
+                  <tr className="bg-secondary"><td className="p-2 border text-text-primary">Paper Title</td><td className="p-2 border text-text-primary">{p.title || 'N/A'}</td></tr>
+                  <tr><td className="p-2 border text-text-primary">Authors</td><td className="p-2 border text-text-primary">{p.authors || 'N/A'}</td></tr>
+                  <tr className="bg-secondary"><td className="p-2 border text-text-primary">Year</td><td className="p-2 border text-text-primary">{p.year || 'N/A'}</td></tr>
+                  <tr><td className="p-2 border text-text-primary">Abstract</td><td className="p-2 border text-text-primary">{p.abstract || 'N/A'}</td></tr>
+                  <tr className="bg-secondary"><td className="p-2 border text-text-primary">DOI</td><td className="p-2 border text-text-primary">{p.doi || 'N/A'}</td></tr>
+                  <tr><td className="p-2 border text-text-primary">URL</td><td className="p-2 border text-text-primary">{p.url || 'N/A'}</td></tr>
                 </tbody>
               </table>
             ))}
@@ -712,123 +717,122 @@ const Summary = () => {
       case 'generatedResearchPaper':
         return (
           <div>
-            <h4 className="text-lg font-semibold">Molecule: {data.molecule?.title || 'N/A'}</h4>
-            <p>SMILES: {data.molecule?.smiles || 'N/A'}</p>
+            <h4 className="text-lg font-semibold font-heading text-text-primary">Molecule: {data.molecule?.title || 'N/A'}</h4>
+            <p className="font-body text-text-secondary">SMILES: {data.molecule?.smiles || 'N/A'}</p>
             <table className="w-full border-collapse mt-4">
               <thead>
-                <tr className="bg-blue-500 text-white">
+                <tr className="bg-accent-secondary text-white">
                   <th className="p-2 border">Field</th>
                   <th className="p-2 border">Value</th>
                 </tr>
               </thead>
               <tbody>
-                <tr className="bg-gray-50"><td className="p-2 border">Paper Title</td><td className="p-2 border">{data.paper?.title || 'N/A'}</td></tr>
-                <tr><td className="p-2 border">Authors</td><td className="p-2 border">{data.paper?.authors || 'N/A'}</td></tr>
-                <tr className="bg-gray-50"><td className="p-2 border">Abstract</td><td className="p-2 border">{data.paper?.abstract || 'N/A'}</td></tr>
-                <tr><td className="p-2 border">Keywords</td><td className="p-2 border">{data.paper?.keywords?.join(', ') || 'N/A'}</td></tr>
-                <tr className="bg-gray-50"><td className="p-2 border">Introduction</td><td className="p-2 border">{data.paper?.introduction || 'N/A'}</td></tr>
-                <tr><td className="p-2 border">Methodology</td><td className="p-2 border">{data.paper?.methodology || 'N/A'}</td></tr>
-                <tr className="bg-gray-50"><td className="p-2 border">Results and Discussion</td><td className="p-2 border">{data.paper?.resultsAndDiscussion || 'N/A'}</td></tr>
-                <tr><td className="p-2 border">Conclusion</td><td className="p-2 border">{data.paper?.conclusion || 'N/A'}</td></tr>
-                <tr className="bg-gray-50"><td className="p-2 border">References</td><td className="p-2 border">{data.paper?.references?.join('\n') || 'N/A'}</td></tr>
+                <tr className="bg-secondary"><td className="p-2 border text-text-primary">Paper Title</td><td className="p-2 border text-text-primary">{data.paper?.title || 'N/A'}</td></tr>
+                <tr><td className="p-2 border text-text-primary">Authors</td><td className="p-2 border text-text-primary">{data.paper?.authors || 'N/A'}</td></tr>
+                <tr className="bg-secondary"><td className="p-2 border text-text-primary">Abstract</td><td className="p-2 border text-text-primary">{data.paper?.abstract || 'N/A'}</td></tr>
+                <tr><td className="p-2 border text-text-primary">Keywords</td><td className="p-2 border text-text-primary">{data.paper?.keywords?.join(', ') || 'N/A'}</td></tr>
+                <tr className="bg-secondary"><td className="p-2 border text-text-primary">Introduction</td><td className="p-2 border text-text-primary">{data.paper?.introduction || 'N/A'}</td></tr>
+                <tr><td className="p-2 border text-text-primary">Methodology</td><td className="p-2 border text-text-primary">{data.paper?.methodology || 'N/A'}</td></tr>
+                <tr className="bg-secondary"><td className="p-2 border text-text-primary">Results and Discussion</td><td className="p-2 border text-text-primary">{data.paper?.resultsAndDiscussion || 'N/A'}</td></tr>
+                <tr><td className="p-2 border text-text-primary">Conclusion</td><td className="p-2 border text-text-primary">{data.paper?.conclusion || 'N/A'}</td></tr>
+                <tr className="bg-secondary"><td className="p-2 border text-text-primary">References</td><td className="p-2 border text-text-primary">{data.paper?.references?.join('\n') || 'N/A'}</td></tr>
               </tbody>
             </table>
           </div>
         );
-      case 'targetPrediction':
-        return (
-          <div>
-            <h4 className="text-lg font-semibold">SMILES: {data.smiles || 'N/A'}</h4>
-            {data.targets?.map((target, i) => (
-              <table key={i} className="w-full border-collapse mt-4">
-                <thead>
-                  <tr className="bg-blue-500 text-white">
-                    <th className="p-2 border">Field</th>
-                    <th className="p-2 border">Value</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr className="bg-gray-50"><td className="p-2 border">Target</td><td className="p-2 border">{target.protein || 'N/A'} (Confidence: {target.confidence || 'N/A'})</td></tr>
-                  <tr><td className="p-2 border">MOA</td><td className="p-2 border">{target.moa || 'N/A'}</td></tr>
-                  <tr className="bg-gray-50"><td className="p-2 border">Pathways</td><td className="p-2 border">{target.pathways?.join(', ') || 'None'}</td></tr>
-                  <tr><td className="p-2 border">Diseases</td><td className="p-2 border">{target.diseases?.join(', ') || 'None'}</td></tr>
-                  <tr className="bg-gray-50"><td className="p-2 border">Interactions</td><td className="p-2 border">{target.knownInteractions ? JSON.stringify(target.knownInteractions) : 'N/A'}</td></tr>
-                </tbody>
-              </table>
-            ))}
-            {data.docking && (
-              <table className="w-full border-collapse mt-4">
-                <thead>
-                  <tr className="bg-blue-500 text-white">
-                    <th className="p-2 border">Field</th>
-                    <th className="p-2 border">Value</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr className="bg-gray-50"><td className="p-2 border">Binding Energy</td><td className="p-2 border">{data.docking.bindingEnergy || 'N/A'}</td></tr>
-                  <tr><td className="p-2 border">Pose</td><td className="p-2 border">{data.docking.pose || 'N/A'}</td></tr>
-                  <tr className="bg-gray-50"><td className="p-2 border">Details</td><td className="p-2 border">{data.docking.details || 'N/A'}</td></tr>
-                </tbody>
-              </table>
-            )}
-          </div>
-        );
-      case 'toxicityResult':
+      case 'predictDisease':
         return (
           <table className="w-full border-collapse">
             <thead>
-              <tr className="bg-blue-500 text-white">
+              <tr className="bg-accent-secondary text-white">
                 <th className="p-2 border">Field</th>
                 <th className="p-2 border">Value</th>
               </tr>
             </thead>
             <tbody>
-              <tr className="bg-gray-50"><td className="p-2 border">SMILES</td><td className="p-2 border">{data.smiles || 'N/A'}</td></tr>
-              <tr><td className="p-2 border">LD50</td><td className="p-2 border">{data.toxicityResult?.acuteToxicity?.LD50 || 'N/A'}</td></tr>
-              <tr className="bg-gray-50"><td className="p-2 border">Toxicity Class</td><td className="p-2 border">{data.toxicityResult?.acuteToxicity?.toxicityClass || 'N/A'}</td></tr>
-              <tr><td className="p-2 border">Hepatotoxicity</td><td className="p-2 border">{data.toxicityResult?.endpoints?.hepatotoxicity || 'N/A'}</td></tr>
-              <tr className="bg-gray-50"><td className="p-2 border">Carcinogenicity</td><td className="p-2 border">{data.toxicityResult?.endpoints?.carcinogenicity || 'N/A'}</td></tr>
-              <tr><td className="p-2 border">Gemini Analysis</td><td className="p-2 border">{data.geminiAnalysis || 'N/A'}</td></tr>
+              <tr className="bg-secondary"><td className="p-2 border text-text-primary">SMILES</td><td className="p-2 border text-text-primary">{data.smiles || 'N/A'}</td></tr>
+              <tr><td className="p-2 border text-text-primary">Disease</td><td className="p-2 border text-text-primary">{data.disease || 'N/A'}</td></tr>
+              <tr className="bg-secondary"><td className="p-2 border text-text-primary">Confidence</td><td className="p-2 border text-text-primary">{data.confidence || 'N/A'}</td></tr>
+              <tr><td className="p-2 border text-text-primary">Details</td><td className="p-2 border text-text-primary">{data.details || 'N/A'}</td></tr>
+            </tbody>
+          </table>
+        );
+      case 'targetProtein':
+        return (
+          <table className="w-full border-collapse">
+            <thead>
+              <tr className="bg-accent-secondary text-white">
+                <th className="p-2 border">Field</th>
+                <th className="p-2 border">Value</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr className="bg-secondary"><td className="p-2 border text-text-primary">SMILES</td><td className="p-2 border text-text-primary">{data.smiles || 'N/A'}</td></tr>
+              <tr><td className="p-2 border text-text-primary">Protein</td><td className="p-2 border text-text-primary">{data.protein || 'N/A'}</td></tr>
+              <tr className="bg-secondary"><td className="p-2 border text-text-primary">Confidence</td><td className="p-2 border text-text-primary">{data.confidence || 'N/A'}</td></tr>
+              <tr><td className="p-2 border text-text-primary">MOA</td><td className="p-2 border text-text-primary">{data.moa || 'N/A'}</td></tr>
+              <tr className="bg-secondary"><td className="p-2 border text-text-primary">Pathways</td><td className="p-2 border text-text-primary">{data.pathways?.join(', ') || 'None'}</td></tr>
+              <tr><td className="p-2 border text-text-primary">Diseases</td><td className="p-2 border text-text-primary">{data.diseases?.join(', ') || 'None'}</td></tr>
+              <tr className="bg-secondary"><td className="p-2 border text-text-primary">Interactions</td><td className="p-2 border text-text-primary">{data.knownInteractions ? JSON.stringify(data.knownInteractions) : 'N/A'}</td></tr>
+            </tbody>
+          </table>
+        );
+      case 'toxicityResult':
+        return (
+          <table className="w-full border-collapse">
+            <thead>
+              <tr className="bg-accent-secondary text-white">
+                <th className="p-2 border">Field</th>
+                <th className="p-2 border">Value</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr className="bg-secondary"><td className="p-2 border text-text-primary">SMILES</td><td className="p-2 border text-text-primary">{data.smiles || 'N/A'}</td></tr>
+              <tr><td className="p-2 border text-text-primary">LD50</td><td className="p-2 border text-text-primary">{data.toxicityResult?.acuteToxicity?.LD50 || 'N/A'}</td></tr>
+              <tr className="bg-secondary"><td className="p-2 border text-text-primary">Toxicity Class</td><td className="p-2 border text-text-primary">{data.toxicityResult?.acuteToxicity?.toxicityClass || 'N/A'}</td></tr>
+              <tr><td className="p-2 border text-text-primary">Hepatotoxicity</td><td className="p-2 border text-text-primary">{data.toxicityResult?.endpoints?.hepatotoxicity || 'N/A'}</td></tr>
+              <tr className="bg-secondary"><td className="p-2 border text-text-primary">Carcinogenicity</td><td className="p-2 border text-text-primary">{data.toxicityResult?.endpoints?.carcinogenicity || 'N/A'}</td></tr>
+              <tr><td className="p-2 border text-text-primary">Gemini Analysis</td><td className="p-2 border text-text-primary">{data.geminiAnalysis || 'N/A'}</td></tr>
             </tbody>
           </table>
         );
       default:
-        return <p className="text-gray-500">No content available</p>;
+        return <p className="text-text-secondary font-body">No content available</p>;
     }
   };
 
   const renderNewMoleculeSection = () => {
-    // Check if all fields are non-empty to enable Save All button
     const canSave = summaryData &&
       summaryData.newDrugs?.length > 0 &&
       summaryData.costEstimations?.length > 0 &&
       summaryData.drugNames?.length > 0 &&
       summaryData.researchPapers?.length > 0 &&
-      summaryData.GeneratedResearchPaperDetails?.length > 0 &&
-      summaryData.targetPredictions?.length > 0 &&
+      summaryData.generatedResearchPapers?.length > 0 &&
+      summaryData.predictDiseases?.length > 0 &&
+      summaryData.targetProteins?.length > 0 &&
       summaryData.toxicityResults?.length > 0;
 
     return (
       <section className="mb-8" aria-label="Summary Data">
-        <h2 className="text-2xl font-semibold text-gray-800 mb-4">Summary Data</h2>
+        <h2 className="text-2xl font-semibold font-heading text-text-primary mb-4">Summary Data</h2>
         <div className="mb-4">
-          <div className="text-sm text-gray-600 mb-2">Summary Data Completeness</div>
-          <div className="w-full bg-gray-200 rounded-full h-2.5">
+          <div className="text-sm text-text-secondary font-label mb-2">Summary Data Completeness</div>
+          <div className="w-full bg-secondary rounded-full h-2.5">
             <div
-              className="bg-blue-600 h-2.5 rounded-full transition-all duration-300"
+              className="bg-accent h-2.5 rounded-full transition-all duration-300"
               style={{ width: `${generationProgress}%` }}
             ></div>
           </div>
-          <div className="text-sm text-gray-500 mt-1">{generationProgress}% Complete</div>
+          <div className="text-sm text-text-secondary font-label mt-1">{generationProgress}% Complete</div>
         </div>
         <div className="relative group">
           <button
             onClick={saveSummaryData}
             disabled={!canSave}
-            className={`mt-4 px-4 py-2 rounded-lg transition-colors ${
+            className={`mt-4 px-4 py-2 rounded-lg font-body transition-colors ${
               canSave
-                ? 'bg-green-600 text-white hover:bg-green-700'
-                : 'bg-gray-400 text-gray-200 cursor-not-allowed'
+                ? 'bg-success text-white hover:bg-green-600'
+                : 'bg-secondary text-text-secondary cursor-not-allowed'
             }`}
             aria-label={canSave ? 'Save all summary data' : 'All fields must be completed to save'}
             aria-disabled={!canSave}
@@ -836,7 +840,7 @@ const Summary = () => {
             Save All
           </button>
           {!canSave && (
-            <span className="absolute hidden group-hover:block bg-gray-800 text-white text-xs rounded py-1 px-2 -top-8 left-1/2 transform -translate-x-1/2">
+            <span className="absolute hidden group-hover:block bg-primary text-text-primary text-xs font-label rounded py-1 px-2 -top-8 left-1/2 transform -translate-x-1/2">
               All fields must be completed to save
             </span>
           )}
@@ -847,31 +851,31 @@ const Summary = () => {
 
   const renderSection = (title, data, key) => {
     const filteredData = data?.filter((item, index) => !pdfGeneratedItems[`${key}-${item._id}`]);
-    
+
     return (
       <section className="mb-8" aria-label={title}>
-        <h2 className="text-2xl font-semibold text-gray-800 mb-4">{title}</h2>
+        <h2 className="text-2xl font-semibold font-heading text-text-primary mb-4">{title}</h2>
         {filteredData?.length > 0 ? (
           <div className="space-y-4">
             {filteredData.map((item, index) => (
               <div
                 key={index}
-                className="bg-gray-50 p-6 rounded-lg shadow-sm hover:shadow-md transition-shadow"
+                className="bg-secondary p-6 rounded-lg shadow-sm hover:shadow-md transition-shadow"
                 aria-label={`${title} item ${index + 1}`}
               >
                 <div className="flex justify-between items-center">
                   <div>
-                    <h3 className="font-medium text-gray-900">{item.newmoleculetitle || item.suggestedName || item.smiles || item.molecule?.title || 'Item ' + (index + 1)}</h3>
-                    <p className="text-sm text-gray-600 mt-1">SMILES: {item.smiles || item.newSmiles || item.molecule?.smiles || 'N/A'}</p>
+                    <h3 className="font-medium font-heading text-text-primary">{item.newmoleculetitle || item.suggestedName || item.smiles || item.molecule?.title || 'Item ' + (index + 1)}</h3>
+                    <p className="text-sm font-body text-text-secondary mt-1">SMILES: {item.smiles || item.newSmiles || item.molecule?.smiles || 'N/A'}</p>
                   </div>
                   <div className="flex space-x-2 items-center">
                     <button
                       onClick={() => toggleSection(key, index)}
-                      className="p-2 text-blue-600 hover:text-blue-800 relative group"
+                      className="p-2 text-accent-secondary hover:text-accent relative group"
                       aria-label={expandedSections[`${key}-${index}`] ? 'Collapse details' : 'Expand details'}
                     >
                       {expandedSections[`${key}-${index}`] ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
-                      <span className="absolute hidden group-hover:block bg-gray-800 text-white text-xs rounded py-1 px-2 -top-8 left-1/2 transform -translate-x-1/2">
+                      <span className="absolute hidden group-hover:block bg-primary text-text-primary text-xs font-label rounded py-1 px-2 -top-8 left-1/2 transform -translate-x-1/2">
                         {expandedSections[`${key}-${index}`] ? 'Collapse' : 'Expand'}
                       </span>
                     </button>
@@ -881,7 +885,7 @@ const Summary = () => {
                         ...prev,
                         [`${key}-${index}`]: e.target.value,
                       }))}
-                      className="px-2 py-1 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+                      className="px-2 py-1 border rounded-lg font-body text-sm text-text-primary bg-primary focus:ring-2 focus:ring-accent"
                       aria-label="Select download format for item"
                     >
                       <option value="pdf">PDF</option>
@@ -897,7 +901,7 @@ const Summary = () => {
                         key,
                         index
                       )}
-                      className="p-2 text-blue-600 hover:text-blue-800 relative group"
+                      className="p-2 text-accent-secondary hover:text-accent relative group"
                       disabled={downloadingItem === `${key}-${index}`}
                       aria-label="Download item"
                     >
@@ -906,14 +910,14 @@ const Summary = () => {
                       ) : (
                         <FileDown size={20} />
                       )}
-                      <span className="absolute hidden group-hover:block bg-gray-800 text-white text-xs rounded py-1 px-2 -top-8 left-1/2 transform -translate-x-1/2">
+                      <span className="absolute hidden group-hover:block bg-primary text-text-primary text-xs font-label rounded py-1 px-2 -top-8 left-1/2 transform -translate-x-1/2">
                         Download
                       </span>
                     </button>
                   </div>
                 </div>
                 {expandedSections[`${key}-${index}`] && (
-                  <div className="mt-4 text-sm text-gray-600 bg-white p-4 rounded-lg">
+                  <div className="mt-4 text-sm text-text-secondary font-body bg-primary p-4 rounded-lg">
                     {renderTableContent(item, key)}
                   </div>
                 )}
@@ -921,7 +925,7 @@ const Summary = () => {
             ))}
           </div>
         ) : (
-          <p className="text-gray-500">No {title.toLowerCase()} available</p>
+          <p className="text-text-secondary font-body">No {title.toLowerCase()} available</p>
         )}
       </section>
     );
@@ -941,17 +945,17 @@ const Summary = () => {
     return (
       <div>
         <div className="flex justify-between items-center mb-8">
-          <h2 className="text-2xl font-bold text-gray-800">All Saved Items</h2>
+          <h2 className="text-2xl font-bold font-heading text-text-primary">All Saved Items</h2>
           <div className="flex space-x-4 items-center">
             <div className="relative">
               <input
                 type="text"
                 placeholder="Search saved items..."
                 onChange={(e) => debouncedSearch(e.target.value)}
-                className="pl-10 pr-4 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+                className="pl-10 pr-4 py-2 border rounded-lg font-body text-sm text-text-primary bg-primary focus:ring-2 focus:ring-accent"
                 aria-label="Search saved items"
               />
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-text-secondary" />
               {searchQuery && (
                 <button
                   onClick={() => {
@@ -961,14 +965,14 @@ const Summary = () => {
                   className="absolute right-3 top-1/2 transform -translate-y-1/2"
                   aria-label="Clear search"
                 >
-                  <X className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                  <X className="h-5 w-5 text-text-secondary hover:text-text-primary" />
                 </button>
               )}
             </div>
             <select
               value={downloadFormat}
               onChange={(e) => setDownloadFormat(e.target.value)}
-              className="px-4 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+              className="px-4 py-2 border rounded-lg font-body text-sm text-text-primary bg-primary focus:ring-2 focus:ring-accent"
               aria-label="Select download format for all saved items"
             >
               <option value="pdf">PDF</option>
@@ -983,8 +987,9 @@ const Summary = () => {
                   costEstimations: Object.values(savedItems).flatMap(items => items.filter(item => item.type === 'costEstimation').map(item => item.data)),
                   drugNames: Object.values(savedItems).flatMap(items => items.filter(item => item.type === 'drugName').map(item => item.data)),
                   researchPapers: Object.values(savedItems).flatMap(items => items.filter(item => item.type === 'researchPaper').map(item => item.data)),
-                  GeneratedResearchPaperDetails: Object.values(savedItems).flatMap(items => items.filter(item => item.type === 'generatedResearchPaper').map(item => item.data)),
-                  targetPredictions: Object.values(savedItems).flatMap(items => items.filter(item => item.type === 'targetPrediction').map(item => item.data)),
+                  generatedResearchPapers: Object.values(savedItems).flatMap(items => items.filter(item => item.type === 'generatedResearchPaper').map(item => item.data)),
+                  predictDiseases: Object.values(savedItems).flatMap(items => items.filter(item => item.type === 'predictDisease').map(item => item.data)),
+                  targetProteins: Object.values(savedItems).flatMap(items => items.filter(item => item.type === 'targetProtein').map(item => item.data)),
                   toxicityResults: Object.values(savedItems).flatMap(items => items.filter(item => item.type === 'toxicityResult').map(item => item.data)),
                 };
                 handleDownload(
@@ -995,7 +1000,7 @@ const Summary = () => {
                   'all'
                 );
               }}
-              className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors relative group"
+              className="flex items-center px-4 py-2 bg-accent-secondary text-white rounded-lg hover:bg-accent transition-colors relative group font-body"
               disabled={downloadingItem === 'saved-all'}
               aria-label={`Download all saved items as ${downloadFormat.toUpperCase()}`}
             >
@@ -1005,7 +1010,7 @@ const Summary = () => {
                 <Download className="h-5 w-5 mr-2" />
               )}
               Download All
-              <span className="absolute hidden group-hover:block bg-gray-800 text-white text-xs rounded py-1 px-2 -top-8 left-1/2 transform -translate-x-1/2">
+              <span className="absolute hidden group-hover:block bg-primary text-text-primary text-xs font-label rounded py-1 px-2 -top-8 left-1/2 transform -translate-x-1/2">
                 Download All Saved Items
               </span>
             </button>
@@ -1016,8 +1021,8 @@ const Summary = () => {
             <section key={moleculeId} className="mb-8" aria-label={`Molecule ${title}`}>
               <div className="flex justify-between items-center mb-4">
                 <div>
-                  <h3 className="text-xl font-semibold text-gray-800">{title}</h3>
-                  <p className="text-sm text-gray-600">SMILES: {smiles}</p>
+                  <h3 className="text-xl font-semibold font-heading text-text-primary">{title}</h3>
+                  <p className="text-sm font-body text-text-secondary">SMILES: {smiles}</p>
                 </div>
                 <div className="flex space-x-2 items-center">
                   <select
@@ -1026,7 +1031,7 @@ const Summary = () => {
                       ...prev,
                       [moleculeId]: e.target.value,
                     }))}
-                    className="px-2 py-1 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+                    className="px-2 py-1 border rounded-lg font-body text-sm text-text-primary bg-primary focus:ring-2 focus:ring-accent"
                     aria-label="Select download format for molecule report"
                   >
                     <option value="pdf">PDF</option>
@@ -1041,8 +1046,9 @@ const Summary = () => {
                         costEstimations: items.filter(item => item.type === 'costEstimation' && !pdfGeneratedItems[`costEstimation-${item.data._id}`]).map(item => item.data),
                         drugNames: items.filter(item => item.type === 'drugName' && !pdfGeneratedItems[`drugName-${item.data._id}`]).map(item => item.data),
                         researchPapers: items.filter(item => item.type === 'researchPaper' && !pdfGeneratedItems[`researchPaper-${item.data._id}`]).map(item => item.data),
-                        GeneratedResearchPaperDetails: items.filter(item => item.type === 'generatedResearchPaper' && !pdfGeneratedItems[`generatedResearchPaper-${item.data._id}`]).map(item => item.data),
-                        targetPredictions: items.filter(item => item.type === 'targetPrediction' && !pdfGeneratedItems[`targetPrediction-${item.data._id}`]).map(item => item.data),
+                        generatedResearchPapers: items.filter(item => item.type === 'generatedResearchPaper' && !pdfGeneratedItems[`generatedResearchPaper-${item.data._id}`]).map(item => item.data),
+                        predictDiseases: items.filter(item => item.type === 'predictDisease' && !pdfGeneratedItems[`predictDisease-${item.data._id}`]).map(item => item.data),
+                        targetProteins: items.filter(item => item.type === 'targetProtein' && !pdfGeneratedItems[`targetProtein-${item.data._id}`]).map(item => item.data),
                         toxicityResults: items.filter(item => item.type === 'toxicityResult' && !pdfGeneratedItems[`toxicityResult-${item.data._id}`]).map(item => item.data),
                       };
                       handleDownload(
@@ -1053,7 +1059,7 @@ const Summary = () => {
                         moleculeId
                       );
                     }}
-                    className="p-2 text-blue-600 hover:text-blue-800 relative group"
+                    className="p-2 text-accent-secondary hover:text-accent relative group"
                     disabled={downloadingItem === `molecule-${moleculeId}`}
                     aria-label={`Download molecule report as ${(moleculeDownloadFormats[moleculeId] || 'pdf').toUpperCase()}`}
                   >
@@ -1062,7 +1068,7 @@ const Summary = () => {
                     ) : (
                       <FileDown size={20} />
                     )}
-                    <span className="absolute hidden group-hover:block bg-gray-800 text-white text-xs rounded py-1 px-2 -top-8 left-1/2 transform -translate-x-1/2">
+                    <span className="absolute hidden group-hover:block bg-primary text-text-primary text-xs font-label rounded py-1 px-2 -top-8 left-1/2 transform -translate-x-1/2">
                       Download Molecule Report
                     </span>
                   </button>
@@ -1072,26 +1078,26 @@ const Summary = () => {
                 {items.map((item, index) => (
                   <div
                     key={index}
-                    className="bg-gray-50 p-6 rounded-lg shadow-sm hover:shadow-md transition-shadow"
+                    className="bg-secondary p-6 rounded-lg shadow-sm hover:shadow-md transition-shadow"
                     aria-label={`${item.type} item ${index + 1}`}
                   >
                     <div className="flex justify-between items-center">
                       <div>
-                        <h4 className="font-medium text-gray-900">
+                        <h4 className="font-medium font-heading text-text-primary">
                           {item.type.charAt(0).toUpperCase() + item.type.slice(1).replace(/([A-Z])/g, ' $1').trim()}
                         </h4>
-                        <p className="text-sm text-gray-600 mt-1">
+                        <p className="text-sm font-body text-text-secondary mt-1">
                           Saved on: {new Date(item.createdAt).toLocaleString()}
                         </p>
                       </div>
                       <div className="flex space-x-2 items-center">
                         <button
                           onClick={() => toggleSection(`${moleculeId}-${item.type}`, index)}
-                          className="p-2 text-blue-600 hover:text-blue-800 relative group"
+                          className="p-2 text-accent-secondary hover:text-accent relative group"
                           aria-label={expandedSections[`${moleculeId}-${item.type}-${index}`] ? 'Collapse details' : 'Expand details'}
                         >
                           {expandedSections[`${moleculeId}-${item.type}-${index}`] ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
-                          <span className="absolute hidden group-hover:block bg-gray-800 text-white text-xs rounded py-1 px-2 -top-8 left-1/2 transform -translate-x-1/2">
+                          <span className="absolute hidden group-hover:block bg-primary text-text-primary text-xs font-label rounded py-1 px-2 -top-8 left-1/2 transform -translate-x-1/2">
                             {expandedSections[`${moleculeId}-${item.type}-${index}`] ? 'Collapse' : 'Expand'}
                           </span>
                         </button>
@@ -1103,7 +1109,7 @@ const Summary = () => {
                               [`${moleculeId}-${item.type}-${index}`]: e.target.value,
                             }))
                           }
-                          className="px-2 py-1 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+                          className="px-2 py-1 border rounded-lg font-body text-sm text-text-primary bg-primary focus:ring-2 focus:ring-accent"
                           aria-label="Select download format for saved item"
                         >
                           <option value="pdf">PDF</option>
@@ -1121,7 +1127,7 @@ const Summary = () => {
                               index
                             )
                           }
-                          className="p-2 text-blue-600 hover:text-blue-800 relative group"
+                          className="p-2 text-accent-secondary hover:text-accent relative group"
                           disabled={downloadingItem === `${moleculeId}-${item.type}-${index}`}
                           aria-label="Download saved item"
                         >
@@ -1130,14 +1136,14 @@ const Summary = () => {
                           ) : (
                             <FileDown size={20} />
                           )}
-                          <span className="absolute hidden group-hover:block bg-gray-800 text-white text-xs rounded py-1 px-2 -top-8 left-1/2 transform -translate-x-1/2">
+                          <span className="absolute hidden group-hover:block bg-primary text-text-primary text-xs font-label rounded py-1 px-2 -top-8 left-1/2 transform -translate-x-1/2">
                             Download
                           </span>
                         </button>
                       </div>
                     </div>
                     {expandedSections[`${moleculeId}-${item.type}-${index}`] && (
-                      <div className="mt-4 text-sm text-gray-600 bg-white p-4 rounded-lg">
+                      <div className="mt-4 text-sm text-text-secondary font-body bg-primary p-4 rounded-lg">
                         {renderTableContent(item.data, item.type)}
                       </div>
                     )}
@@ -1147,7 +1153,7 @@ const Summary = () => {
             </section>
           ))
         ) : (
-          <p className="text-gray-500">No saved items match your search</p>
+          <p className="text-text-secondary font-body">No saved items match your search</p>
         )}
       </div>
     );
@@ -1172,11 +1178,11 @@ const Summary = () => {
   if (loading) {
     return (
       <div
-        className="flex items-center justify-center min-h-screen bg-gray-100"
+        className="flex items-center justify-center min-h-screen bg-primary"
         aria-live="polite"
       >
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-        <span className="ml-2 text-gray-700">Loading data...</span>
+        <Loader2 className="h-8 w-8 animate-spin text-accent" />
+        <span className="ml-2 text-text-primary font-body">Loading data...</span>
       </div>
     );
   }
@@ -1184,11 +1190,11 @@ const Summary = () => {
   if (error) {
     return (
       <div
-        className="flex items-center justify-center min-h-screen bg-gray-100"
+        className="flex items-center justify-center min-h-screen bg-primary"
         aria-live="assertive"
       >
-        <AlertCircle className="h-8 w-8 text-red-600" />
-        <span className="ml-2 text-red-600">{error}</span>
+        <AlertCircle className="h-8 w-8 text-error" />
+        <span className="ml-2 text-error font-body">{error}</span>
       </div>
     );
   }
@@ -1196,11 +1202,11 @@ const Summary = () => {
   if (!user) {
     return (
       <div
-        className="flex items-center justify-center min-h-screen bg-gray-100"
+        className="flex items-center justify-center min-h-screen bg-primary"
         aria-live="assertive"
       >
-        <AlertCircle className="h-8 w-8 text-yellow-600" />
-        <span className="ml-2 text-yellow-600">
+        <AlertCircle className="h-8 w-8 text-error" />
+        <span className="ml-2 text-error font-body">
           Please log in to view your summary
         </span>
       </div>
@@ -1208,18 +1214,18 @@ const Summary = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 py-12">
+    <div className="min-h-screen bg-primary py-12">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="mb-6">
-          <div className="border-b border-gray-200">
+          <div className="border-b border-text-secondary">
             <nav className="-mb-px flex space-x-8" role="tablist">
               <button
                 onClick={() => handleTabChange('summary')}
                 className={`${
                   activeTab === 'summary'
-                    ? 'border-blue-600 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-all duration-200`}
+                    ? 'border-accent text-accent'
+                    : 'border-transparent text-text-secondary hover:text-text-primary hover:border-text-secondary'
+                } whitespace-nowrap py-4 px-1 border-b-2 font-heading text-sm transition-all duration-200`}
                 role="tab"
                 aria-selected={activeTab === 'summary'}
                 aria-controls="summary-panel"
@@ -1230,9 +1236,9 @@ const Summary = () => {
                 onClick={() => handleTabChange('saved')}
                 className={`${
                   activeTab === 'saved'
-                    ? 'border-blue-600 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-all duration-200`}
+                    ? 'border-accent text-accent'
+                    : 'border-transparent text-text-secondary hover:text-text-primary hover:border-text-secondary'
+                } whitespace-nowrap py-4 px-1 border-b-2 font-heading text-sm transition-all duration-200`}
                 role="tab"
                 aria-selected={activeTab === 'saved'}
                 aria-controls="saved-panel"
@@ -1243,18 +1249,18 @@ const Summary = () => {
           </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-lg p-8">
+        <div className="bg-secondary rounded-xl shadow-lg p-8">
           {activeTab === 'summary' ? (
             <div id="summary-panel" role="tabpanel">
               <div className="flex justify-between items-center mb-8">
-                <h1 className="text-3xl font-bold text-gray-800">Drug Discovery Summary</h1>
+                <h1 className="text-3xl font-bold font-heading text-text-primary">Drug Discovery Summary</h1>
                 <div className="flex space-x-4 items-center">
                   {summaryData && (
                     <>
                       <select
                         value={downloadFormat}
                         onChange={(e) => setDownloadFormat(e.target.value)}
-                        className="px-4 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+                        className="px-4 py-2 border rounded-lg font-body text-sm text-text-primary bg-primary focus:ring-2 focus:ring-accent"
                         aria-label="Select download format"
                       >
                         <option value="pdf">PDF</option>
@@ -1264,7 +1270,7 @@ const Summary = () => {
                       </select>
                       <button
                         onClick={() => handleDownload(summaryData, downloadFormat, `drug-discovery-summary.${downloadFormat}`, 'summary', 0)}
-                        className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors relative group"
+                        className="flex items-center px-4 py-2 bg-accent-secondary text-white rounded-lg hover:bg-accent transition-colors relative group font-body"
                         disabled={downloadingItem === 'summary-0'}
                         aria-label={`Download full report as ${downloadFormat.toUpperCase()}`}
                       >
@@ -1274,7 +1280,7 @@ const Summary = () => {
                           <Download className="h-5 w-5 mr-2" />
                         )}
                         Download {downloadFormat.toUpperCase()}
-                        <span className="absolute hidden group-hover:block bg-gray-800 text-white text-xs rounded py-1 px-2 -top-8 left-1/2 transform -translate-x-1/2">
+                        <span className="absolute hidden group-hover:block bg-primary text-text-primary text-xs font-label rounded py-1 px-2 -top-8 left-1/2 transform -translate-x-1/2">
                           Download Full Report
                         </span>
                       </button>
@@ -1282,28 +1288,29 @@ const Summary = () => {
                   )}
                 </div>
               </div>
-              {/* Missing Data Warning */}
-              {summaryData && (!summaryData?.newDrugs?.length || 
-                !summaryData?.costEstimations?.length || 
-                !summaryData?.drugNames?.length || 
-                !summaryData?.researchPapers?.length || 
-                !summaryData?.GeneratedResearchPaperDetails?.length || 
-                !summaryData?.targetPredictions?.length || 
+              {summaryData && (!summaryData?.newDrugs?.length ||
+                !summaryData?.costEstimations?.length ||
+                !summaryData?.drugNames?.length ||
+                !summaryData?.researchPapers?.length ||
+                !summaryData?.generatedResearchPapers?.length ||
+                !summaryData?.predictDiseases?.length ||
+                !summaryData?.targetProteins?.length ||
                 !summaryData?.toxicityResults?.length) && (
-                <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6">
+                <div className="bg-error/10 border-l-4 border-error p-4 mb-6">
                   <div className="flex">
-                    <AlertCircle className="h-5 w-5 text-yellow-400" />
+                    <AlertCircle className="h-5 w-5 text-error" />
                     <div className="ml-3">
-                      <p className="text-sm text-yellow-700">
+                      <p className="text-sm text-error font-body">
                         Some data is missing from your summary. Complete the following sections for a comprehensive report:
                       </p>
-                      <ul className="mt-2 list-disc list-inside text-sm text-yellow-600">
+                      <ul className="mt-2 list-disc list-inside text-sm text-error">
                         {!summaryData?.newDrugs?.length && <li>New Drug Discovery</li>}
                         {!summaryData?.costEstimations?.length && <li>Cost Estimation</li>}
                         {!summaryData?.drugNames?.length && <li>AI Naming Suggestions</li>}
                         {!summaryData?.researchPapers?.length && <li>Research Papers</li>}
-                        {!summaryData?.GeneratedResearchPaperDetails?.length && <li>Generated Research Papers</li>}
-                        {!summaryData?.targetPredictions?.length && <li>Target Predictions</li>}
+                        {!summaryData?.generatedResearchPapers?.length && <li>Generated Research Papers</li>}
+                        {!summaryData?.predictDiseases?.length && <li>Disease Predictions</li>}
+                        {!summaryData?.targetProteins?.length && <li>Target Proteins</li>}
                         {!summaryData?.toxicityResults?.length && <li>Toxicity Predictions</li>}
                       </ul>
                     </div>
@@ -1317,8 +1324,9 @@ const Summary = () => {
                   {summaryData.costEstimations?.length > 0 && renderSection('Cost Estimations', summaryData.costEstimations, 'costEstimation')}
                   {summaryData.drugNames?.length > 0 && renderSection('AI Generated Names', summaryData.drugNames, 'drugName')}
                   {summaryData.researchPapers?.length > 0 && renderSection('Research Papers', summaryData.researchPapers, 'researchPaper')}
-                  {summaryData.GeneratedResearchPaperDetails?.length > 0 && renderSection('Generated Research Papers', summaryData.GeneratedResearchPaperDetails, 'generatedResearchPaper')}
-                  {summaryData.targetPredictions?.length > 0 && renderSection('Target Predictions', summaryData.targetPredictions, 'targetPrediction')}
+                  {summaryData.generatedResearchPapers?.length > 0 && renderSection('Generated Research Papers', summaryData.generatedResearchPapers, 'generatedResearchPaper')}
+                  {summaryData.predictDiseases?.length > 0 && renderSection('Disease Predictions', summaryData.predictDiseases, 'predictDisease')}
+                  {summaryData.targetProteins?.length > 0 && renderSection('Target Proteins', summaryData.targetProteins, 'targetProtein')}
                   {summaryData.toxicityResults?.length > 0 && renderSection('Toxicity Predictions', summaryData.toxicityResults, 'toxicityResult')}
                 </>
               )}

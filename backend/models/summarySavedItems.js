@@ -1,3 +1,4 @@
+// models/summarySavedItems.js
 import mongoose from 'mongoose';
 
 const summarySavedItemSchema = new mongoose.Schema({
@@ -15,12 +16,15 @@ const summarySavedItemSchema = new mongoose.Schema({
       'drugName',
       'researchPaper',
       'generatedResearchPaper',
-      'targetPrediction',
+      
       'toxicityResult',
+      'predictDisease', // New type
+      'targetProtein', // New type
+      'reactionResponse', // New type
     ],
   },
   moleculeId: {
-    type: String, // Store UUID for grouping items under the same molecule
+    type: String,
     required: true,
   },
   data: {
