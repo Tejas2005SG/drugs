@@ -6,7 +6,6 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
-const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
 
 const axiosInstance = axios.create({
   baseURL: API_BASE_URL,
@@ -14,24 +13,20 @@ const axiosInstance = axios.create({
   withCredentials: true,
 });
 
-const geminiAxios = axios.create({
-  baseURL: 'https://generativelanguage.googleapis.com/v1beta',
-  headers: { 'Content-Type': 'application/json' }
-});
-
 const ToxicityPrediction = () => {
   const isMounted = useRef(true);
   const { user, checkAuth, logout, checkingAuth } = useAuthStore();
   const navigate = useNavigate();
 
-  const [smiles, setSmiles] = useState('');
+  const [compound, setCompound] = useState('');
   const [symptomGroupIndex, setSymptomGroupIndex] = useState('');
   const [symptomGroups, setSymptomGroups] = useState([]);
-  const [productSmilesGroups, setProductSmilesGroups] = useState([]);
+  const [productCompoundGroups, setProductCompoundGroups] = useState([]);
   const [result, setResult] = useState(null);
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [notification, setNotification] = useState(null);
   const [isResultOpen, setIsResultOpen] = useState(false);
   const [isSideEffectsOpen, setIsSideEffectsOpen] = useState(false);
   const [geminiAnalysis, setGeminiAnalysis] = useState(null);
@@ -69,18 +64,18 @@ const ToxicityPrediction = () => {
       const response = await axiosInstance.get(`/getdata/getsymptoms-product/${user._id}`);
       const { symptoms, productSmiles } = response.data;
       setSymptomGroups(symptoms || []);
-      setProductSmilesGroups(productSmiles || []);
+      setProductCompoundGroups(productSmiles || []);
       if (symptoms?.length > 0) {
         setSymptomGroupIndex('0');
         if (productSmiles?.[0]?.length > 0) {
-          setSmiles(productSmiles[0][0]);
+          setCompound(productSmiles[0][0]);
         }
       }
     } catch (err) {
       console.error("Error fetching symptoms and products:", err.response?.data || err.message);
       setError(err.response?.data?.message || "Failed to fetch symptoms and products");
       setSymptomGroups([]);
-      setProductSmilesGroups([]);
+      setProductCompoundGroups([]);
     }
   };
 
@@ -90,14 +85,10 @@ const ToxicityPrediction = () => {
       const response = await axiosInstance.get('/toxicity/history');
       const fetchedHistory = response.data.history || [];
       const storedSymptomGroups = JSON.parse(localStorage.getItem(`symptomGroups_${user._id}`) || "{}");
-      const updatedHistory = fetchedHistory.map(item => {
-        // Use the history item's _id to fetch the symptom group
-        const symptomGroup = storedSymptomGroups[item._id] || "Not available";
-        return {
-          ...item,
-          symptomsGrp: symptomGroup
-        };
-      });
+      const updatedHistory = fetchedHistory.map(item => ({
+        ...item,
+        symptomsGrp: storedSymptomGroups[item._id] || "Not available"
+      }));
       setHistory(updatedHistory);
     } catch (err) {
       console.error('Error fetching history:', err.response?.data || err.message);
@@ -105,47 +96,30 @@ const ToxicityPrediction = () => {
     }
   };
 
-  const getGeminiAnalysis = async (smilesString, symptomsString) => {
-    console.log("Getting Gemini analysis for:", smilesString, symptomsString);
+  const getGeminiAnalysis = async (compoundString, symptomsString) => {
+    console.log("Querying Gemini for toxicity analysis:", compoundString, symptomsString);
     setGeminiLoading(true);
     try {
-     const analysisText = `
-1. **Overall Toxicity Assessment**:
-   The compound with SMILES notation "${smilesString}", proposed for addressing the symptoms "${symptomsString}", demonstrates moderate toxicity potential. While structurally it may elicit systemic effects at elevated dosages, current predictive models suggest it possesses a generally acceptable safety profile at therapeutic levels.
-
-2. **Potential Mechanisms of Toxicity**:
-   - Bioactivation through Phase I metabolic pathways may generate reactive intermediates.
-   - Moderate affinity toward unintended (off-target) receptors could result in secondary pharmacological effects.
-   - Potential induction of oxidative stress, possibly contributing to cellular damage in sensitive tissues.
-
-3. **Predicted Toxicological Endpoints**:
-   - **Hepatotoxicity**: Moderate risk; liver enzyme monitoring is advised.
-   - **Cardiotoxicity**: Low risk; unlikely to cause significant cardiac abnormalities.
-   - **Nephrotoxicity**: Low to moderate risk; renal function should be periodically evaluated.
-   - **Neurotoxicity**: Minimal risk; no significant alerts related to neurotoxins identified.
-
-4. **Structure-Based Toxicity Concerns**:
-   - Presence of functional groups prone to metabolic transformation (Phase I and II).
-   - Moderate lipophilicity may lead to bioaccumulation in lipid-rich tissues.
-   - No structural alerts detected for genotoxicity, mutagenicity, or carcinogenicity.
-
-5. **Predicted Side Effects**:
-   - **Nausea**: Common during initial administration; likely linked to mild gastrointestinal irritation.
-   - **Headache**: May occur as a mild to moderate symptom, possibly resulting from CNS interactions.
-   - **Skin Irritation**: Localized redness or itching may be observed upon dermal exposure.
-   - **Dizziness**: Occasional lightheadedness or vertigo at higher doses due to CNS involvement.
-
-6. **Recommended Safety Considerations**:
-   - Routine liver function tests during preclinical and clinical evaluation phases.
-   - Detailed safety pharmacology studies focusing on cardiovascular, respiratory, and CNS functions.
-   - Employ dose fractionation strategies to limit peak plasma concentrations.
-   - Adhere to standard laboratory safety and handling procedures for experimental compounds.
-   - Pre-screen subjects for known allergies or hypersensitivities to structurally similar agents.
-`;
-
-      
-      await saveGeminiAnalysis(smilesString, symptomsString, analysisText);
-      return analysisText;
+      const prompt = `
+        Fetch toxicity and chemical data for the compound "${compoundString}" from authentic sources like PubChem (https://pubchem.ncbi.nlm.nih.gov), EPA's TEST (https://www.epa.gov), ToxValDB (https://www.epa.gov), or ATSDR (https://www.atsdr.cdc.gov). Include:
+        - Molecular properties (e.g., molecular weight, logP, solubility).
+        - Acute toxicity (e.g., LD50, toxicity class).
+        - Toxicological endpoints (e.g., hepatotoxicity, carcinogenicity).
+        - Toxicophores and structural alerts.
+        - QSAR-based toxicity predictions.
+        - Mechanisms of toxicity related to symptoms: "${symptomsString}".
+        - Safety recommendations.
+        If "${compoundString}" is not found, search for similar compounds (e.g., by substructure or name similarity) and provide inferred data. For each piece of information, cite the source (e.g., PubChem, EPA). If no data is available, provide general toxicological insights based on the symptoms and cite general knowledge or relevant studies.
+        Return a JSON object with fields: isInputValid, inputError, smiles, moleculeName, inferredCompound, inferredSmiles, errorDetails, acuteToxicity, endpoints, sideEffects, mechanisms, structureConcerns, safetyRecommendations, qsarAnalysis, toxicophoreAnalysis, sources.
+      `;
+      const response = await axiosInstance.post('/toxicity/gemini-analysis', {
+        compound: compoundString,
+        symptoms: symptomsString,
+        prompt
+      });
+      const analysis = response.data.analysis;
+      await saveGeminiAnalysis(compoundString, symptomsString, analysis);
+      return analysis;
     } catch (err) {
       console.error("Error in getGeminiAnalysis:", err);
       throw new Error("Failed to generate Gemini analysis: " + err.message);
@@ -154,15 +128,15 @@ const ToxicityPrediction = () => {
     }
   };
 
-  const saveGeminiAnalysis = async (smilesString, symptomsString, analysisText) => {
+  const saveGeminiAnalysis = async (compoundString, symptomsString, analysisText) => {
     try {
       const response = await axiosInstance.post('/toxicity/save-analysis', {
-        smiles: smilesString,
+        smiles: compoundString,
         symptoms: symptomsString,
         geminiAnalysis: analysisText
       });
       console.log("Successfully saved Gemini analysis:", response.data);
-      return response.data.historyId; // Assume the backend returns the history ID
+      return response.data.historyId;
     } catch (err) {
       console.error("Failed to save Gemini analysis:", err.response?.data || err.message);
       throw err;
@@ -209,11 +183,11 @@ const ToxicityPrediction = () => {
     };
   }, [checkAuth]);
 
-  const predictToxicity = async (smilesString, symptomsString) => {
-    console.log("Running toxicity prediction for:", smilesString, symptomsString);
+  const predictToxicity = async (compoundString, symptomsString) => {
+    console.log("Running toxicity prediction with payload:", { compound: compoundString, symptoms: symptomsString });
     try {
-      const response = await axiosInstance.post('/toxicity/predict', { smiles: smilesString, symptoms: symptomsString });
-      console.log("Backend toxicity prediction response:", response.data);
+      const response = await axiosInstance.post('/toxicity/predict', { compound: compoundString, symptoms: symptomsString });
+      console.log("Backend toxicity prediction response (Gemini-based):", response.data);
       return response.data.result;
     } catch (err) {
       console.error("Error calling backend toxicity API:", err.response?.data || err.message);
@@ -222,58 +196,93 @@ const ToxicityPrediction = () => {
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    console.log("Submit button clicked");
-    if (!smiles || symptomGroupIndex === '') {
-      setError('Please select a SMILES string and symptom group');
-      return;
-    }
-    if (!user?._id) {
-      setError('User not authenticated');
-      return;
-    }
-    setLoading(true);
-    setError(null);
-    setGeminiAnalysis(null);
-    setIsGeminiAnalysisOpen(false);
-    setIsResultOpen(false);
-    setIsSideEffectsOpen(false);
-    try {
-      console.log("Starting toxicity prediction for SMILES:", smiles, "Symptoms:", symptomGroups[symptomGroupIndex]);
-      const symptomsString = symptomGroups[symptomGroupIndex]?.join(", ") || "";
-      const toxicityData = await predictToxicity(smiles, symptomsString);
-      console.log("Received toxicity data:", toxicityData);
-      
-      // Add symptoms to the result object for display in "Prediction Results"
-      const updatedResult = { ...toxicityData, symptoms: symptomsString };
-      setResult(updatedResult);
-      setIsResultOpen(true);
+  e.preventDefault();
+  if (!compound || symptomGroupIndex === '') {
+    setError('Please select a compound and symptom group');
+    return;
+  }
+  if (!user?._id) {
+    setError('User not authenticated');
+    return;
+  }
+  setLoading(true);
+  setError(null);
+  setNotification(null);
+  setGeminiAnalysis(null);
+  setIsGeminiAnalysisOpen(false);
+  setIsResultOpen(false);
+  setIsSideEffectsOpen(false);
 
-      setGeminiLoading(true);
-      console.log("Starting Gemini analysis");
-      const analysisText = await getGeminiAnalysis(smiles, symptomsString);
-      console.log("Received Gemini analysis:", analysisText);
-      setGeminiAnalysis(analysisText);
-      
-      // Fetch the latest history to get the history item's ID
-      const historyResponse = await axiosInstance.get('/toxicity/history');
-      const latestHistory = historyResponse.data.history[0]; // Assuming the latest entry is the first one
-      if (latestHistory) {
-        const storedSymptomGroups = JSON.parse(localStorage.getItem(`symptomGroups_${user._id}`) || "{}");
-        storedSymptomGroups[latestHistory._id] = symptomsString;
-        localStorage.setItem(`symptomGroups_${user._id}`, JSON.stringify(storedSymptomGroups));
-      }
+  try {
+    const symptomsString = symptomGroups[symptomGroupIndex]?.join(", ") || "";
+    const normalizeSymptoms = (symptoms) =>
+      symptoms
+        .toLowerCase()
+        .split(/[,;]+/)
+        .map(s => s.trim())
+        .filter(s => s.length > 0)
+        .sort()
+        .join(", ");
 
-      setIsGeminiAnalysisOpen(true);
-      await fetchHistory();
-    } catch (err) {
-      console.error('Error in handleSubmit:', err);
-      setError(err.message || 'Error predicting toxicity');
-    } finally {
+    // Check for matching history entry
+    const normalizedCompound = compound.trim().toLowerCase();
+    const normalizedSymptoms = normalizeSymptoms(symptomsString);
+    const matchingHistoryItem = history.find(item => {
+      const historyCompound = item.smiles?.trim().toLowerCase();
+      const historySymptoms = normalizeSymptoms(item.symptomsGrp || "");
+      return historyCompound === normalizedCompound && historySymptoms === normalizedSymptoms;
+    });
+
+    if (matchingHistoryItem) {
+      setActiveTab('saved');
+      setSelectedHistoryItemId(matchingHistoryItem._id);
+      setIsHistoryResultOpen(true);
+      setIsHistorySideEffectsOpen(false);
+      setIsHistoryGeminiOpen(!!matchingHistoryItem.geminiAnalysis);
+      setNotification(`Result for "${compound}" with symptoms "${symptomsString}" already generated. View it in the Saved Results tab below.`);
+      setTimeout(() => {
+        const element = document.getElementById(`history-item-${matchingHistoryItem._id}`);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 100);
       setLoading(false);
-      setGeminiLoading(false);
+      return;
     }
-  };
+
+    // Proceed with prediction
+    const toxicityData = await predictToxicity(compound, symptomsString);
+    if (!toxicityData) {
+      setLoading(false);
+      return; // Duplicate handled by backend
+    }
+
+    const updatedResult = { ...toxicityData, symptoms: symptomsString };
+    setResult(updatedResult);
+    setIsResultOpen(true);
+
+    setGeminiLoading(true);
+    const analysisText = await getGeminiAnalysis(compound, symptomsString);
+    setGeminiAnalysis(analysisText);
+
+    const historyResponse = await axiosInstance.get('/toxicity/history');
+    const latestHistory = historyResponse.data.history[0];
+    if (latestHistory) {
+      const storedSymptomGroups = JSON.parse(localStorage.getItem(`symptomGroups_${user._id}`) || "{}");
+      storedSymptomGroups[latestHistory._id] = symptomsString;
+      localStorage.setItem(`symptomGroups_${user._id}`, JSON.stringify(storedSymptomGroups));
+    }
+
+    setIsGeminiAnalysisOpen(true);
+    await fetchHistory();
+  } catch (err) {
+    console.error('Error in handleSubmit:', err);
+    setError(err.message || 'Error predicting toxicity');
+  } finally {
+    setLoading(false);
+    setGeminiLoading(false);
+  }
+};
 
   const renderToxicityDetails = (result) => {
     if (!result) return <p className="text-gray-400 text-center py-4">No details available</p>;
@@ -286,7 +295,7 @@ const ToxicityPrediction = () => {
               Basic Information
             </h5>
             <p className="text-gray-300 text-sm mb-1"><span className="font-medium">Symptoms:</span> {result.symptoms || "Not available"}</p>
-            <p className="text-gray-300 text-sm"><span className="font-medium">SMILES:</span></p>
+            <p className="text-gray-300 text-sm"><span className="font-medium">Compound:</span></p>
             <div className="bg-gray-800/50 p-2 rounded mt-1 overflow-x-auto">
               <code className="text-green-400 text-xs whitespace-nowrap">{result.smiles}</code>
             </div>
@@ -330,78 +339,407 @@ const ToxicityPrediction = () => {
               {effect.name}
             </p>
             <p className="text-gray-300 text-sm leading-relaxed">{effect.description}</p>
+            <p className="text-gray-400 text-xs mt-1">Severity: {effect.severity}</p>
           </motion.div>
         ))}
       </div>
     );
   };
 
-  const renderGeminiAnalysis = (analysis) => {
-    if (!analysis) return (
-      <div className="text-center py-8">
-        <Info className="w-12 h-12 text-blue-400/50 mx-auto mb-3" />
-        <p className="text-gray-400">No Gemini analysis available for this prediction.</p>
-      </div>
-    );
+  const enhanceAnalysisData = (analysis) => {
+    if (typeof analysis === 'string') {
+      return { rawText: analysis };
+    }
 
-    const renderFormattedAnalysis = () => {
-      if (typeof analysis !== 'string') {
-        return <p className="text-gray-300">{JSON.stringify(analysis)}</p>;
-      }
-      const sections = [];
-      const lines = analysis.split('\n').filter(line => line.trim() !== '');
-      let currentSection = { title: 'Overview', content: [] };
+    const {
+      isInputValid,
+      inputError,
+      smiles,
+      moleculeName,
+      inferredCompound,
+      inferredSmiles,
+      errorDetails,
+      acuteToxicity,
+      endpoints,
+      sideEffects,
+      mechanisms,
+      structureConcerns,
+      safetyRecommendations,
+      qsarAnalysis,
+      toxicophoreAnalysis,
+      sources
+    } = analysis;
 
-      for (const line of lines) {
-        if (/^\d+\./.test(line)) {
-          if (currentSection.content.length > 0) {
-            sections.push({ ...currentSection });
-          }
-          currentSection = { title: line, content: [] };
-        } else if (/^-/.test(line) || /^\*/.test(line)) {
-          currentSection.content.push(line);
-        } else if (/^[A-Z]/.test(line) && line.endsWith(':')) {
-          if (currentSection.content.length > 0) {
-            sections.push({ ...currentSection });
-          }
-          currentSection = { title: line, content: [] };
-        } else {
-          currentSection.content.push(line);
+    let enhanced = { ...analysis };
+
+    // Enhance sparse data with general insights if critical fields are missing
+    if (!isInputValid || !acuteToxicity?.LD50 || acuteToxicity?.LD50 === 'Unknown') {
+      enhanced.acuteToxicity = {
+        ...acuteToxicity,
+        supplemental: 'No specific LD50 data found. For unrecognized compounds, acute toxicity may depend on structural similarity to known chemicals. Check QSAR and toxicophore analysis for inferred risks.'
+      };
+    }
+
+    if (Object.values(endpoints || {}).every(val => val === 'Unknown')) {
+      enhanced.endpoints = {
+        ...endpoints,
+        supplemental: 'No endpoint data available. Symptoms may suggest organ-specific effects; see symptom context in QSAR analysis for hypotheses.'
+      };
+    }
+
+    if (!mechanisms || mechanisms.length === 0) {
+      enhanced.mechanisms = [
+        {
+          feature: 'Unknown structure',
+          pathway: 'Without structural data, mechanisms are unclear. Symptoms may indicate systemic effects; see symptom context for details.'
         }
-      }
-      if (currentSection.content.length > 0) {
-        sections.push(currentSection);
-      }
+      ];
+    }
 
-      if (sections.length === 0) {
-        return <p className="whitespace-pre-line text-gray-300 leading-relaxed">{analysis}</p>;
-      }
+    if (!structureConcerns || structureConcerns.length === 0) {
+      enhanced.structureConcerns = [
+        {
+          substructure: 'Unknown',
+          similarCompound: 'N/A',
+          concern: 'Structural alerts unavailable. Refer to QSAR analysis for predicted risks.'
+        }
+      ];
+    }
 
+    if (!safetyRecommendations || safetyRecommendations.length === 0) {
+      enhanced.safetyRecommendations = [
+        {
+          test: 'General toxicity screening',
+          modification: 'Conduct in vitro assays (e.g., MTT) to assess cytotoxicity if compound identity is confirmed.'
+        }
+      ];
+    }
+
+    // Add symptom context if not provided
+    if (!qsarAnalysis?.symptomContext && sideEffects?.length > 0) {
+      enhanced.qsarAnalysis = {
+        ...qsarAnalysis,
+        symptomContext: sideEffects.map(effect => ({
+          symptom: effect.name,
+          insight: `Potential toxicological effect linked to ${effect.description.toLowerCase()}. Further studies needed to confirm mechanisms.`
+        }))
+      };
+    }
+
+    return enhanced;
+  };
+
+  const renderGeminiAnalysis = (analysis) => {
+    if (!analysis) {
       return (
-        <div className="space-y-6">
-          {sections.map((section, index) => (
-            <motion.div
-              key={index}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.05 }}
-              className="bg-gradient-to-r from-indigo-500/5 to-purple-500/5 p-4 rounded-lg border border-indigo-300/10"
-            >
-              <h4 className="font-semibold text-indigo-300 mb-3 flex items-center">
-                <Beaker className="w-4 h-4 mr-2" />
-                {section.title}
-              </h4>
-              <div className="pl-6 space-y-2">
-                {section.content.map((item, idx) => (
-                  <p key={idx} className="text-gray-300 text-sm leading-relaxed">{item}</p>
-                ))}
-              </div>
-            </motion.div>
-          ))}
+        <div className="text-center py-8">
+          <Info className="w-12 h-12 text-blue-400/50 mx-auto mb-3" />
+          <p className="text-gray-400">No toxicity analysis available for this prediction.</p>
         </div>
       );
-    };
-    return renderFormattedAnalysis();
+    }
+
+    if (typeof analysis === 'string') {
+      return (
+        <div className="bg-gradient-to-r from-indigo-500/10 to-purple-500/10 p-6 rounded-lg border border-indigo-300/20">
+          <h4 className="font-semibold text-indigo-300 mb-3 flex items-center">
+            <Beaker className="w-5 h-5 mr-2" />
+            Raw Analysis
+          </h4>
+          <p className="text-gray-300 text-sm whitespace-pre-line">{analysis}</p>
+        </div>
+      );
+    }
+
+    const enhancedAnalysis = enhanceAnalysisData(analysis);
+    const {
+      isInputValid,
+      inputError,
+      smiles,
+      moleculeName,
+      inferredCompound,
+      inferredSmiles,
+      errorDetails,
+      acuteToxicity,
+      endpoints,
+      sideEffects,
+      mechanisms,
+      structureConcerns,
+      safetyRecommendations,
+      qsarAnalysis,
+      toxicophoreAnalysis,
+      sources
+    } = enhancedAnalysis;
+
+    return (
+      <div className="space-y-6">
+        {/* Input Validation Error */}
+        {!isInputValid && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-yellow-500/10 p-6 rounded-lg border border-yellow-300/20"
+          >
+            <h4 className="font-semibold text-yellow-300 mb-3 flex items-center">
+              <AlertTriangle className="w-5 h-5 mr-2" />
+              Input Validation Error
+            </h4>
+            <p className="text-gray-300 text-sm mb-2">
+              <span className="font-medium">Compound:</span> {moleculeName || 'Unknown'}
+            </p>
+            <p className="text-gray-300 text-sm mb-2">
+              <span className="font-medium">Error:</span> {inputError || 'Invalid input'}
+            </p>
+            {errorDetails && (
+              <>
+                <p className="text-gray-300 text-sm mb-2">
+                  <span className="font-medium">Reason:</span> {errorDetails.reason}
+                </p>
+                <p className="text-gray-300 text-sm mb-2">
+                  <span className="font-medium">Suggestions:</span>
+                </p>
+                <ul className="list-disc list-inside text-gray-300 text-sm">
+                  {errorDetails.suggestions?.map((suggestion, index) => (
+                    <li key={index}>{suggestion}</li>
+                  ))}
+                </ul>
+              </>
+            )}
+          </motion.div>
+        )}
+
+        {/* Basic Information */}
+        {isInputValid && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-gradient-to-r from-blue-500/10 to-purple-500/10 p-6 rounded-lg border border-blue-300/20"
+          >
+            <h4 className="font-semibold text-blue-300 mb-3 flex items-center">
+              <Info className="w-5 h-5 mr-2" />
+              Basic Information
+            </h4>
+            <p className="text-gray-300 text-sm mb-2">
+              <span className="font-medium">Compound:</span> {moleculeName || 'N/A'}
+            </p>
+            <p className="text-gray-300 text-sm mb-2">
+              <span className="font-medium">SMILES:</span> {smiles || 'N/A'}
+            </p>
+            {inferredCompound && (
+              <p className="text-gray-300 text-sm mb-2">
+                <span className="font-medium">Inferred Compound:</span> {inferredCompound} ({inferredSmiles || 'N/A'})
+              </p>
+            )}
+          </motion.div>
+        )}
+
+        {/* Acute Toxicity */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-gradient-to-r from-red-500/10 to-orange-500/10 p-6 rounded-lg border border-red-300/20"
+        >
+          <h4 className="font-semibold text-red-300 mb-3 flex items-center">
+            <Shield className="w-5 h-5 mr-2" />
+            Acute Toxicity
+          </h4>
+          <p className="text-gray-300 text-sm mb-2">
+            <span className="font-medium">LD50:</span> {acuteToxicity?.LD50 || 'Unknown'}
+          </p>
+          <p className="text-gray-300 text-sm mb-2">
+            <span className="font-medium">Toxicity Class:</span> {acuteToxicity?.toxicityClass || 'Unknown'}
+          </p>
+          {acuteToxicity?.supplemental && (
+            <p className="text-gray-400 text-xs italic">{acuteToxicity.supplemental}</p>
+          )}
+        </motion.div>
+
+        {/* Toxicological Endpoints */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-gradient-to-r from-indigo-500/10 to-purple-500/10 p-6 rounded-lg border border-indigo-300/20"
+        >
+          <h4 className="font-semibold text-indigo-300 mb-3 flex items-center">
+            <Beaker className="w-5 h-5 mr-2" />
+            Toxicological Endpoints
+          </h4>
+          <ul className="list-disc list-inside text-gray-300 text-sm space-y-1">
+            {Object.entries(endpoints || {}).map(([key, value]) => (
+              key !== 'supplemental' && (
+                <li key={key}>
+                  {key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}: {value || 'Unknown'}
+                </li>
+              )
+            ))}
+          </ul>
+          {endpoints?.supplemental && (
+            <p className="text-gray-400 text-xs italic mt-2">{endpoints.supplemental}</p>
+          )}
+        </motion.div>
+
+        {/* Side Effects */}
+        {sideEffects?.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-gradient-to-r from-yellow-500/10 to-orange-500/10 p-6 rounded-lg border border-yellow-300/20"
+          >
+            <h4 className="font-semibold text-yellow-300 mb-3 flex items-center">
+              <AlertTriangle className="w-5 h-5 mr-2" />
+              Potential Health Effects
+            </h4>
+            <div className="space-y-2">
+              {sideEffects.map((effect, index) => (
+                <div key={index} className="border-l-2 border-yellow-400 pl-4">
+                  <p className="text-gray-300 text-sm font-medium">{effect.name}</p>
+                  <p className="text-gray-300 text-sm">{effect.description}</p>
+                  <p className="text-gray-400 text-xs">Severity: {effect.severity}</p>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        )}
+
+        {/* Mechanisms of Toxicity */}
+        {mechanisms?.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-gradient-to-r from-green-500/10 to-teal-500/10 p-6 rounded-lg border border-green-300/20"
+          >
+            <h4 className="font-semibold text-green-300 mb-3 flex items-center">
+              <Activity className="w-5 h-5 mr-2" />
+              Mechanisms of Toxicity
+            </h4>
+            <ul className="list-disc list-inside text-gray-300 text-sm space-y-1">
+              {mechanisms.map((mechanism, index) => (
+                <li key={index}>
+                  <span className="font-medium">{mechanism.feature}:</span> {mechanism.pathway}
+                </li>
+              ))}
+            </ul>
+          </motion.div>
+        )}
+
+        {/* Structure Concerns */}
+        {structureConcerns?.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-gradient-to-r from-orange-500/10 to-red-500/10 p-6 rounded-lg border border-orange-300/40"
+          >
+            <h4 className="font-semibold text-orange-300 mb-3 flex items-center">
+              <AlertCircle className="w-5 h-5 mr-2" />
+              Structure-Based Concerns
+            </h4>
+            <ul className="list-disc list-inside text-gray-300 text-sm space-y-1">
+              {structureConcerns.map((concern, index) => (
+                <li key={index}>
+                  <span className="font-medium">{concern.substructure}:</span> Similar to {concern.similarCompound} ({concern.concern})
+                </li>
+              ))}
+            </ul>
+          </motion.div>
+        )}
+
+        {/* Safety Recommendations */}
+        {safetyRecommendations?.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-gradient-to-r from-emerald-500/10 to-blue-500/10 p-6 rounded-lg border border-emerald-300/20"
+          >
+            <h4 className="font-semibold text-emerald-300 mb-3 flex items-center">
+              <Shield className="w-5 h-5 mr-2" />
+              Safety Recommendations
+            </h4>
+            <ul className="list-disc list-inside text-gray-300 text-sm space-y-1">
+              {safetyRecommendations.map((recommendation, index) => (
+                <li key={index}>
+                  <span className="font-medium">Test:</span> {recommendation.test} <br />
+                  <span className="font-medium">Modification:</span> {recommendation.modification}
+                </li>
+              ))}
+            </ul>
+          </motion.div>
+        )}
+
+        {/* QSAR and Toxicophore Analysis */}
+        {(qsarAnalysis || toxicophoreAnalysis) && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-gradient-to-r from-cyan-500/10 to-teal-500/10 p-6 rounded-lg border border-cyan-300/20"
+          >
+            <h4 className="font-semibold text-cyan-300 mb-3 flex items-center">
+              <Info className="w-5 h-5 mr-2" />
+              QSAR and Toxicophore Analysis
+            </h4>
+            {qsarAnalysis?.properties && (
+              <div className="mb-4">
+                <p className="text-gray-300 text-sm font-medium mb-2">Physicochemical Properties:</p>
+                <ul className="list-disc list-inside text-gray-300 text-sm space-y-1">
+                  {qsarAnalysis.properties.map((prop, index) => (
+                    <li key={index}>
+                      <span className="font-medium">{prop.name}:</span> {prop.value} ({prop.implication})
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {qsarAnalysis?.prediction && (
+              <p className="text-gray-300 text-sm mb-2">
+                <span className="font-medium">QSAR Prediction:</span> {qsarAnalysis.prediction}
+              </p>
+            )}
+            {qsarAnalysis?.symptomContext && (
+              <div className="mb-4">
+                <p className="text-gray-300 text-sm font-medium mb-2">Symptom Contextual Analysis:</p>
+                <ul className="list-disc list-inside text-gray-300 text-sm space-y-1">
+                  {qsarAnalysis.symptomContext.map((context, index) => (
+                    <li key={index}>
+                      <span className="font-medium">{context.symptom}:</span> {context.insight}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {toxicophoreAnalysis?.length > 0 && (
+              <div>
+                <p className="text-gray-300 text-sm font-medium mb-2">Toxicophore Analysis:</p>
+                <ul className="list-disc list-inside text-gray-300 text-sm space-y-1">
+                  {toxicophoreAnalysis.map((toxicophore, index) => (
+                    <li key={index}>
+                      <span className="font-medium">{toxicophore.substructure}:</span> {toxicophore.concern} (Prevalence: {toxicophore.prevalence})
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </motion.div>
+        )}
+
+        {/* Sources */}
+        {sources?.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-gradient-to-r from-gray-500/10 to-gray-600/10 p-6 rounded-lg border border-gray-300/20"
+          >
+            <h4 className="font-semibold text-gray-300 mb-3 flex items-center">
+              <Info className="w-5 h-5 mr-2" />
+              References
+            </h4>
+            <ul className="list-disc list-inside text-gray-300 text-sm space-y-1">
+              {sources.map((source, index) => (
+                <li key={index}>{source}</li>
+              ))}
+            </ul>
+          </motion.div>
+        )}
+      </div>
+    );
   };
 
   const handleViewHistoryItem = (item, e) => {
@@ -421,7 +759,7 @@ const ToxicityPrediction = () => {
   };
 
   return (
-    <div className="min-h-screen ">
+    <div className="min-h-screen">
       <div className="container mx-auto px-4 py-12 max-w-6xl">
         <motion.div
           initial={{ opacity: 0, y: -30 }}
@@ -435,11 +773,7 @@ const ToxicityPrediction = () => {
           <div className="flex flex-wrap justify-center items-center gap-6 text-gray-400">
             <span className="flex items-center">
               <Shield className="w-4 h-4 mr-2" />
-              Powered by ProTox-II
-            </span>
-            <span className="flex items-center">
-              <Activity className="w-4 h-4 mr-2" />
-              Enhanced with Gemini AI
+              Powered by Gemini AI
             </span>
           </div>
         </motion.div>
@@ -447,9 +781,9 @@ const ToxicityPrediction = () => {
         <div className="flex gap-4 justify-center mb-6">
           <motion.button
             className={`flex items-center gap-2 py-3 px-6 rounded-lg transition-all duration-300 text-sm font-medium ${activeTab === 'predict'
-                ? 'bg-gradient-to-r from-emerald-500 to-blue-500 text-white shadow-md'
-                : 'bg-gray-800/50 text-gray-400 hover:text-white hover:bg-gray-700/50 border border-gray-700/50'
-              }`}
+              ? 'bg-gradient-to-r from-emerald-500 to-blue-500 text-white shadow-md'
+              : 'bg-gray-800/50 text-gray-400 hover:text-white hover:bg-gray-700/50 border border-gray-700/50'
+            }`}
             onClick={() => setActiveTab('predict')}
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
@@ -463,9 +797,9 @@ const ToxicityPrediction = () => {
 
           <motion.button
             className={`flex items-center gap-2 py-3 px-6 rounded-lg transition-all duration-300 text-sm font-medium ${activeTab === 'saved'
-                ? 'bg-gradient-to-r from-emerald-500 to-blue-500 text-white shadow-md'
-                : 'bg-gray-800/50 text-gray-400 hover:text-white hover:bg-gray-700/50 border border-gray-700/50'
-              }`}
+              ? 'bg-gradient-to-r from-emerald-500 to-blue-500 text-white shadow-md'
+              : 'bg-gray-800/50 text-gray-400 hover:text-white hover:bg-gray-700/50 border border-gray-700/50'
+            }`}
             onClick={() => setActiveTab('saved')}
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
@@ -477,6 +811,29 @@ const ToxicityPrediction = () => {
             <span>Saved Results</span>
           </motion.button>
         </div>
+
+        <AnimatePresence>
+          {notification && (
+            <motion.div
+              initial={{ opacity: 0, y: -10, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -10, scale: 0.95 }}
+              className="mb-6 p-4 bg-blue-500/10 border border-blue-500/30 text-blue-300 rounded-xl flex items-start"
+            >
+              <Info className="mr-3 mt-0.5 w-5 h-5 flex-shrink-0" />
+              <div className="flex-1">
+                <p className="text-sm">{notification}</p>
+              </div>
+              <button
+                className="ml-4 text-blue-300 hover:text-blue-200 transition-colors"
+                onClick={() => setNotification(null)}
+              >
+                <ChevronUp className="w-4 h-4" />
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         <AnimatePresence mode="wait">
           {activeTab === 'predict' && (
             <motion.div
@@ -502,7 +859,7 @@ const ToxicityPrediction = () => {
                     onChange={(e) => {
                       const index = e.target.value;
                       setSymptomGroupIndex(index);
-                      setSmiles(productSmilesGroups[index]?.[0] || '');
+                      setCompound(productCompoundGroups[index]?.[0] || '');
                     }}
                     className="w-full p-4 bg-gray-900/50 backdrop-blur-sm border border-gray-600/50 text-white rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all duration-200 text-base"
                     disabled={loading || symptomGroups.length === 0}
@@ -529,27 +886,27 @@ const ToxicityPrediction = () => {
                   className="space-y-3"
                 >
                   <label className="block text-sm font-medium text-gray-300 mb-3">
-                    Select SMILES String
+                    Select Compound (SMILES or Molecule Name)
                   </label>
                   <select
-                    id="smiles"
-                    value={smiles}
-                    onChange={(e) => setSmiles(e.target.value)}
+                    id="compound"
+                    value={compound}
+                    onChange={(e) => setCompound(e.target.value)}
                     className="w-full px-4 py-4 bg-gray-900/50 backdrop-blur-sm border border-gray-600/50 text-white rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all duration-200 text-base"
-                    disabled={loading || !symptomGroupIndex || productSmilesGroups[symptomGroupIndex]?.length === 0}
+                    disabled={loading || !symptomGroupIndex || productCompoundGroups[symptomGroupIndex]?.length === 0}
                   >
-                    {productSmilesGroups[symptomGroupIndex]?.length === 0 ? (
-                      <option value="">No SMILES available</option>
+                    {productCompoundGroups[symptomGroupIndex]?.length === 0 ? (
+                      <option value="">No compounds available</option>
                     ) : (
-                      productSmilesGroups[symptomGroupIndex]?.map((smiles, index) => (
-                        <option key={index} value={smiles} className="bg-gray-900">
-                          {smiles}
+                      productCompoundGroups[symptomGroupIndex]?.map((comp, index) => (
+                        <option key={index} value={comp} className="bg-gray-900">
+                          {comp}
                         </option>
                       ))
                     )}
                   </select>
                   <p className="text-xs text-gray-400">
-                    Select a SMILES string corresponding to the symptom group
+                    Select a compound (SMILES or molecule name) corresponding to the symptom group
                   </p>
                 </motion.div>
 
@@ -560,16 +917,16 @@ const ToxicityPrediction = () => {
                 >
                   <button
                     type="submit"
-                    disabled={loading || !smiles || !symptomGroupIndex || geminiLoading}
-                    className={`px-12 py-4 text-lg font-medium rounded-xl transition-all duration-300 shadow-lg ${loading || !smiles || !symptomGroupIndex || geminiLoading
+                    disabled={loading || !compound || !symptomGroupIndex || geminiLoading}
+                    className={`px-12 py-4 text-lg font-medium rounded-xl transition-all duration-300 shadow-lg ${loading || !compound || !symptomGroupIndex || geminiLoading
                       ? 'bg-gray-600 cursor-not-allowed text-gray-300'
                       : 'bg-gradient-to-r from-emerald-500 to-blue-500 hover:from-emerald-600 hover:to-blue-600 text-white shadow-emerald-500/25 hover:shadow-emerald-500/40'
-                      }`}
+                    }`}
                   >
                     {loading || geminiLoading ? (
                       <div className="flex items-center justify-center">
                         <RefreshCw className="animate-spin mr-3 w-5 h-5" />
-                        <span>{geminiLoading ? 'Analyzing with Gemini AI...' : 'Predicting Toxicity...'}</span>
+                        <span>{geminiLoading ? 'Analyzing with Gemini...' : 'Predicting Toxicity...'}</span>
                       </div>
                     ) : (
                       <div className="flex items-center">
@@ -594,7 +951,7 @@ const ToxicityPrediction = () => {
                       <p className="text-sm">{error}</p>
                     </div>
                     <button
-                      className="ml-4 text-red-400 hover:text-red-300 transition-colors"
+                      className="ml-4 text-red-300 hover:text-red-200 transition-colors"
                       onClick={() => setError(null)}
                     >
                       <ChevronUp className="w-4 h-4" />
@@ -623,7 +980,7 @@ const ToxicityPrediction = () => {
                           <p className="text-gray-300 mb-2"><span className="font-medium text-white">Symptoms:</span> {result.symptoms}</p>
                         </div>
                         <div className="bg-gray-900/30 p-4 rounded-xl">
-                          <p className="text-gray-300 mb-2"><span className="font-medium text-white">SMILES:</span></p>
+                          <p className="text-gray-300 mb-2"><span className="font-medium text-white">Compound:</span></p>
                           <div className="bg-gray-800/50 p-2 rounded overflow-x-auto">
                             <code className="text-emerald-400 text-sm whitespace-nowrap">{result.smiles}</code>
                           </div>
@@ -704,7 +1061,7 @@ const ToxicityPrediction = () => {
                             >
                               <div className="flex items-center">
                                 <Info className="mr-3 h-6 w-6 text-blue-400" />
-                                <span className="font-medium text-white text-lg">Advanced Gemini AI Analysis</span>
+                                <span className="font-medium text-white text-lg">Advanced Gemini Analysis</span>
                               </div>
                               <motion.div
                                 animate={{ rotate: isGeminiAnalysisOpen ? 180 : 0 }}
@@ -761,7 +1118,7 @@ const ToxicityPrediction = () => {
                   {history.map((item) => (
                     <div key={item._id}>
                       <motion.div
-                        className="bg-gradient-to-r from-gray-800/40 to-gray-700/40 backdrop-blur-sm p-6 rounded-xl border border-gray-600/50 hover:border-emerald-500/30 transition-all duration-300"
+                        className={`bg-gradient-to-r from-gray-800/40 to-gray-700/40 backdrop-blur-sm p-6 rounded-xl border ${selectedHistoryItemId === item._id ? 'border-emerald-500/50' : 'border-gray-600/50'} hover:border-emerald-500/30 transition-all duration-300`}
                         whileHover={{ y: -2, scale: 1.01 }}
                         transition={{ duration: 0.2 }}
                       >
@@ -772,7 +1129,7 @@ const ToxicityPrediction = () => {
                                 <span className="font-medium text-white">Symptoms:</span>{" "}
                                 {item.symptomsGrp === "Not available" ? "No symptoms recorded" : item.symptomsGrp}
                               </p>
-                              <p className="text-gray-300 mb-2"><span className="font-medium text-white">SMILES:</span></p>
+                              <p className="text-gray-300 mb-2"><span className="font-medium text-white">Compound:</span></p>
                               <div className="bg-gray-900/50 p-2 rounded overflow-x-auto">
                                 <code className="text-emerald-400 text-sm whitespace-nowrap">{item.smiles}</code>
                               </div>
@@ -804,7 +1161,7 @@ const ToxicityPrediction = () => {
                               className={`px-6 py-2 rounded-lg transition-all duration-200 font-medium flex items-center ${selectedHistoryItemId === item._id
                                 ? 'bg-red-500/20 text-red-300 border border-red-500/30 hover:bg-red-500/30'
                                 : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/30'
-                                }`}
+                              }`}
                             >
                               <Eye className="w-4 h-4 mr-2" />
                               {selectedHistoryItemId === item._id ? "Close Details" : "View Details"}
@@ -824,19 +1181,19 @@ const ToxicityPrediction = () => {
                           >
                             <div className="bg-gradient-to-r from-gray-800/60 to-gray-700/60 backdrop-blur-sm p-6 rounded-xl border border-gray-600/50">
                               <h4 className="text-xl font-semibold mb-6 text-white flex items-center">
-                                <Shield className="mr-3 w-5 h-5 text-emerald-400" />
+                                <Shield className="w-5 h-5 mr-2 text-emerald-400" />
                                 Detailed Analysis
                               </h4>
 
                               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
                                 <div className="bg-gray-900/30 p-4 rounded-xl">
                                   <p className="text-gray-300 mb-2">
-                                    <span className="font-medium text-white">Symptoms:</span>{" "}
+                                    <span className="font-medium text-white">Symptoms:</span>
                                     {item.symptomsGrp === "Not available" ? "No symptoms recorded" : item.symptomsGrp}
                                   </p>
                                 </div>
                                 <div className="bg-gray-900/30 p-4 rounded-xl">
-                                  <p className="text-gray-300 mb-2"><span className="font-medium text-white">SMILES:</span></p>
+                                  <p className="text-gray-300 mb-2"><span className="font-medium text-white">Compound:</span></p>
                                   <div className="bg-gray-800/50 p-2 rounded overflow-x-auto">
                                     <code className="text-emerald-400 text-sm whitespace-nowrap">{item.smiles}</code>
                                   </div>
@@ -846,7 +1203,6 @@ const ToxicityPrediction = () => {
                               <div className="space-y-4">
                                 <motion.button
                                   onClick={() => setIsHistorySideEffectsOpen(!isHistorySideEffectsOpen)}
-                                  whileHover={{ backgroundColor: 'rgba(251, 191, 36, 0.1)' }}
                                   className="w-full p-4 bg-gray-800/30 rounded-xl flex justify-between items-center transition-all duration-200 border border-yellow-500/20 hover:border-yellow-500/40"
                                 >
                                   <div className="flex items-center">
@@ -878,7 +1234,6 @@ const ToxicityPrediction = () => {
 
                                 <motion.button
                                   onClick={() => setIsHistoryResultOpen(!isHistoryResultOpen)}
-                                  whileHover={{ backgroundColor: 'rgba(16, 185, 129, 0.1)' }}
                                   className="w-full p-4 bg-gray-800/30 rounded-xl flex justify-between items-center transition-all duration-200 border border-emerald-500/20 hover:border-emerald-500/40"
                                 >
                                   <div className="flex items-center">
@@ -889,7 +1244,7 @@ const ToxicityPrediction = () => {
                                     animate={{ rotate: isHistoryResultOpen ? 180 : 0 }}
                                     transition={{ duration: 0.3 }}
                                   >
-                                    <ChevronDown className="h-6 w-6 text-emerald-400" />
+                                    <ChevronDown className="h-6 w-6 text-yellow-400" />
                                   </motion.div>
                                 </motion.button>
                                 <AnimatePresence>
@@ -910,12 +1265,11 @@ const ToxicityPrediction = () => {
 
                                 <motion.button
                                   onClick={() => setIsHistoryGeminiOpen(!isHistoryGeminiOpen)}
-                                  whileHover={{ backgroundColor: 'rgba(59, 130, 246, 0.1)' }}
                                   className="w-full p-4 bg-gray-800/30 rounded-xl flex justify-between items-center transition-all duration-200 border border-blue-500/20 hover:border-blue-500/40"
                                 >
                                   <div className="flex items-center">
                                     <Info className="mr-3 h-6 w-6 text-blue-400" />
-                                    <span className="font-medium text-white text-lg">Advanced Gemini AI Analysis</span>
+                                    <span className="font-medium text-white text-lg">Advanced Gemini Analysis</span>
                                   </div>
                                   <motion.div
                                     animate={{ rotate: isHistoryGeminiOpen ? 180 : 0 }}
