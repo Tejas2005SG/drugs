@@ -141,8 +141,8 @@ const ProteinStructureApp = () => {
           <h1 className="text-3xl md:text-4xl font-heading font-bold text-accent mb-2">
             Protein Structure Generator
           </h1>
-          <p className="text-xs md:text-sm text-accent-secondary font-label font-semibold">
-            (Powered by Gemini and MolMIM Nvidia Model)
+          <p className="text-sm text-accent-secondary font-300 font-mono">
+            (POWERED BY GEMINI & MolMIM NVIDIA MODEL)
           </p>
         </header>
 

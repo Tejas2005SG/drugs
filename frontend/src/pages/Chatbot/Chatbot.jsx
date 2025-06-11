@@ -59,198 +59,220 @@ export default function Chatbot() {
   const [isMinimized, setIsMinimized] = useState(false)
 
   // Updated dashboard routes with detailed descriptions
-  const dashboardRoutes = [
-    {
-      path: "/dashboard/newdrug-discovery",
-      name: "Discover New Drugs",
-      icon: "FlaskConical",
-      description: "AI-powered drug discovery and compound design",
-      details:
-        "Use advanced AI algorithms to discover new drug compounds, analyze molecular structures, and predict drug-target interactions for pharmaceutical research.",
-    },
-    {
-      path: "/dashboard/cost-estimation",
-      name: "Cost Estimation",
-      icon: "DollarSign",
-      description: "Calculate synthesis and production costs",
-      details:
-        "Estimate the financial costs of drug synthesis, manufacturing processes, and production scaling to help with budget planning and investment decisions.",
-    },
-    {
-      path: "/dashboard/protein-structure",
-      name: "Protein Structure Generation",
-      icon: "Dna",
-      description: "Generate and visualize 3D protein structures",
-      details:
-        "Create detailed 3D models of protein structures, analyze binding sites, and visualize molecular interactions for drug design and research purposes.",
-    },
-    {
-      path: "/dashboard/getalphafoldstrcture",
-      name: "Alphafold Structure",
-      icon: "Atom",
-      description: "Access AlphaFold protein structure predictions",
-      details:
-        "Leverage Google's AlphaFold database to access highly accurate protein structure predictions and use them for drug discovery and molecular analysis.",
-    },
-    {
-      path: "/dashboard/ai-naming",
-      name: "AI Naming Suggestion",
-      icon: "BrainCog",
-      description: "Generate creative and relevant drug names",
-      details:
-        "Use AI to generate pharmaceutical names that comply with naming conventions, are memorable, and reflect the drug's properties and therapeutic use.",
-    },
-    {
-      path: "/dashboard/ai-research-paper-generator",
-      name: "Research Paper Generation",
-      icon: "FileText",
-      description: "Generate research papers and documentation",
-      details:
-        "Automatically create research papers, scientific documentation, and reports based on your drug discovery data and experimental results.",
-    },
-    {
-      path: "/dashboard/sideeffect-prediction",
-      name: "Side Effects Prediction",
-      icon: "AlertTriangle",
-      description: "Predict potential drug side effects",
-      details:
-        "Analyze molecular structures and predict potential adverse effects and drug interactions to improve safety profiles during development.",
-    },
-    {
-      path: "/dashboard/voice-text-notes",
-      name: "Voice Notes",
-      icon: "Mic",
-      description: "Record and convert voice to text notes",
-      details:
-        "Record voice memos, convert speech to text, and organize your research notes and observations for easy documentation and sharing.",
-    },
-    {
-      path: "/dashboard/summary",
-      name: "Summary",
-      icon: "FileBox",
-      description: "Comprehensive project summaries and reports",
-      details:
-        "Generate detailed summaries of your drug discovery projects, including progress reports, key findings, and comprehensive analysis of results.",
-    },
-    {
-      path: "/dashboard/live-news",
-      name: "Live News",
-      icon: "Newspaper",
-      description: "Latest pharmaceutical and research news",
-      details:
-        "Stay updated with the latest news in pharmaceutical research, drug approvals, clinical trials, and industry developments from trusted sources.",
-    },
-  ]
+ const dashboardRoutes = [
+  {
+    path: "/dashboard/protein-structure-mutation",
+    name: "New Drug Discovery",
+    icon: "FlaskConical",
+    description: "Explore and generate new drug compounds",
+    details:
+      "Leverage AI and mutation-based models to explore novel drug compounds and simulate molecular interactions for drug discovery.",
+  },
+  {
+    path: "/dashboard/ai-naming",
+    name: "AI Naming Suggestions",
+    icon: "BrainCog",
+    description: "Generate creative and compliant drug names",
+    details:
+      "Use AI to suggest effective and regulatory-friendly pharmaceutical names that reflect the drug’s purpose and chemistry.",
+  },
+  {
+    path: "/dashboard/cost-estimation",
+    name: "Cost Estimation",
+    icon: "DollarSign",
+    description: "Estimate drug synthesis and production costs",
+    details:
+      "Predict cost parameters for synthesis, scale-up, and manufacturing to streamline budgeting and financial planning.",
+  },
+  {
+    path: "/dashboard/protein-structure",
+    name: "Protein Structure Generation",
+    icon: "Dna",
+    description: "Generate 3D protein structures",
+    details:
+      "Design protein models, analyze structural binding sites, and visualize protein folding to support structure-based drug design.",
+  },
+  {
+    path: "/dashboard/getalphafoldstrcture",
+    name: "AlphaFold 3D Predictions",
+    icon: "Atom",
+    description: "Access accurate protein structure predictions",
+    details:
+      "Use AlphaFold’s powerful predictions to study protein folding, binding pockets, and conformations for target validation.",
+  },
+  {
+    path: "/dashboard/ai-research-paper-generator",
+    name: "Research Paper Generation",
+    icon: "FileText",
+    description: "AI-based scientific writing",
+    details:
+      "Generate documentation, experimental reports, and research articles using AI based on your drug discovery inputs.",
+  },
+  {
+    path: "/dashboard/toxicityPrediction",
+    name: "Toxicity & Side Effects",
+    icon: "AlertTriangle",
+    description: "Predict toxicology and adverse reactions",
+    details:
+      "Analyze compound structures to identify possible toxic effects and interactions early in the development cycle.",
+  },
+  {
+    path: "/dashboard/voice-text-notes",
+    name: "Audio Note Capture",
+    icon: "Mic",
+    description: "Convert voice input to structured notes",
+    details:
+      "Capture audio inputs, convert them to searchable text, and organize your lab notes using voice-to-text transcription.",
+  },
+  {
+    path: "/dashboard/summary",
+    name: "Summarization",
+    icon: "FileBox",
+    description: "Summarize research insights",
+    details:
+      "Generate comprehensive summaries from your research journey including results, analysis, and proposed next steps.",
+  },
+  {
+    path: "/dashboard/live-news",
+    name: "NewsFeed",
+    icon: "Newspaper",
+    description: "Get live pharmaceutical updates",
+    details:
+      "Stay informed on the latest trends, FDA updates, and global research news related to biotechnology and pharmaceuticals.",
+  },
+];
+
 
   const drugDiscoverySteps = [
-    {
-      path: "/dashboard/newdrug-discovery",
-      name: "Step 1: Drug Discovery",
-      description: "Discover and design new drug compounds using AI",
-      icon: "FlaskConical",
-      details:
-        "Begin your drug discovery journey by identifying potential drug targets, screening compound libraries, and using AI to predict promising molecular structures.",
-    },
-    {
-      path: "/dashboard/protein-structure",
-      name: "Step 2: Protein Structure Analysis",
-      description: "Generate and analyze target protein structures",
-      icon: "Dna",
-      details:
-        "Create detailed 3D models of your target proteins, analyze binding pockets, and understand molecular interactions crucial for drug binding.",
-    },
-    {
-      path: "/dashboard/cost-estimation",
-      name: "Step 3: Cost Analysis",
-      description: "Calculate synthesis and production costs",
-      icon: "DollarSign",
-      details:
-        "Estimate the financial requirements for synthesizing your compounds, scaling production, and bringing the drug to market.",
-    },
-    {
-      path: "/dashboard/ai-naming",
-      name: "Step 4: Drug Naming",
-      description: "Generate appropriate pharmaceutical names",
-      icon: "BrainCog",
-      details:
-        "Create compliant, memorable, and meaningful names for your drug compounds that reflect their therapeutic properties and target indications.",
-    },
-    {
-      path: "/dashboard/ai-research-paper-generator",
-      name: "Step 5: Documentation",
-      description: "Generate research papers and reports",
-      icon: "FileText",
-      details:
-        "Compile your research findings into professional scientific papers, regulatory documents, and comprehensive research reports.",
-    },
-    {
-      path: "/dashboard/summary",
-      name: "Step 6: Project Summary",
-      description: "Review and finalize your drug discovery project",
-      icon: "FileBox",
-      details:
-        "Generate a complete overview of your drug discovery project, including all findings, costs, timelines, and next steps for development.",
-    },
-  ]
+  {
+    path: "/dashboard/protein-structure-mutation",
+    name: "Step 1: New Drug Discovery",
+    description: "Use AI and mutation modeling for new compounds",
+    icon: "FlaskConical",
+    details:
+      "Start your discovery process by simulating compound mutations, predicting interactions, and exploring drug-like properties.",
+  },
+  {
+    path: "/dashboard/ai-naming",
+    name: "Step 2: AI Naming Suggestions",
+    description: "Generate suitable names for your drug candidates",
+    icon: "BrainCog",
+    details:
+      "Use AI to produce brandable, memorable names that reflect mechanism of action and comply with naming regulations.",
+  },
+  {
+    path: "/dashboard/cost-estimation",
+    name: "Step 3: Cost Estimation",
+    description: "Financial insights for drug production",
+    icon: "DollarSign",
+    details:
+      "Estimate costs including synthesis, formulation, trials, and marketing to ensure financial feasibility.",
+  },
+  {
+    path: "/dashboard/protein-structure",
+    name: "Step 4: Protein Structure Generation",
+    description: "3D modeling of protein targets",
+    icon: "Dna",
+    details:
+      "Understand your target protein by visualizing its 3D structure and preparing it for molecular docking or AI analysis.",
+  },
+  {
+    path: "/dashboard/getalphafoldstrcture",
+    name: "Step 5: AlphaFold 3D Predictions",
+    description: "Leverage AlphaFold’s database",
+    icon: "Atom",
+    details:
+      "Access AlphaFold’s structural predictions for thousands of proteins, aiding in target identification and design.",
+  },
+  {
+    path: "/dashboard/ai-research-paper-generator",
+    name: "Step 6: Research Paper Generation",
+    description: "Compile reports and papers",
+    icon: "FileText",
+    details:
+      "Automatically generate structured scientific documents that capture your experimental and AI-generated findings.",
+  },
+  {
+    path: "/dashboard/toxicityPrediction",
+    name: "Step 7: Toxicity & Side Effects",
+    description: "Analyze safety and side effects",
+    icon: "AlertTriangle",
+    details:
+      "Predict toxicity levels and adverse reactions based on AI models trained on large molecular and clinical datasets.",
+  },
+  {
+    path: "/dashboard/voice-text-notes",
+    name: "Step 8: Audio Note Capture",
+    description: "Voice-based note-taking",
+    icon: "Mic",
+    details:
+      "Use your voice to create structured, searchable notes—perfect for recording lab ideas or experiment outcomes.",
+  },
+  {
+    path: "/dashboard/summary",
+    name: "Step 9: Summarization",
+    description: "Project-wide AI summary",
+    icon: "FileBox",
+    details:
+      "Wrap up with a detailed AI-driven overview including methodology, results, costs, risks, and future directions.",
+  },
+];
+
 
   // Enhanced suggested questions per tool/step
-  const suggestedQuestions = {
-    "/dashboard": [
-      "What tools are available on the platform?",
-      "How do I start a drug discovery project?",
-      "Can you explain the workflow?",
-    ],
-    "/dashboard/newdrug-discovery": [
-      "How does AI drug discovery work?",
-      "What types of compounds can I discover?",
-      "How do I input target information?",
-    ],
-    "/dashboard/protein-structure": [
-      "How do I visualize proteins in 3D?",
-      "What file formats are supported?",
-      "Can I analyze binding sites?",
-    ],
-    "/dashboard/getalphafoldstrcture": [
-      "What is AlphaFold and how accurate is it?",
-      "How do I search for specific proteins?",
-      "Can I download structure files?",
-    ],
-    "/dashboard/cost-estimation": [
-      "What factors are included in cost estimation?",
-      "How accurate are the predictions?",
-      "Can I customize cost parameters?",
-    ],
-    "/dashboard/ai-research-paper-generator": [
-      "Can I customize the paper format?",
-      "What data is required for generation?",
-      "How do I cite sources properly?",
-    ],
-    "/dashboard/sideeffect-prediction": [
-      "How does side effect prediction work?",
-      "What data is needed for analysis?",
-      "How reliable are the predictions?",
-    ],
-    "/dashboard/ai-naming": [
-      "How are drug names generated?",
-      "Can I filter names by criteria?",
-      "Are the names regulatory compliant?",
-    ],
-    "/dashboard/voice-text-notes": [
-      "How do I record voice notes?",
-      "Can I convert existing audio files?",
-      "How do I organize my notes?",
-    ],
-    "/dashboard/summary": [
-      "What is included in project summaries?",
-      "Can I export summaries to different formats?",
-      "How do I share reports with colleagues?",
-    ],
-    "/dashboard/live-news": [
-      "What news sources are included?",
-      "How often is the news updated?",
-      "Can I filter news by topics?",
-    ],
-  }
+const suggestedQuestions = {
+  "/dashboard/protein-structure-mutation": [
+    "How does mutation-based drug discovery work?",
+    "What inputs are needed for structure mutation?",
+    "Can I compare mutated compounds?",
+  ],
+  "/dashboard/ai-naming": [
+    "How does AI generate drug names?",
+    "Can I customize the naming criteria?",
+    "Are these names compliant with international standards?",
+  ],
+  "/dashboard/cost-estimation": [
+    "What cost components are analyzed?",
+    "How accurate are the cost models?",
+    "Can I adjust for custom manufacturing setups?",
+  ],
+  "/dashboard/protein-structure": [
+    "How do I generate a 3D protein structure?",
+    "What visualization tools are supported?",
+    "Can I simulate binding with other compounds?",
+  ],
+  "/dashboard/getalphafoldstrcture": [
+    "How do I access AlphaFold predictions?",
+    "What is the confidence score for predictions?",
+    "Can I visualize the folding pathways?",
+  ],
+  "/dashboard/ai-research-paper-generator": [
+    "What structure does the research paper follow?",
+    "Can I upload datasets to include?",
+    "Is citation management automated?",
+  ],
+  "/dashboard/toxicityPrediction": [
+    "How is toxicity assessed?",
+    "Which side effects are predicted?",
+    "Can I view molecular reasons for side effects?",
+  ],
+  "/dashboard/voice-text-notes": [
+    "Can I record multiple audio notes?",
+    "How accurate is the transcription?",
+    "Is language translation available?",
+  ],
+  "/dashboard/summary": [
+    "What is included in the AI summary?",
+    "Can I export as PDF or DOCX?",
+    "Does it include graphs and charts?",
+  ],
+  "/dashboard/live-news": [
+    "Which sources are considered reliable?",
+    "How frequently is data updated?",
+    "Can I subscribe to specific topics?",
+  ],
+};
+
 
   // Map icon names to components
   const iconMap = {
@@ -809,7 +831,7 @@ export default function Chatbot() {
         <div className="absolute inset-0 rounded-full bg-gradient-to-br from-accent/20 to-accent-secondary/20 animate-gradient-shift"></div>
       </button>
 
-      {/* Enhanced Tooltip */}
+      {/* Enhanced Tooltip
       {tooltipVisible === "trigger" && (
         <div className="fixed bottom-24 right-4 px-3 py-2 bg-secondary/95 border border-accent/20 text-text-primary text-sm rounded-xl shadow-xl z-50 backdrop-blur-sm animate-slide-up">
           <div className="flex items-center space-x-2">
@@ -817,7 +839,7 @@ export default function Chatbot() {
             <span className="font-label">{isPanelOpen ? "Close Jarvis" : "Ask Jarvis"}</span>
           </div>
         </div>
-      )}
+      )} */}
 
       {/* Enhanced Pointing Message */}
       {!isPanelOpen && (

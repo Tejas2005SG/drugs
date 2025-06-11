@@ -551,7 +551,7 @@ def predict_reaction_with_rdkit(mol1, mol2, smiles1, smiles2):
                                 logger.debug(f"Product processing error: {str(e)}")
                                 continue
                 if product_mols:
-                    product_smiles = '.'.join(Chem.MolToSmiles(mol, isomericSmiles=True)
+                    product_smiles = ''.join(Chem.MolToSmiles(mol, isomericSmiles=True)
                                               for mol in product_mols if mol)
                     # Calculate validity score (proportion of valid products)
                     validity_score = valid_products / total_products if total_products > 0 else 0.0

@@ -334,74 +334,76 @@ function DashboardPage() {
     }
   }, [location.pathname, isMobile, log]);
 
-  const navElements = [
-    {
-      name: "Dashboard Home",
-      icon: <Home size={20} />,
-      path: "/dashboard",
-      roles: ["admin", "citizen", "guest"],
-    },
-    {
-      name: "Discover New Drugs",
-      icon: <FlaskConical size={20} />,
-      path: "/dashboard/newdrug-discovery",
-      roles: ["admin", "citizen", "guest"],
-    },
-    {
-      name: "Cost Estimation",
-      icon: <DollarSign size={20} />,
-      path: "/dashboard/cost-estimation",
-      roles: ["admin", "citizen", "guest"],
-    },
-    {
-      name: "Protein Structure Generation",
-      icon: <Dna size={20} />,
-      path: "/dashboard/protein-structure",
-      roles: ["admin", "citizen", "guest"],
-    },
-    {
-      name: "Alphafold Structure",
-      icon: <Atom size={20} />,
-      path: "/dashboard/getalphafoldstrcture",
-      roles: ["admin", "citizen", "guest"],
-    },
-    {
-      name: "AI Naming Suggestion",
-      icon: <BrainCog size={20} />,
-      path: "/dashboard/ai-naming",
-      roles: ["admin", "citizen", "guest"],
-    },
-    {
-      name: "Research Paper Generation",
-      icon: <FileText size={20} />,
-      path: "/dashboard/ai-research-paper-generator",
-      roles: ["admin", "citizen", "guest"],
-    },
-    {
-      name: "Side Effects Prediction",
-      icon: <AlertTriangle size={20} />,
-      path: "/dashboard/sideeffect-prediction",
-      roles: ["admin", "citizen", "guest"],
-    },
-    {
-      name: "Voice Notes",
-      icon: <Mic size={20} />,
-      path: "/dashboard/voice-text-notes",
-      roles: ["admin", "citizen", "guest"],
-    },
-    {
-      name: "Summary",
-      icon: <FileBox size={20} />,
-      path: "/dashboard/summary",
-      roles: ["admin", "citizen", "guest"],
-    },
-    {
-      name: "Live News",
-      icon: <Newspaper size={20} />,
-      path: "/dashboard/live-news",
-      roles: ["admin", "citizen", "guest"],
-    },
-  ];
+
+
+const navElements = [
+  {
+    name: "Dashboard",
+    icon: <Home size={20} />,
+    path: "/dashboard",
+    roles: ["admin", "citizen", "guest"],
+  },
+  {
+    name: "New Drug Discovery",
+    icon: <FlaskConical size={20} />, // Perfect for drug discovery
+    path: "/dashboard/newdrug-discovery",
+    roles: ["admin", "citizen", "guest"],
+  },
+  {
+    name: "AI Naming Suggestion",
+    icon: <BrainCog size={20} />, // Represents AI intelligence
+    path: "/dashboard/ai-naming",
+    roles: ["admin", "citizen", "guest"],
+  },
+  {
+    name: "Cost Estimation",
+    icon: <DollarSign size={20} />, // Clear financial representation
+    path: "/dashboard/cost-estimation",
+    roles: ["admin", "citizen", "guest"],
+  },
+  {
+    name: "Protein Structure Generation",
+    icon: <Dna size={20} />, // Represents molecular biology
+    path: "/dashboard/protein-structure",
+    roles: ["admin", "citizen", "guest"],
+  },
+  {
+    name: "AlphaFold 3D Predictions",
+    icon: <Atom size={20} />, // Represents molecular structures
+    path: "/dashboard/getalphafoldstrcture",
+    roles: ["admin", "citizen", "guest"],
+  },
+  {
+    name: "Research Paper Generation",
+    icon: <FileText size={20} />, // Represents documents/papers
+    path: "/dashboard/ai-research-paper-generator",
+    roles: ["admin", "citizen", "guest"],
+  },
+  {
+    name: "Toxicity & Side Effects Prediction",
+    icon: <AlertTriangle size={20} />, // Warning sign for toxicity
+    path: "/dashboard/sideeffect-prediction",
+    roles: ["admin", "citizen", "guest"],
+  },
+  {
+    name: "Audio Note Capture",
+    icon: <Mic size={20} />, // Microphone for audio input
+    path: "/dashboard/voice-text-notes",
+    roles: ["admin", "citizen", "guest"],
+  },
+  {
+    name: "Summarization",
+    icon: <FileBox size={20} />, // Represents condensed information
+    path: "/dashboard/summary",
+    roles: ["admin", "citizen", "guest"],
+  },
+  {
+    name: "NewsFeed",
+    icon: <Newspaper size={20} />, // Classic news representation
+    path: "/dashboard/live-news",
+    roles: ["admin", "citizen", "guest"],
+  },
+];
 
   const filteredNavElements = navElements.filter(navElement => {
     const userRole = user?.role || 'guest';
@@ -656,7 +658,7 @@ function DashboardPage() {
                 WebkitTextFillColor: 'transparent',
               }}
             >
-              BioGemini
+              Drug Discovery Assistant
             </Typography>
           </Toolbar>
           

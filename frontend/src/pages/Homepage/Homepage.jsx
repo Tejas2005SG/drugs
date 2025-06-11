@@ -169,13 +169,7 @@ function Homepage() {
       "Generate research papers in IEEE format for your novel drug candidates with the power of Gemini.",
     gradient: "from-success to-accent-secondary",
   },
-  {
-    icon: <BookOpen className="w-6 h-6" />,
-    title: "Related Research Papers",
-    description:
-      "Get related research papers for your novel drug candidates with the power of Gemini.",
-    gradient: "from-success to-accent-secondary",
-  },
+ 
   {
     icon: <AlertTriangle className="w-6 h-6" />,
     title: "Side Effects Prediction",
@@ -210,6 +204,14 @@ function Homepage() {
     description:
       "Justified AI for Research, Validation & Intelligent Synthesis",
     gradient: "from-accent to-success",
+  },
+   {
+    icon: <Newspaper className="w-6 h-6" />,
+
+    title: "News Feed",
+    description:
+      "Get real-time updates on pharmaceutical and biotech news",
+    gradient: "from-success to-accent-secondary",
   },
   // Optional AI Chatbot block
   // {

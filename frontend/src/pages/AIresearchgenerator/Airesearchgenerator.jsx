@@ -211,42 +211,61 @@ function Airesearchgenerator() {
     }
   };
 
-  const fetchResearchPapers = async (symptoms, smiles) => {
+ const fetchResearchPapers = async (symptoms, smiles) => {
+  try {
+    const prompt = `
+You are a biomedical research assistant. Given the symptoms: "${symptoms}", your tasks are:
+
+1. Generate intelligent academic search queries relevant to these symptoms and potential SMILES-derived compounds.
+2. Search for highly relevant, peer-reviewed research articles using official APIs or scraping of trusted sources such as IEEE Xplore, PubMed, and CrossRef.
+3. Extract and return real-time research data in strict JSON format with the following keys:
+
+[
+  {
+    "title": "Research paper title",
+    "authors": "Author1, Author2, ...",
+    "year": "Publication year (YYYY)",
+    "abstract": "Full abstract content of the paper",
+    "doi": "Digital Object Identifier (DOI)",
+    "url": "Direct link to the research paper",
+    "is_simulated": false
+  }
+]
+
+⚠️ Important Guidelines:
+- Do NOT return any hardcoded, static, or example content.
+- If no actual papers are found after querying all sources, only then return 3–5 realistic simulated entries with "is_simulated": true.
+- Ensure each result is verifiable and highly relevant to the symptoms.
+
+Make sure all metadata is accurate and based on **real-time** web search or API/scraping.
+`;
+
+    const response = await axiosInstance.post("/researchPaper/proxy/gemini", { prompt });
+    const content = response.data.content;
+
     try {
-      const prompt = `
-        You are an expert in chemical informatics and academic research. Given the SMILES string "${smiles}" and associated symptoms "${symptoms}", search for relevant peer-reviewed research papers from trusted academic sources (e.g., PubMed, IEEE Xplore, CrossRef). Return 3-5 papers in clean JSON format (no Markdown or code fences) with the following fields for each paper: title (string), authors (string), year (string), abstract (string), doi (string), url (string), is_simulated (boolean, set to false for real papers). If no real papers are found, generate realistic simulated papers based on the SMILES structure and symptoms, setting is_simulated to true. Ensure the papers are highly relevant to the chemical compound's therapeutic applications for the symptoms. Example output:
-        [
-          {
-            "title": "Example Title",
-            "authors": "J. Doe, A. Smith",
-            "year": "2023",
-            "abstract": "This study explores...",
-            "doi": "10.1000/xyz123",
-            "url": "https://example.com/paper",
-            "is_simulated": false
-          }
-        ]
-      `;
-      const response = await axiosInstance.post("/researchPaper/proxy/gemini", { prompt });
-      const content = response.data.content;
-      try {
-        const cleanedContent = cleanGeminiResponse(content);
-        const papers = JSON.parse(cleanedContent);
-        if (!Array.isArray(papers)) throw new Error("Invalid papers format");
-        return papers.map(paper => ({
-          ...paper,
-          is_simulated: paper.is_simulated || false,
-          abstract: cleanAbstract(paper.abstract),
-        }));
-      } catch (parseError) {
-        console.error("Error parsing Gemini response:", parseError);
-        return generateFallbackPapers(smiles, symptoms);
+      const cleanedContent = cleanGeminiResponse(content);
+      const papers = JSON.parse(cleanedContent);
+
+      if (!Array.isArray(papers)) {
+        throw new Error("Invalid papers format");
       }
-    } catch (err) {
-      console.error("Error fetching research papers:", err.response?.data || err.message);
+
+      return papers.map(paper => ({
+        ...paper,
+        is_simulated: paper.is_simulated || false,
+        abstract: cleanAbstract(paper.abstract),
+      }));
+    } catch (parseError) {
+      console.error("Error parsing Gemini response:", parseError);
       return generateFallbackPapers(smiles, symptoms);
     }
-  };
+  } catch (err) {
+    console.error("Error fetching research papers:", err.response?.data || err.message);
+    return generateFallbackPapers(smiles, symptoms);
+  }
+};
+
 
   const generateResearchPaper = async (symptoms, smiles) => {
     try {
@@ -254,7 +273,7 @@ function Airesearchgenerator() {
         You are an expert in chemical informatics and academic writing. Given the SMILES string "${smiles}" and associated symptoms "${symptoms}", generate a high-quality research paper in IEEE format. The paper should be structured with the following sections: Title, Authors, Abstract, Keywords, I. Introduction, II. Methodology, III. Results and Discussion, IV. Conclusion, References. Ensure the content is scientifically accurate, relevant to the compound's therapeutic applications for the symptoms, and includes realistic data and references. Return the paper in clean JSON format (no Markdown or code fences) with fields: title (string), authors (string), abstract (string), keywords (array of strings), introduction (string), methodology (string), resultsAndDiscussion (string), conclusion (string), references (array of strings). Example output:
         {
           "title": "Therapeutic Applications of Compound X",
-          "authors": "J. Doe, A. Smith",
+          "authors": "Test",
           "abstract": "This paper investigates...",
           "keywords": ["compound X", "therapeutics", "symptoms"],
           "introduction": "Introduction text...",
@@ -548,7 +567,7 @@ function Airesearchgenerator() {
       <div className="max-w-7xl mx-auto">
         <h1 className="text-3xl sm:text-4xl font-heading font-bold text-accent mb-6 text-center transform transition-all duration-500 ease-out animate-slide-down">
           AI Research Generator
-          <p className="text-sm p-1 text-text-secondary font-label">(Powered by Gemini)</p>
+         <p className="text-sm text-accent-secondary font-mono">(POWERED BY GEMINI)</p>
         </h1>
 
         <div className="flex flex-col sm:flex-row justify-center mb-6 space-y-2 sm:space-y-0 sm:space-x-4">
@@ -628,7 +647,7 @@ function Airesearchgenerator() {
               <button
                 onClick={handleResearchClick}
                 disabled={loading || selectedSymptomGroupIndex === "" || !selectedSmiles}
-                className="w-full py-2 sm:py-3 px-4 bg-accent text-primary rounded-lg hover:bg-accent-secondary disabled:bg-gray-400 disabled:cursor-not-allowed transition-all duration-300 transform hover:scale-105 relative overflow-hidden"
+                className="w-full py-2 sm:py-3 px-4 bg-accent text-primary rounded-lg hover:bg-accent-secondary disabled:bg-gray-400 disabled:cursor-not-allowed transition-all duration-300 transform hover:scale-95 relative overflow-hidden"
               >
                 <span className="relative z-10">
                   {loading ? (

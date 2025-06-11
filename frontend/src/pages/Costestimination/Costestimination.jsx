@@ -9,6 +9,7 @@ import { jsPDF } from "jspdf";
 import domtoimage from "dom-to-image";
 import Loader from "../../components/Loader.jsx";
 import { motion, AnimatePresence } from "framer-motion";
+import { toast } from "react-hot-toast";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
 const axiosInstance = axios.create({
@@ -41,6 +42,19 @@ const CostEstimationForm = () => {
   const { user, checkAuth, checkingAuth } = useAuthStore();
   const infoRef = useRef(null);
   const userId = user?._id;
+
+  const toastOptions = {
+    style: {
+      background: '#172A45',
+      color: '#E0E0E0',
+      border: '1px solid #5E81F4',
+      borderRadius: '8px',
+      padding: '12px',
+      fontFamily: 'Roboto, Open Sans, sans-serif',
+    },
+    success: { style: { borderColor: '#70E000' }, iconTheme: { primary: '#70E000', secondary: '#E0E0E0' } },
+    error: { style: { borderColor: '#FF4C4C' } },
+  };
 
   const fetchSymptomsAndProducts = async () => {
     if (!userId) return;
@@ -81,15 +95,23 @@ const CostEstimationForm = () => {
     setLoading(true);
     setError(null);
     try {
-      const symptomsGrp = symptomGroups[symptomGroupIndex]?.join(", ") || "";
+      const symptomsGrp = symptomGroups[symptomGroupIndex]?.join(", ") || "N/A";
       const data = await postCostEstimation(selectedSmiles);
       setResult(data.data);
 
       const estimationId = data.data._id;
+      // Debug: Log the values being stored
+      console.log("Storing in localStorage - userId:", userId, "estimationId:", estimationId, "symptomsGrp:", symptomsGrp);
+      
+      // Store the symptom group in localStorage
       const storedSymptomGroups = JSON.parse(localStorage.getItem(`symptomGroups_${userId}`) || "{}");
       storedSymptomGroups[estimationId] = symptomsGrp;
       localStorage.setItem(`symptomGroups_${userId}`, JSON.stringify(storedSymptomGroups));
+      
+      // Debug: Verify the stored data
+      console.log("Stored symptom groups in localStorage:", JSON.parse(localStorage.getItem(`symptomGroups_${userId}`)));
 
+      toast.success("Estimating the cost", toastOptions);
       await fetchHistory();
     } catch (error) {
       setError("Failed to estimate cost. Please try again.");
@@ -109,11 +131,26 @@ const CostEstimationForm = () => {
       const data = await getCostEstimations(user._id);
       const validHistory = Array.isArray(data.data) ? data.data.filter((item) => item && typeof item === "object") : [];
 
-      const storedSymptomGroups = JSON.parse(localStorage.getItem(`symptomGroups_${user._id}`) || "{}");
-      const updatedHistory = validHistory.map((item) => ({
-        ...item,
-        symptomsGrp: storedSymptomGroups[item._id] || "N/A",
-      }));
+      // Debug: Log the userId and history data
+      console.log("Fetching history for userId:", user._id);
+      console.log("Raw history data:", validHistory);
+
+      // Retrieve symptom groups from localStorage
+      const storedSymptomGroupsRaw = localStorage.getItem(`symptomGroups_${user._id}`);
+      console.log("Raw symptom groups from localStorage:", storedSymptomGroupsRaw);
+      
+      const storedSymptomGroups = storedSymptomGroupsRaw ? JSON.parse(storedSymptomGroupsRaw) : {};
+      console.log("Parsed symptom groups from localStorage:", storedSymptomGroups);
+
+      // Map through history and attach the symptom group
+      const updatedHistory = validHistory.map((item) => {
+        const symptomsGrp = storedSymptomGroups[item._id] || "N/A";
+        console.log(`History item ID: ${item._id}, Symptom Group: ${symptomsGrp}`);
+        return {
+          ...item,
+          symptomsGrp,
+        };
+      });
 
       setHistory(updatedHistory);
     } catch (error) {
@@ -342,7 +379,7 @@ const CostEstimationForm = () => {
   }
 
   return (
-    <div className="min-h-screen bg-primary  relative overflow-hidden">
+    <div className="min-h-screen bg-primary relative overflow-hidden">
       {/* Floating drug discovery icons */}
       {floatingIcons.map((iconData, index) => (
         <motion.div
@@ -369,25 +406,16 @@ const CostEstimationForm = () => {
         </motion.div>
       ))}
 
-      <div className="container mx-auto px-4 max-w-6xl f relative z-10">
+      <div className="container mx-auto px-4 max-w-6xl relative z-10">
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
           className="mb-12 text-center"
         >
-          <div className="flex justify-center mb-4">
-            {/* <motion.div
-              animate={{ rotate: 360 }}
-              transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
-              className="opacity-10"
-            >
-              <Atom size={120} />
-            </motion.div> */}
-          </div>
           <h1 className="text-4xl font-bold text-text-primary mb-2 font-heading tracking-tight">
-            Drug Cost Estimator
-            <p className="text-xs p-1 text-accent-secondary font-semibold font-label">(Powered by Gemini)</p>
+            Drug Cost Estimation
+            <p className="text-sm text-accent-secondary font-300 font-mono">(POWERED BY GEMINI)</p>
           </h1>
           <p className="text-text-secondary max-w-2xl mx-auto font-body text-lg">
             Select a symptom group and a corresponding SMILES string to estimate the cost of drug synthesis and production.
@@ -479,10 +507,11 @@ const CostEstimationForm = () => {
               <motion.button
                 type="submit"
                 disabled={loading || !selectedSmiles || symptomGroupIndex === ""}
-                className={`w-full px-4 py-3 text-primary rounded-lg transition-all duration-200 flex items-center justify-center font-heading ${loading || !selectedSmiles || symptomGroupIndex === ""
-                  ? "bg-gray-400 cursor-not-allowed"
-                  : "bg-accent hover:bg-accent/90"
-                  }`}
+                className={`w-full px-4 py-3 text-primary rounded-lg transition-all duration-200 flex items-center justify-center font-heading ${
+                  loading || !selectedSmiles || symptomGroupIndex === ""
+                    ? "bg-gray-400 cursor-not-allowed"
+                    : "bg-accent hover:bg-accent/90"
+                }`}
                 whileHover={!loading && selectedSmiles && symptomGroupIndex !== "" ? { scale: 1.02 } : {}}
                 whileTap={!loading && selectedSmiles && symptomGroupIndex !== "" ? { scale: 0.98 } : {}}
               >
@@ -494,7 +523,7 @@ const CostEstimationForm = () => {
                         duration: 0.5,
                         repeat: Infinity,
                         repeatType: "reverse",
-                        ease: "easeInOut"
+                        ease: "easeInOut",
                       }}
                     >
                       <DollarSign size={20} className="mr-2" />
@@ -544,7 +573,7 @@ const CostEstimationForm = () => {
                     <div>
                       <p className="text-sm text-text-secondary mb-1 font-body">Symptom Group</p>
                       <p className="text-sm bg-primary p-2 text-text-secondary rounded border border-secondary font-body">
-                        {symptomGroups[symptomGroupIndex]?.join(", ") || "N/A"}
+                        {symptomGroups[symptomGroupIndex].join(", ") || "N/A"}
                       </p>
                     </div>
                     <div>

@@ -312,7 +312,7 @@ const AlphaFoldExplorer = () => {
             </h1>
           </div>
           <p className="text-text-secondary font-label text-lg max-w-2xl mx-auto">
-            Advanced protein structure prediction and analysis platform powered by cutting-edge AI
+            Advanced protein structure 3D prediction with GOOGLE Deepmind AlphaFold
           </p>
         </div>
 
