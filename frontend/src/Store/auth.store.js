@@ -3,11 +3,8 @@ import { persist } from 'zustand/middleware';
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
-const axiosInstance = axios.create({
-  baseURL: import.meta.mode === "development" ? API_BASE_URL : '/api',
-  withCredentials: true,
-});
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+
 
 export const useAuthStore = create(
   persist(
@@ -26,7 +23,7 @@ export const useAuthStore = create(
           return toast.error('Passwords do not match');
         }
         try {
-          const res = await axiosInstance.post(`${API_BASE_URL}/auth/signup`, { 
+          const res = await axios.post(`${API_BASE_URL}/api/auth/signup`, { 
             firstName, 
             lastName, 
             username, 
@@ -52,7 +49,7 @@ export const useAuthStore = create(
       verifyPhone: async ({ phoneNumber, otp }) => {
         set({ loading: true });
         try {
-          const res = await axiosInstance.post(`${API_BASE_URL}/auth/verify-phone`, { 
+          const res = await axios.post(`${API_BASE_URL}/api/auth/verify-phone`, { 
             phoneNumber, 
             otp 
           });
@@ -74,7 +71,7 @@ export const useAuthStore = create(
       login: async ({ email, password }) => {
         set({ loading: true });
         try {
-          const res = await axiosInstance.post(`${API_BASE_URL}/auth/login`, { email, password });
+          const res = await axios.post(`${API_BASE_URL}/api/auth/login`, { email, password });
           console.log('Login Response:', res.data);
           set({ user: res.data.user, loading: false });
           console.log('Login - Updated State:', get().user);
@@ -88,7 +85,7 @@ export const useAuthStore = create(
 
       logout: async () => {
         try {
-          await axiosInstance.post(`${API_BASE_URL}/auth/logout`);
+          await axios.post(`${API_BASE_URL}/auth/logout`);
           set({ user: null, phoneNumber: null });
           console.log('Logout - Updated State:', get().user);
           toast.success('Logged out successfully');
@@ -100,7 +97,7 @@ export const useAuthStore = create(
       checkAuth: async () => {
         set({ checkingAuth: true });
         try {
-          const response = await axiosInstance.get(`${API_BASE_URL}/auth/profile`);
+          const response = await axios.get(`${API_BASE_URL}/api/auth/profile`);
           console.log('checkAuth Response:', response.data);
           set({ user: response.data.user, checkingAuth: false });
           console.log('checkAuth - Updated State:', get().user);
