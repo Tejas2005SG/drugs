@@ -29,36 +29,58 @@ const upload = multer({ storage: multer.memoryStorage() });
 
 // Dynamic CORS configuration for Render
 const allowedOrigins = [
-  process.env.CLIENT_URL,
-  process.env.FRONTEND_URL , // Render provides this automatically
-  'http://localhost:5173' // For local development
+  
+   // React default port
+  'https://drugs-1-8gub.onrender.com',  // Vite default port
+  'http://localhost:5173',  // Vite alternate port'
+  // Remove the backend URL - it shouldn't be in allowed origins
 ].filter(Boolean); // Remove any undefined values
 
 const corsOptions = {
   origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps or curl requests)
+    console.log('Origin:', origin); // For debugging
+    
+    // Allow requests with no origin (like mobile apps, curl, or same-origin requests)
     if (!origin) return callback(null, true);
     
-    if (allowedOrigins.some(allowedOrigin => 
-      origin === allowedOrigin || 
-      origin.startsWith(allowedOrigin) ||
-      origin.includes('render.com')
-    ) ){
+    // Check if origin is in allowed origins
+    if (allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
-      callback(new Error('Not allowed by CORS'));
+      // For additional flexibility, you can also check for specific patterns
+      const isAllowed = allowedOrigins.some(allowedOrigin => {
+        // Check for exact match or subdomain match
+        return origin === allowedOrigin || 
+               (allowedOrigin && origin.endsWith(allowedOrigin.replace(/^https?:\/\//, '')));
+      });
+      
+      if (isAllowed) {
+        callback(null, true);
+      } else {
+        console.log('CORS blocked origin:', origin);
+        callback(new Error('Not allowed by CORS'));
+      }
     }
   },
   credentials: true,
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+  allowedHeaders: [
+    'Content-Type', 
+    'Authorization', 
+    'X-Requested-With',
+    'Accept',
+    'Origin'
+  ],
+  // Add these for better compatibility
+  optionsSuccessStatus: 200, // For legacy browser support
+  preflightContinue: false
 };
 
 // Apply CORS middleware
 app.use(cors(corsOptions));
 
-// Handle preflight requests for all routes
-app.options('*', cors(corsOptions));
+// Handle preflight requests is already handled by the cors middleware above
+// You don't need the additional app.options('*', cors(corsOptions));
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -84,11 +106,11 @@ app.use("/api/researchPaper", researchPaperRoutes);
 
 // // app.use("/api/jarvis",jarvisRoutes);
 
-if (process.env.NODE_ENV === "production") {
-  app.use(express.static(path.join(__dirname, "/frontend/dist")));
-  app.get("*", (req, res) => {
-    res.sendFile(path.resolve(__dirname, "frontend", "dist", "index.html"));
-  });
+// if (process.env.NODE_ENV === "production") {
+//   app.use(express.static(path.join(__dirname, "/frontend/dist")));
+//   app.get("*", (req, res) => {
+//     res.sendFile(path.resolve(__dirname, "frontend", "dist", "index.html"));
+//   });
 }
 
 app.listen(PORT, () => {
