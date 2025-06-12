@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "start": "serve -s dist"
   },
   "dependencies": {
     "@heroicons/react": "^2.2.0",
@@ -54,11 +55,13 @@
     "react-router-dom": "^7.6.1",
     "react-spinner": "^0.2.7",
     "react-spinners": "^0.15.0",
+    "serve": "^14.2.4",
     "smiles-drawer": "^2.1.7",
     "socket.io-client": "^4.8.1",
     "tailwind-merge": "^3.3.0",
     "tailwindcss-animate": "^1.0.7",
     "three": "^0.154.0",
+    "uuid": "^11.1.0",
     "xstate": "^5.19.4",
     "zustand": "^5.0.5"
   },

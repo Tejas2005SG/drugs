@@ -5,8 +5,14 @@
   "scripts": {
     "dev": "nodemon backend/server.js",
     "start": "node backend/server.js",
+<<<<<<< HEAD
     "build": "npm install --prefix backend && npm install --prefix frontend &&  npm run build --prefix frontend",
     "install-all": "npm install && cd frontend && npm install"
+=======
+    "build": "npm install && cd frontend && npm install --include=dev && npm run build",
+     "install-all": "npm install && cd frontend && npm install"
+   
+>>>>>>> 3ddc8ad30e397b50b5c5a17034076e332b1677a9
   },
   "keywords": [],
   "author": "",

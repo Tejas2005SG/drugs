@@ -48,9 +48,7 @@ const globalStyles = (
         overflowX: 'hidden',
         maxWidth: '100vw',
       },
-      '*': {
-        boxSizing: 'border-box',
-      },
+      
     }}
   />
 );
