@@ -97,7 +97,7 @@ export const useAuthStore = create(
       checkAuth: async () => {
         set({ checkingAuth: true });
         try {
-          const response = await axios.get(`https://js-backend-6k7s.onrender.com/api/auth/profile`);
+          const response = await axios.get(`${API_BASE_URL}/auth/profile`);
           console.log('checkAuth Response:', response.data);
           set({ user: response.data.user, checkingAuth: false });
           console.log('checkAuth - Updated State:', get().user);
