@@ -16,6 +16,8 @@ from pydantic import BaseModel, Field, ValidationError
 from typing import List, Dict, Any, Union
 import base64
 from io import BytesIO
+from dotenv import load_dotenv
+load_dotenv()
 from modules.reaction_data import reaction_smarts_map
 from modules.fun_grp_pattern import functional_group_patterns
 from modules.cal_rxn_com import calculate_reaction_compatibility
@@ -967,5 +969,6 @@ def get_available_reactions():
         'reactions': reactions_info
     })
 
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5001, debug=True)
+if __name__ == "__main__":
+    port = int(os.environ.get('PORT', 5001))
+    app.run(host="0.0.0.0", port=port)
