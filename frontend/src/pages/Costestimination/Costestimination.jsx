@@ -13,9 +13,10 @@ import { toast } from "react-hot-toast";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
 const axiosInstance = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: import.meta.env.mode === "development" ? API_BASE_URL : "/api",
   withCredentials: true,
 });
+
 
 const floatingIcons = [
   { icon: FlaskConical, size: 24, delay: 0, duration: 5, color: "text-accent/20" },

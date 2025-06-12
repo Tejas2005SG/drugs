@@ -6,10 +6,8 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
-
 const axiosInstance = axios.create({
-  baseURL: API_BASE_URL,
-  headers: { 'Content-Type': 'application/json' },
+  baseURL: import.meta.mode === 'development' ? API_BASE_URL : '/api',
   withCredentials: true,
 });
 

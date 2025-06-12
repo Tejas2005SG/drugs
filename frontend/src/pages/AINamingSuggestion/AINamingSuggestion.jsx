@@ -5,6 +5,12 @@ import { useAuthStore } from "../../Store/auth.store.js";
 import { motion, AnimatePresence } from "framer-motion";
 import "./name.css";
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
+const axiosInstance = axios.create({
+  baseURL: import.meta.env.mode === "development" ? API_BASE_URL : "/api",
+  withCredentials: true,
+});
+
 const formatSmiles = (smiles) => {
   if (!smiles) return "";
   return smiles.match(/.{1,60}(?=\s|$)/g)?.join('\n') || "";
@@ -16,11 +22,7 @@ const truncateSmiles = (smiles, maxLength = 30) => {
   return `${smiles.substring(0, maxLength)}...`;
 };
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
-const axiosInstance = axios.create({
-  baseURL: API_BASE_URL,
-  withCredentials: true,
-});
+
 
 const AINamingSuggestion = () => {
   const [activeTab, setActiveTab] = useState("generate");

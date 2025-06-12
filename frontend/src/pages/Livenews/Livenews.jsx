@@ -2,11 +2,12 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useAuthStore } from '../../Store/auth.store.js';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
 const axiosInstance = axios.create({
-  baseURL: import.meta.mode === "development" ? API_BASE_URL : '/api',
+  baseURL: import.meta.env.mode === "development" ? API_BASE_URL : "/api",
   withCredentials: true,
 });
+
 
 function LiveNews() {
   const [liveArticles, setLiveArticles] = useState([]);

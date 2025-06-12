@@ -65,6 +65,13 @@ import jsPDF from "jspdf"
 
 ChartJS.register(RadialLinearScale, PointElement, LineElement, Filler, Legend, ChartTooltip)
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
+const axiosInstance = axios.create({
+  baseURL: import.meta.env.mode === "development" ? API_BASE_URL : "/api",
+  withCredentials: true,
+});
+
+
 const timelineSteps = [
   "Fetching Symptoms",
   "Predicting Diseases",
@@ -286,7 +293,7 @@ const RDkit = () => {
     const fetchSavedSymptoms = async () => {
       setSymptomsLoading(true)
       try {
-        const response = await axios.get(`http://localhost:5000/api/newdrug/symptoms/${userId}`, {
+        const response = await axiosInstance.get(`/newdrug/symptoms/${userId}`, {
           headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
           timeout: 30000,
         })

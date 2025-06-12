@@ -4,18 +4,17 @@ import { toast } from "react-hot-toast";
 import { useAuthStore } from "../../Store/auth.store.js";
 import jsPDF from "jspdf";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
-const CROSSREF_API_URL = "https://api.crossref.org/works";
 
-// Axios instances
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
 const axiosInstance = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: import.meta.env.mode === "development" ? API_BASE_URL : "/api",
   withCredentials: true,
 });
-const crossrefAxios = axios.create({
-  baseURL: CROSSREF_API_URL,
-  withCredentials: false,
-});
+
+
+
+
 
 // Utility functions
 const cleanAbstract = (abstract) => {
