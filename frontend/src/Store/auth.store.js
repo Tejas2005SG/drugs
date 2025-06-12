@@ -85,7 +85,7 @@ export const useAuthStore = create(
 
       logout: async () => {
         try {
-          await axios.post(`${API_BASE_URL}/auth/logout`);
+          await axios.post(`${API_BASE_URL}/api/auth/logout`);
           set({ user: null, phoneNumber: null });
           console.log('Logout - Updated State:', get().user);
           toast.success('Logged out successfully');
