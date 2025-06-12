@@ -27,44 +27,43 @@ const __dirname = path.resolve();
 
 const upload = multer({ storage: multer.memoryStorage() });
 
-// FIXED: Correct CORS configuration
-// These should be your FRONTEND URLs (where your React app is hosted)
+// Setup allowed origins for CORS
 const allowedOrigins = [
-  process.env.CLIENT_URL, // Add this to your environment variables
-  'https://drugs-1-8gub.onrender.com',  // Your FRONTEND URL (React app)
-  'http://localhost:5173',  // Local development
-  'http://localhost:3000',  // Alternative local development
-].filter(Boolean);
+  process.env.CLIENT_URL,                          // From environment variable (e.g. Vercel frontend)
+  'https://drugs-1-8gub.onrender.com',             // Render frontend fallback
+  'http://localhost:5173',                         // Local dev (Vite default)
+                            // Alternate local dev (e.g. CRA)
+].filter(Boolean); // Removes any undefined/null
 
+// CORS options
 const corsOptions = {
-  origin: function (origin, callback) {
-    console.log('Origin:', origin); // For debugging
-    
-    // Allow requests with no origin (like mobile apps, curl, or same-origin requests)
+  origin: (origin, callback) => {
+    console.log('Incoming Origin:', origin);
+
+    // Allow server-to-server, Postman, curl, SSR
     if (!origin) return callback(null, true);
-    
-    // Check if origin is in allowed origins
+
+    // Allow only if origin is in the allowed list
     if (allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
-      console.log('CORS blocked origin:', origin);
+      console.warn('🚫 Blocked by CORS:', origin);
       callback(new Error('Not allowed by CORS'));
     }
   },
-  credentials: true,
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+  credentials: true, // ✅ Required for cookies
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
   allowedHeaders: [
-    'Content-Type', 
-    'Authorization', 
+    'Content-Type',
+    'Authorization',
     'X-Requested-With',
     'Accept',
     'Origin'
   ],
-  optionsSuccessStatus: 200,
-  preflightContinue: false
+  optionsSuccessStatus: 200
 };
 
-// Apply CORS middleware
+// Apply to all incoming requests
 app.use(cors(corsOptions));
 
 app.use(express.json());
