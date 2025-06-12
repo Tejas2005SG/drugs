@@ -4,28 +4,31 @@ import { User } from "../models/auth.model.js";
 export const protectRoute = async (req, res, next) => {
   let token;
 
-  token = req.cookies.token;
-  // console.log("Token from cookies:", token);
+  if (req.cookies?.token) {
+    token = req.cookies.token;
+  } else if (req.headers.authorization?.startsWith("Bearer")) {
+    token = req.headers.authorization.split(" ")[1];
+  }
 
   if (!token) {
-    return res.status(401).json({ message: "Not authorized, no token" });
+    return res.status(401).json({ success: false, message: "Not authorized, please login" });
   }
 
   try {
-    const decoded = jwt.verify(token, "SECRET_KEY_PLEXADUBAI");
-    console.log("Decoded Token:", decoded);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const user = await User.findById(decoded.userId).select("-password");
 
-    req.userId = decoded.userId;
-    req.user = await User.findById(decoded.userId);
-    console.log("User Found:", req.user);
-
-    if (!req.user) {
-      return res.status(401).json({ message: "User not found" });
+    if (!user) {
+      return res.status(401).json({ success: false, message: "User no longer exists" });
     }
 
+    req.user = user;
     next();
   } catch (error) {
-    console.error("Token Verification Error:", error);
-    res.status(401).json({ message: "Token is not valid" });
+    let message = "Not authorized, invalid token";
+    if (error.name === "TokenExpiredError") {
+      message = "Session expired, please login again";
+    }
+    return res.status(401).json({ success: false, message });
   }
 };
