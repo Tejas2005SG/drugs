@@ -3,8 +3,9 @@ import { persist } from 'zustand/middleware';
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
-
+const API_BASE_URL = import.meta.env.VITE_NODE_ENV === 'production'
+  ? 'https://js-backend-6k7s.onrender.com/api' 
+  : 'http://localhost:5000/api';
 
 export const useAuthStore = create(
   persist(
