@@ -75,7 +75,7 @@ app.use("/api/news", newsRoutes);
 app.use("/api/alphafold", alphafoldRoutes);
 app.use("/api/toxicity", toxicityRoutes)
 app.use("/api/summary", summaryRoutes);
-app.use("/api/toxicity", toxicityRoutes);
+
 app.use("/api/notes", noteRoutes);
 app.use("/api/newdrug", newdrugRoutes);
 app.use("/api/getdata", getsymptomproductRoutes);
