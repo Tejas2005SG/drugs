@@ -85,63 +85,63 @@ const AINamingSuggestion = () => {
     initialize();
   }, [checkAuth, setCheckingAuth]); // Removed user from dependencies
 
-const fetchSymptomsAndProducts = async (targetOriginalSmiles = null, acceptedName = null) => {
-  if (!user?._id) return;
+  const fetchSymptomsAndProducts = async (targetOriginalSmiles = null, acceptedName = null) => {
+    if (!user?._id) return;
 
-  setLoading(true);
-  try {
-    const response = await axiosInstance.get(`/getdata/getsymptoms-product/${user._id}`);
-    console.log("Symptoms and Products Response:", response.data);
-    const { symptoms, productSmiles, moleculeDetails, message } = response.data;
+    setLoading(true);
+    try {
+      const response = await axiosInstance.get(`/getdata/getsymptoms-product/${user._id}`);
+      console.log("Symptoms and Products Response:", response.data);
+      const { symptoms, productSmiles, moleculeDetails, message } = response.data;
 
-    if (!symptoms || symptoms.length === 0) {
-      throw new Error(message || "No symptoms returned from server");
-    }
-
-    setSymptomGroups(symptoms);
-    setProductSmilesGroups(productSmiles || []);
-    setMoleculeDetails(moleculeDetails || {});
-    setError(null);
-
-    // If a symptom group is not selected or was reset, default to the first group
-    if (symptoms.length > 0 && (symptomGroupIndex === "" || symptomGroupIndex >= symptoms.length)) {
-      setSymptomGroupIndex("0");
-    }
-
-    // If accepting a name, find and select the updated SMILES (drug name)
-    if (targetOriginalSmiles && acceptedName) {
-      let foundSmiles = null;
-      productSmiles.forEach((group, index) => {
-        const match = group.find(
-          (smiles) =>
-            moleculeDetails[smiles]?.originalSmiles === targetOriginalSmiles ||
-            smiles === acceptedName
-        );
-        if (match) {
-          foundSmiles = match;
-          setSymptomGroupIndex(index.toString());
-        }
-      });
-      if (foundSmiles) {
-        setSelectedSmiles(foundSmiles);
-      } else if (productSmiles[0]?.length > 0) {
-        setSelectedSmiles(productSmiles[0][0]);
+      if (!symptoms || symptoms.length === 0) {
+        throw new Error(message || "No symptoms returned from server");
       }
-    } else if (symptoms.length > 0 && productSmiles[symptomGroupIndex]?.length > 0) {
-      // Preserve existing selection if possible
-      setSelectedSmiles(productSmiles[symptomGroupIndex][0]);
+
+      setSymptomGroups(symptoms);
+      setProductSmilesGroups(productSmiles || []);
+      setMoleculeDetails(moleculeDetails || {});
+      setError(null);
+
+      // If a symptom group is not selected or was reset, default to the first group
+      if (symptoms.length > 0 && (symptomGroupIndex === "" || symptomGroupIndex >= symptoms.length)) {
+        setSymptomGroupIndex("0");
+      }
+
+      // If accepting a name, find and select the updated SMILES (drug name)
+      if (targetOriginalSmiles && acceptedName) {
+        let foundSmiles = null;
+        productSmiles.forEach((group, index) => {
+          const match = group.find(
+            (smiles) =>
+              moleculeDetails[smiles]?.originalSmiles === targetOriginalSmiles ||
+              smiles === acceptedName
+          );
+          if (match) {
+            foundSmiles = match;
+            setSymptomGroupIndex(index.toString());
+          }
+        });
+        if (foundSmiles) {
+          setSelectedSmiles(foundSmiles);
+        } else if (productSmiles[0]?.length > 0) {
+          setSelectedSmiles(productSmiles[0][0]);
+        }
+      } else if (symptoms.length > 0 && productSmiles[symptomGroupIndex]?.length > 0) {
+        // Preserve existing selection if possible
+        setSelectedSmiles(productSmiles[symptomGroupIndex][0]);
+      }
+    } catch (err) {
+      console.error("Error fetching symptoms and products:", err);
+      setError(err.response?.data?.message || "Failed to fetch symptoms and products");
+      setSymptomGroups([]);
+      setProductSmilesGroups([]);
+      setMoleculeDetails({});
+      toast.error(err.response?.data?.message || "Failed to fetch data", toastOptions);
+    } finally {
+      setLoading(false);
     }
-  } catch (err) {
-    console.error("Error fetching symptoms and products:", err);
-    setError(err.response?.data?.message || "Failed to fetch symptoms and products");
-    setSymptomGroups([]);
-    setProductSmilesGroups([]);
-    setMoleculeDetails({});
-    toast.error(err.response?.data?.message || "Failed to fetch data", toastOptions);
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   const fetchSavedNames = async () => {
     if (!user?._id) return;
@@ -229,39 +229,39 @@ const fetchSymptomsAndProducts = async (targetOriginalSmiles = null, acceptedNam
     setShowAcceptModal(true);
   };
 
- const confirmAcceptName = async () => {
-  if (!selectedCandidate) return;
+  const confirmAcceptName = async () => {
+    if (!selectedCandidate) return;
 
-  const symptoms = symptomGroups[symptomGroupIndex]?.join(", ") || "";
-  const originalSmiles = moleculeDetails[selectedSmiles]?.originalSmiles || selectedSmiles;
-  setLoading(true);
-  setShowAcceptModal(false);
+    const symptoms = symptomGroups[symptomGroupIndex]?.join(", ") || "";
+    const originalSmiles = moleculeDetails[selectedSmiles]?.originalSmiles || selectedSmiles;
+    setLoading(true);
+    setShowAcceptModal(false);
 
-  try {
-    const response = await axiosInstance.post(`/drugname/accept-drug-name/${user._id}`, {
-      smiles: originalSmiles,
-      symptoms,
-      selectedName: selectedCandidate.name,
-      rationale: selectedCandidate.rationale,
-      compliance: selectedCandidate.compliance,
-    });
+    try {
+      const response = await axiosInstance.post(`/drugname/accept-drug-name/${user._id}`, {
+        smiles: originalSmiles,
+        symptoms,
+        selectedName: selectedCandidate.name,
+        rationale: selectedCandidate.rationale,
+        compliance: selectedCandidate.compliance,
+      });
 
-    setSuggestedNames([]);
-    // Do not reset symptomGroupIndex: setSymptomGroupIndex("");
-    // Do not reset selectedSmiles yet: setSelectedSmiles("");
-    await fetchSymptomsAndProducts(originalSmiles, selectedCandidate.name); // Pass params to select updated SMILES
-    await fetchSavedNames();
-    toast.success("Drug name accepted successfully!", toastOptions);
-  } catch (err) {
-    console.error("Error accepting drug name:", err);
-    const errorMessage = err.response?.data?.message || "Failed to accept drug name";
-    setError(errorMessage);
-    toast.error(errorMessage, toastOptions);
-  } finally {
-    setLoading(false);
-    setSelectedCandidate(null);
-  }
-};
+      setSuggestedNames([]);
+      // Do not reset symptomGroupIndex: setSymptomGroupIndex("");
+      // Do not reset selectedSmiles yet: setSelectedSmiles("");
+      await fetchSymptomsAndProducts(originalSmiles, selectedCandidate.name); // Pass params to select updated SMILES
+      await fetchSavedNames();
+      toast.success("Drug name accepted successfully!", toastOptions);
+    } catch (err) {
+      console.error("Error accepting drug name:", err);
+      const errorMessage = err.response?.data?.message || "Failed to accept drug name";
+      setError(errorMessage);
+      toast.error(errorMessage, toastOptions);
+    } finally {
+      setLoading(false);
+      setSelectedCandidate(null);
+    }
+  };
 
   const handleRejectName = () => {
     setSuggestedNames([]);
@@ -362,11 +362,10 @@ const fetchSymptomsAndProducts = async (targetOriginalSmiles = null, acceptedNam
               key={tab}
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              className={`px-6 py-3 rounded-lg font-medium transition-all duration-300 ${
-                activeTab === tab
+              className={`px-6 py-3 rounded-lg font-medium transition-all duration-300 ${activeTab === tab
                   ? "bg-accent text-primary shadow-lg"
                   : "bg-secondary text-text-primary hover:bg-opacity-80"
-              }`}
+                }`}
               onClick={() => handleTabChange(tab)}
             >
               {tab === "generate" && "Generate Drug Name"}
@@ -419,11 +418,10 @@ const fetchSymptomsAndProducts = async (targetOriginalSmiles = null, acceptedNam
                       Select Drug Name / SMILES
                     </label>
                     <div
-                      className={`w-full p-3 bg-primary border border-gray-600 rounded-lg text-text-primary font-mono flex justify-between items-center cursor-pointer ${
-                        loading || symptomGroupIndex === "" || productSmilesGroups[symptomGroupIndex]?.length === 0
+                      className={`w-full p-3 bg-primary border border-gray-600 rounded-lg text-text-primary font-mono flex justify-between items-center cursor-pointer ${loading || symptomGroupIndex === "" || productSmilesGroups[symptomGroupIndex]?.length === 0
                           ? "opacity-50 cursor-not-allowed"
                           : "hover:bg-gray-700"
-                      }`}
+                        }`}
                       onClick={toggleSmilesDropdown}
                     >
                       <span className="truncate">
@@ -468,11 +466,10 @@ const fetchSymptomsAndProducts = async (targetOriginalSmiles = null, acceptedNam
                     whileTap={{ scale: 0.98 }}
                     onClick={handleGenerateName}
                     disabled={loading || symptomGroupIndex === "" || !selectedSmiles}
-                    className={`w-full py-3 px-6 rounded-lg transition-all duration-300 ${
-                      loading || symptomGroupIndex === "" || !selectedSmiles
+                    className={`w-full py-3 px-6 rounded-lg transition-all duration-300 ${loading || symptomGroupIndex === "" || !selectedSmiles
                         ? "bg-gray-600 cursor-not-allowed"
                         : "bg-accent hover:bg-accent-secondary text-primary"
-                    } font-medium`}
+                      } font-medium`}
                   >
                     {loading ? (
                       <span className="flex items-center justify-center">
@@ -578,24 +575,24 @@ const fetchSymptomsAndProducts = async (targetOriginalSmiles = null, acceptedNam
                             >
                               Accept
                             </motion.button>
-                          <motion.button
-  whileHover={{ scale: 1.05 }}
-  whileTap={{ scale: 0.95 }}
-  onClick={async () => {
-    try {
-      await axiosInstance.delete(`/drugname/delete-drug-name/${drugName._id}`);
-      await Promise.all([fetchSavedNames(), fetchSymptomsAndProducts()]); // Refresh both
-      toast.success("Drug name deleted successfully!", toastOptions);
-    } catch (err) {
-      console.error("Error deleting drug name:", err);
-      toast.error("Failed to delete drug name", toastOptions);
-    }
-  }}
-  className="px-4 py-2 bg-error text-primary rounded-lg hover:bg-opacity-90 transition-colors font-medium"
-  disabled={loading}
->
-  Reject
-</motion.button>
+                            {/* <motion.button
+                              whileHover={{ scale: 1.05 }}
+                              whileTap={{ scale: 0.95 }}
+                              onClick={async () => {
+                                try {
+                                  await axiosInstance.delete(`/drugname/delete-drug-name/${drugName._id}`);
+                                  await Promise.all([fetchSavedNames(), fetchSymptomsAndProducts()]); // Refresh both
+                                  toast.success("Drug name deleted successfully!", toastOptions);
+                                } catch (err) {
+                                  console.error("Error deleting drug name:", err);
+                                  toast.error("Failed to delete drug name", toastOptions);
+                                }
+                              }}
+                              className="px-4 py-2 bg-error text-primary rounded-lg hover:bg-opacity-90 transition-colors font-medium"
+                              disabled={loading}
+                            >
+                              Reject
+                            </motion.button> */}
                           </div>
                         </motion.div>
                       ))}
@@ -626,11 +623,10 @@ const fetchSymptomsAndProducts = async (targetOriginalSmiles = null, acceptedNam
                               {drugName.suggestedName}
                             </h3>
                             <span
-                              className={`text-xs px-2 py-1 rounded ${
-                                drugName.status === "accepted"
+                              className={`text-xs px-2 py-1 rounded ${drugName.status === "accepted"
                                   ? "bg-success bg-opacity-20 text-success"
                                   : "bg-accent-secondary bg-opacity-20 text-accent-secondary"
-                              }`}
+                                }`}
                             >
                               {drugName.status.charAt(0).toUpperCase() + drugName.status.slice(1)}
                             </span>
