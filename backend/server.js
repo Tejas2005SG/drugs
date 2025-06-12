@@ -17,8 +17,8 @@ import noteRoutes from "./routes/note.routes.js";
 import newdrugRoutes from "./routes/newdrug.routes.js";
 import getsymptomproductRoutes from "./routes/getsymptomproduct.routes.js";
 import drugNameRoutes from "./routes/drugnaming.routes.js";
-// import jarvisRoutes from "./routes/jarvis.routes.js"
 import researchPaperRoutes from "./routes/researchPapers.routes.js";
+
 dotenv.config();
 
 const app = express();
@@ -27,14 +27,14 @@ const __dirname = path.resolve();
 
 const upload = multer({ storage: multer.memoryStorage() });
 
-// Dynamic CORS configuration for Render
+// FIXED: Correct CORS configuration
+// These should be your FRONTEND URLs (where your React app is hosted)
 const allowedOrigins = [
-  
-   // React default port
-  'https://drugs-1-8gub.onrender.com',  // Vite default port
-  'http://localhost:5173',  // Vite alternate port'
-  // Remove the backend URL - it shouldn't be in allowed origins
-].filter(Boolean); // Remove any undefined values
+  process.env.CLIENT_URL, // Add this to your environment variables
+  'https://drugs-1-8gub.onrender.com',  // Your FRONTEND URL (React app)
+  'http://localhost:5173',  // Local development
+  'http://localhost:3000',  // Alternative local development
+].filter(Boolean);
 
 const corsOptions = {
   origin: function (origin, callback) {
@@ -47,19 +47,8 @@ const corsOptions = {
     if (allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
-      // For additional flexibility, you can also check for specific patterns
-      const isAllowed = allowedOrigins.some(allowedOrigin => {
-        // Check for exact match or subdomain match
-        return origin === allowedOrigin || 
-               (allowedOrigin && origin.endsWith(allowedOrigin.replace(/^https?:\/\//, '')));
-      });
-      
-      if (isAllowed) {
-        callback(null, true);
-      } else {
-        console.log('CORS blocked origin:', origin);
-        callback(new Error('Not allowed by CORS'));
-      }
+      console.log('CORS blocked origin:', origin);
+      callback(new Error('Not allowed by CORS'));
     }
   },
   credentials: true,
@@ -71,16 +60,12 @@ const corsOptions = {
     'Accept',
     'Origin'
   ],
-  // Add these for better compatibility
-  optionsSuccessStatus: 200, // For legacy browser support
+  optionsSuccessStatus: 200,
   preflightContinue: false
 };
 
 // Apply CORS middleware
 app.use(cors(corsOptions));
-
-// Handle preflight requests is already handled by the cors middleware above
-// You don't need the additional app.options('*', cors(corsOptions));
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -97,21 +82,11 @@ app.use("/api/news", newsRoutes);
 app.use("/api/alphafold", alphafoldRoutes);
 app.use("/api/toxicity", toxicityRoutes)
 app.use("/api/summary", summaryRoutes);
-app.use("/api/toxicity", toxicityRoutes);
 app.use("/api/notes", noteRoutes);
 app.use("/api/newdrug", newdrugRoutes);
 app.use("/api/getdata", getsymptomproductRoutes);
 app.use("/api/drugname", drugNameRoutes)
 app.use("/api/researchPaper", researchPaperRoutes);
-
-// // app.use("/api/jarvis",jarvisRoutes);
-
-// if (process.env.NODE_ENV === "production") {
-//   app.use(express.static(path.join(__dirname, "/frontend/dist")));
-//   app.get("*", (req, res) => {
-//     res.sendFile(path.resolve(__dirname, "frontend", "dist", "index.html"));
-//   });
-
 
 app.listen(PORT, () => {
   connectionDb();

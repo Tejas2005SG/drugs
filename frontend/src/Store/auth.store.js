@@ -3,8 +3,12 @@ import { persist } from 'zustand/middleware';
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://js-backend-6k7s.onrender.com/api';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://js-backend-6k7s.onrender.com';
 
+// IMPORTANT: Configure axios to send cookies with requests
+axios.defaults.withCredentials = true;
+
+console.log('API_BASE_URL:', API_BASE_URL); // Debug log
 
 export const useAuthStore = create(
   persist(
@@ -23,7 +27,8 @@ export const useAuthStore = create(
           return toast.error('Passwords do not match');
         }
         try {
-          const res = await axios.post(`${API_BASE_URL}/auth/signup`, { 
+          console.log('Making signup request to:', `${API_BASE_URL}/api/auth/signup`);
+          const res = await axios.post(`${API_BASE_URL}/api/auth/signup`, { 
             firstName, 
             lastName, 
             username, 
@@ -40,6 +45,7 @@ export const useAuthStore = create(
           toast.success('OTP sent to your phone number');
           return res.data;
         } catch (error) {
+          console.error('Signup error:', error.response?.data || error.message);
           set({ loading: false });
           toast.error(error.response?.data?.message || 'An error occurred during signup');
           throw error;
@@ -49,7 +55,8 @@ export const useAuthStore = create(
       verifyPhone: async ({ phoneNumber, otp }) => {
         set({ loading: true });
         try {
-          const res = await axios.post(`${API_BASE_URL}/auth/verify-phone`, { 
+          console.log('Making verify phone request to:', `${API_BASE_URL}/api/auth/verify-phone`);
+          const res = await axios.post(`${API_BASE_URL}/api/auth/verify-phone`, { 
             phoneNumber, 
             otp 
           });
@@ -62,6 +69,7 @@ export const useAuthStore = create(
           toast.success('Phone number verified successfully');
           return res.data;
         } catch (error) {
+          console.error('Verify phone error:', error.response?.data || error.message);
           set({ loading: false });
           toast.error(error.response?.data?.message || 'OTP verification failed');
           throw error;
@@ -71,13 +79,14 @@ export const useAuthStore = create(
       login: async ({ email, password }) => {
         set({ loading: true });
         try {
-          const res = await axios.post(`${API_BASE_URL}/auth/login`, { email, password });
+          console.log('Making login request to:', `${API_BASE_URL}/api/auth/login`);
+          const res = await axios.post(`${API_BASE_URL}/api/auth/login`, { email, password });
           console.log('Login Response:', res.data);
           set({ user: res.data.user, loading: false });
           console.log('Login - Updated State:', get().user);
           toast.success('Logged in successfully');
         } catch (error) {
-          console.error('Login Error:', error.response?.data);
+          console.error('Login Error:', error.response?.data || error.message);
           set({ loading: false });
           toast.error(error.response?.data?.message || 'No User found');
         }
@@ -85,11 +94,13 @@ export const useAuthStore = create(
 
       logout: async () => {
         try {
-          await axios.post(`${API_BASE_URL}/auth/logout`);
+          console.log('Making logout request to:', `${API_BASE_URL}/api/auth/logout`);
+          await axios.post(`${API_BASE_URL}/api/auth/logout`);
           set({ user: null, phoneNumber: null });
           console.log('Logout - Updated State:', get().user);
           toast.success('Logged out successfully');
         } catch (error) {
+          console.error('Logout error:', error.response?.data || error.message);
           toast.error(error.response?.data?.message || 'An error occurred during logout');
         }
       },
@@ -97,7 +108,8 @@ export const useAuthStore = create(
       checkAuth: async () => {
         set({ checkingAuth: true });
         try {
-          const response = await axios.get(`${API_BASE_URL}/auth/profile`);
+          console.log('Making checkAuth request to:', `${API_BASE_URL}/api/auth/profile`);
+          const response = await axios.get(`${API_BASE_URL}/api/auth/profile`);
           console.log('checkAuth Response:', response.data);
           set({ user: response.data.user, checkingAuth: false });
           console.log('checkAuth - Updated State:', get().user);
