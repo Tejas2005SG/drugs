@@ -1,10 +1,10 @@
 {
   "name": "drugs",
   "version": "1.0.0",
-  "main": "backend/server.cjs",
+  "main": "backend/server.js",
   "scripts": {
-    "dev": "nodemon backend/server.cjs",
-    "start": "node backend/server.cjs",
+    "dev": "nodemon backend/server.js",
+    "start": "node backend/server.js",
     "build": "npm install && npm install express@latest --prefix backend && npm install --prefix frontend && npm install autoprefixer@latest --prefix frontend --save-dev && npm run build --prefix frontend",
     "install-all": "npm install && cd frontend && npm install"
   },
