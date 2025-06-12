@@ -23,7 +23,7 @@ export const useAuthStore = create(
           return toast.error('Passwords do not match');
         }
         try {
-          const res = await axios.post(`${API_BASE_URL}/api/auth/signup`, { 
+          const res = await axios.post(`${API_BASE_URL}/auth/signup`, { 
             firstName, 
             lastName, 
             username, 
@@ -49,7 +49,7 @@ export const useAuthStore = create(
       verifyPhone: async ({ phoneNumber, otp }) => {
         set({ loading: true });
         try {
-          const res = await axios.post(`${API_BASE_URL}/api/auth/verify-phone`, { 
+          const res = await axios.post(`${API_BASE_URL}/auth/verify-phone`, { 
             phoneNumber, 
             otp 
           });
@@ -71,7 +71,7 @@ export const useAuthStore = create(
       login: async ({ email, password }) => {
         set({ loading: true });
         try {
-          const res = await axios.post(`${API_BASE_URL}/api/auth/login`, { email, password });
+          const res = await axios.post(`${API_BASE_URL}/auth/login`, { email, password });
           console.log('Login Response:', res.data);
           set({ user: res.data.user, loading: false });
           console.log('Login - Updated State:', get().user);
@@ -85,7 +85,7 @@ export const useAuthStore = create(
 
       logout: async () => {
         try {
-          await axios.post(`${API_BASE_URL}/api/auth/logout`);
+          await axios.post(`${API_BASE_URL}/auth/logout`);
           set({ user: null, phoneNumber: null });
           console.log('Logout - Updated State:', get().user);
           toast.success('Logged out successfully');
@@ -97,7 +97,7 @@ export const useAuthStore = create(
       checkAuth: async () => {
         set({ checkingAuth: true });
         try {
-          const response = await axios.get(`${API_BASE_URL}/api/auth/profile`);
+          const response = await axios.get(`${API_BASE_URL}/auth/profile`);
           console.log('checkAuth Response:', response.data);
           set({ user: response.data.user, checkingAuth: false });
           console.log('checkAuth - Updated State:', get().user);
