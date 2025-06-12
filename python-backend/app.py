@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 RDLogger.DisableLog('rdApp.warning')
 
 app = Flask(__name__)
-CORS(app, resources={r"/api/*": {"origins": ["http://localhost:5173"]}})
+CORS(app, resources={r"/api/*": {"origins": ["http://localhost:5173", "https://drugs-rcgq-lnb0uqpwk-tejas2005sgs-projects.vercel.app"]}})
 
 # MongoDB connection
 mongo_uri = os.getenv('MONGO_URI', 'mongodb+srv://bhangaletejas003:G0yEjQa9yrTChtDU@h2skill.nnmre.mongodb.net/?retryWrites=true&w=majority&appName=h2skill')
