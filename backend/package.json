@@ -6,7 +6,7 @@
 "scripts": {
   "dev": "nodemon server.js",
   "start": "node server.js",
-  "build": "npm install && npm install --prefix backend && npm install --prefix frontend --production=false && npm install autoprefixer@latest --prefix frontend && npm run build --prefix frontend",
+  "build": "--prefix backend && npm install && npm run build --prefix frontend npm install && npm install autoprefixer@latest --prefix frontend && npm run build ",
   "install-all": "npm install && npm install --prefix backend && npm install --prefix frontend"
 },
   "keywords": [],
