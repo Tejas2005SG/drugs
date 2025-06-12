@@ -17,8 +17,8 @@ import noteRoutes from "./routes/note.routes.js";
 import newdrugRoutes from "./routes/newdrug.routes.js";
 import getsymptomproductRoutes from "./routes/getsymptomproduct.routes.js";
 import drugNameRoutes from "./routes/drugnaming.routes.js";
+// import jarvisRoutes from "./routes/jarvis.routes.js"
 import researchPaperRoutes from "./routes/researchPapers.routes.js";
-
 dotenv.config();
 
 const app = express();
@@ -27,49 +27,38 @@ const __dirname = path.resolve();
 
 const upload = multer({ storage: multer.memoryStorage() });
 
-// Setup allowed origins for CORS
-// const allowedOrigins = [
-//   process.env.CLIENT_URL,                          // From environment variable (e.g. Vercel frontend)
-//                           // Local dev (Vite default)
-//                             // Alternate local dev (e.g. CRA)
-// ].filter(Boolean); // Removes any undefined/null
+// Dynamic CORS configuration for Render
+const allowedOrigins = [
+  process.env.CLIENT_URL,
+  process.env.RENDER_EXTERNAL_URL, // Render provides this automatically
+  'http://localhost:5173' // For local development
+].filter(Boolean); // Remove any undefined values
 
-// CORS options
-// const corsOptions = {
-//   origin: (origin, callback) => {
-//     console.log('Incoming Origin:', origin);
-
-//     // Allow server-to-server, Postman, curl, SSR
-//     if (!origin) return callback(null, true);
-
-//     // Allow only if origin is in the allowed list
-//     if (allowedOrigins.includes(origin)) {
-//       callback(null, true);
-//     } else {
-//       console.warn('🚫 Blocked by CORS:', origin);
-//       callback(new Error('Not allowed by CORS'));
-//     }
-//   },
-//   credentials: true, // ✅ Required for cookies
-//   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-//   allowedHeaders: [
-//     'Content-Type',
-//     'Authorization',
-//     'X-Requested-With',
-//     'Accept',
-//     'Origin'
-//   ],
-//   optionsSuccessStatus: 200
-// };
-
-// Apply to all incoming requests
-
-
-  app.use(cors({
-  origin: ['https://drugs-1-8gub.onrender.com',             // Render frontend fallback
-  'http://localhost:5173'], // or use env variable
+const corsOptions = {
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.some(allowedOrigin => 
+      origin === allowedOrigin || 
+      origin.startsWith(allowedOrigin) ||
+      origin.includes('render.com')
+    ) ){
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
-}));
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ['Content-Type', 'Authorization']
+};
+
+// Apply CORS middleware
+app.use(cors(corsOptions));
+
+// Handle preflight requests for all routes
+app.options('*', cors(corsOptions));
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -86,14 +75,24 @@ app.use("/api/news", newsRoutes);
 app.use("/api/alphafold", alphafoldRoutes);
 app.use("/api/toxicity", toxicityRoutes)
 app.use("/api/summary", summaryRoutes);
+app.use("/api/toxicity", toxicityRoutes);
 app.use("/api/notes", noteRoutes);
 app.use("/api/newdrug", newdrugRoutes);
 app.use("/api/getdata", getsymptomproductRoutes);
 app.use("/api/drugname", drugNameRoutes)
 app.use("/api/researchPaper", researchPaperRoutes);
 
+// app.use("/api/jarvis",jarvisRoutes);
+
+if (process.env.NODE_ENV === "production") {
+  app.use(express.static(path.join(__dirname, "/frontend/dist")));
+  app.get("*", (req, res) => {
+    res.sendFile(path.resolve(__dirname, "frontend", "dist", "index.html"));
+  });
+}
+
 app.listen(PORT, () => {
   connectionDb();
   console.log(`Server running on port ${PORT}`);
-  
+  console.log(`Allowed origins: ${allowedOrigins.join(', ')}`);
 });

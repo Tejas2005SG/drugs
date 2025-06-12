@@ -63,7 +63,6 @@ import { useAuthStore } from "../../Store/auth.store.js"
 import "./rdkit.css"
 import jsPDF from "jspdf"
 
-
 ChartJS.register(RadialLinearScale, PointElement, LineElement, Filler, Legend, ChartTooltip)
 
 const timelineSteps = [
@@ -261,7 +260,7 @@ const RDkit = () => {
     const fetchAvailableReactions = async () => {
       setReactionsLoading(true)
       try {
-        const response = await axios.get("https://python-backend-7y2o.onrender.com/api/reactions", { timeout: 30000 })
+        const response = await axios.get("http://127.0.0.1:5001/api/reactions", { timeout: 30000 })
         setAvailableReactions(response.data.reactions || [])
         toast.success("Available reactions fetched successfully!", { id: "fetch-reactions", ...toastOptions })
       } catch (err) {
@@ -287,7 +286,7 @@ const RDkit = () => {
     const fetchSavedSymptoms = async () => {
       setSymptomsLoading(true)
       try {
-        const response = await axios.get(`https://js-backend-6k7s.onrender.com/api/newdrug/symptoms/${userId}`, {
+        const response = await axios.get(`http://localhost:5000/api/newdrug/symptoms/${userId}`, {
           headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
           timeout: 30000,
         })
@@ -364,7 +363,7 @@ const RDkit = () => {
         if (!newImages[smiles]) {
           try {
             const response = await axios.get(
-              `https://python-backend-7y2o.onrender.com/api/smiles_to_image?smiles=${encodeURIComponent(smiles)}`,
+              `http://127.0.0.1:5001/api/smiles_to_image?smiles=${encodeURIComponent(smiles)}`,
               { timeout: 15000 },
             )
             newImages[smiles] = response.data.image
@@ -482,7 +481,7 @@ const RDkit = () => {
         diseaseResponse = await axiosWithRetry(
           {
             method: "post",
-            url: `https://js-backend-6k7s.onrender.com/api/newdrug/predictDisease/${userId}`,
+            url: `http://localhost:5000/api/newdrug/predictDisease/${userId}`,
             data: { symptoms },
             headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
             timeout: 60000,
@@ -518,7 +517,7 @@ const RDkit = () => {
         proteinResponse = await axiosWithRetry(
           {
             method: "post",
-            url: "https://js-backend-6k7s.onrender.com/api/newdrug/predictTargetProtein",
+            url: "http://localhost:5000/api/newdrug/predictTargetProtein",
             data: {},
             headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
             timeout: 60000,
@@ -545,7 +544,7 @@ const RDkit = () => {
         reactionResponse = await axiosWithRetry(
           {
             method: "get",
-            url: "https://python-backend-7y2o.onrender.com/api/react?include_admet=true",
+            url: "http://127.0.0.1:5001/api/react?include_admet=true",
             timeout: 30000,
           },
           "reaction",
