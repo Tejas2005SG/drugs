@@ -30,7 +30,7 @@ const upload = multer({ storage: multer.memoryStorage() });
 // Dynamic CORS configuration for Render
 const allowedOrigins = [
   process.env.CLIENT_URL,
-  process.env.VERCEL_URL, // Render provides this automatically
+  process.env.FRONTEND_URL , // Render provides this automatically
   'http://localhost:5173' // For local development
 ].filter(Boolean); // Remove any undefined values
 
