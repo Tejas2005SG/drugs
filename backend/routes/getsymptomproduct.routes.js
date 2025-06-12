@@ -9,7 +9,7 @@ import {
 const router = express.Router();
 
 
-router.get("/getsymptoms-product/:id", protectRoute, getSymptomsAndAllProducts);
+router.get("/getsymptoms-product/:id",  getSymptomsAndAllProducts);
 
 
 export default router;

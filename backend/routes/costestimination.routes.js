@@ -9,8 +9,8 @@ import {
 
 const router = express.Router();
 
-router.post("/cost-estimation", protectRoute, postCostEstimation);
-router.get("/getcostestimation/:userId", protectRoute, getCostEstimation);
+router.post("/cost-estimation",  postCostEstimation);
+router.get("/getcostestimation/:userId",  getCostEstimation);
 // router.get("/getsymptoms-product/:id", protectRoute, getSymptomsAndAllProducts);
 
 

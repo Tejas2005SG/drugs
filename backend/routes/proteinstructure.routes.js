@@ -18,12 +18,12 @@ import { protectRoute } from "../middleware/auth.middleware.js";
 const router = express.Router();
 
 // Existing Routes
-router.get("/getproteinstructure/:id", protectRoute, getProteinStructure);
-router.post("/postproteinstructure/:id", protectRoute, postProteinStructure);
+router.get("/getproteinstructure/:id",  getProteinStructure);
+router.post("/postproteinstructure/:id",  postProteinStructure);
 
 
-router.post("/generatenewmolecule/:id", protectRoute, generatenewmolecule);
-router.get("/generatednewmolecule", protectRoute, getgeneratednewmolecule);
+router.post("/generatenewmolecule/:id", generatenewmolecule);
+router.get("/generatednewmolecule",  getgeneratednewmolecule);
 
 // // research paper
 // router.post("/proxy/gemini", proxyGeminiRequest);
@@ -35,12 +35,12 @@ router.get("/generatednewmolecule", protectRoute, getgeneratednewmolecule);
 // router.get("/check-saved-generated-papers", protectRoute, checkSavedGeneratedPapers);
 
 // New Routes for AI-Driven Target Prediction
-router.post("/convert-file-to-smiles", protectRoute, convertFileToSmiles); // Convert MOL/SDF to SMILES
-router.post("/rdkit-fingerprints", protectRoute, getFingerprints); // Extract fingerprints (mocked)
-router.post("/docking", protectRoute, performDocking); // Perform molecular docking (mocked)
-router.post("/save-search", protectRoute, saveSearch); // Save search results
-router.get("/saved-searches", protectRoute, getSavedSearches); // Retrieve saved searches
-router.get("/check-saved-searches", protectRoute, checkSavedSearches); // Check if a search exists
+router.post("/convert-file-to-smiles",  convertFileToSmiles); // Convert MOL/SDF to SMILES
+router.post("/rdkit-fingerprints",  getFingerprints); // Extract fingerprints (mocked)
+router.post("/docking", performDocking); // Perform molecular docking (mocked)
+router.post("/save-search",  saveSearch); // Save search results
+router.get("/saved-searches", getSavedSearches); // Retrieve saved searches
+router.get("/check-saved-searches", checkSavedSearches); // Check if a search exists
 
 
 

@@ -4,8 +4,8 @@ import { protectRoute } from "../middleware/auth.middleware.js";
 
 const router = express.Router();
 
-router.post("/send", protectRoute, sendMessage);
-router.get("/:userId", protectRoute, getMessages);
-router.get("/users/list", protectRoute, getUsers);
+router.post("/send",  sendMessage);
+router.get("/:userId",  getMessages);
+router.get("/users/list",  getUsers);
 
 export default router;

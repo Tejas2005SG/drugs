@@ -4,10 +4,10 @@ import { protectRoute } from '../middleware/auth.middleware.js';
 const router = express.Router();
 
 
-router.get('/top-headlines',protectRoute, getTopHeadlines);
-router.get('/everything',protectRoute, getEverything);
-router.get('/sources',protectRoute, getSources);
-router.get('/saved',protectRoute, getSavedNews);
+router.get('/top-headlines', getTopHeadlines);
+router.get('/everything', getEverything);
+router.get('/sources',getSources);
+router.get('/saved', getSavedNews);
 
 
 export default router;

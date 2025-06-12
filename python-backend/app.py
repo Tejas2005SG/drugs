@@ -31,7 +31,7 @@ RDLogger.DisableLog('rdApp.warning')
 
 app = Flask(__name__)
 frontend_url = os.getenv('FRONTEND_URL')
-CORS(app, resources={r"/api/*": {"origins": ["http://localhost:5173", frontend_url]}})
+CORS(app, resources={r"/api/*": {"origins": ["http://localhost:5173", 'https://drugs-10979.firebaseapp.com']}})
 
 # MongoDB connection
 mongo_uri = os.getenv('MONGO_URI', 'mongodb+srv://bhangaletejas003:G0yEjQa9yrTChtDU@h2skill.nnmre.mongodb.net/?retryWrites=true&w=majority&appName=h2skill')
