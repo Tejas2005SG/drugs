@@ -95,5 +95,5 @@ app.use("/api/researchPaper", researchPaperRoutes);
 app.listen(PORT, () => {
   connectionDb();
   console.log(`Server running on port ${PORT}`);
-  console.log(`Allowed origins: ${allowedOrigins.join(', ')}`);
+  
 });
