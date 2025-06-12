@@ -3,12 +3,10 @@
   "version": "1.0.0",
   "main": "server.js",
   "type": "module",
-"scripts": {
-  "dev": "nodemon server.js",
-  "start": "node server.js"
- 
-
-},
+  "scripts": {
+    "dev": "nodemon server.js",
+    "start": "node server.js"
+  },
   "keywords": [],
   "author": "",
   "license": "ISC",
@@ -47,7 +45,8 @@
     "uuid": "^11.1.0"
   },
   "devDependencies": {
-    "concurrently": "^9.1.2"
+    "concurrently": "^9.1.2",
+    "sass": "^1.89.2"
   },
   "description": ""
 }
