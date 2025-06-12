@@ -14,7 +14,7 @@ import DashboardHome from './components/Dashboardhome.jsx';
 import ProteinStructureEvolution from './pages/Protienstructureevolution/Protienstructureevolution.jsx';
 import ProteinStructureApp from './pages/Proteinstructureapp/ProteinStructureApp.jsx';
 import AIResearchPaperGenerator from "./pages/AIresearchgenerator/Airesearchgenerator.jsx";
-import AIDrivenTargetPrediction from "./pages/AIdriventargetprediction/AIdriventargetprediction.jsx";
+// import AIDrivenTargetPrediction from "./pages/AIdriventargetprediction/AIdriventargetprediction.jsx";
 import Costestimation from "./pages/Costestimination/Costestimination.jsx";
 import DrugDiscoveryRecommendation from "./pages/ToxicityPrediction/ToxicityPrediction.jsx";
 import LiveNews from "./pages/Livenews/Livenews.jsx";
@@ -85,14 +85,14 @@ function App() {
               </ProtectedRoute>
             }
           />
-          <Route
+          {/* <Route
             path="ai-driven-target-prediction"
             element={
               <ProtectedRoute>
                 <AIDrivenTargetPrediction />
               </ProtectedRoute>
             }
-          />
+          /> */}
           <Route
             path="ai-naming"
             element={

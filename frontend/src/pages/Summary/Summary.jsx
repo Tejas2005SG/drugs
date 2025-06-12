@@ -58,7 +58,7 @@ const Summary = () => {
         generatedResearchPapers: filterField(data.generatedResearchPapers, 'generatedResearchPaper'),
         predictDiseases: filterField(data.predictDiseases, 'predictDisease'),
         targetProteins: filterField(data.targetProteins, 'targetProtein'),
-        toxicityResults: filterField(data.toxicityResults, 'toxicityResult'),
+        // toxicityResults: filterField(data.toxicityResults, 'toxicityResult'),
       };
 
       setSummaryData(filteredData);
@@ -94,7 +94,7 @@ const Summary = () => {
         summaryData.generatedResearchPapers,
         summaryData.predictDiseases,
         summaryData.targetProteins,
-        summaryData.toxicityResults,
+        // summaryData.toxicityResults,
       ];
       const nonEmptyFields = fields.filter(field => field?.length > 0).length;
       const progress = Math.round((nonEmptyFields / fields.length) * 100);
@@ -122,7 +122,7 @@ const Summary = () => {
         generatedResearchPapers: filterField(prev.generatedResearchPapers, 'generatedResearchPaper'),
         predictDiseases: filterField(prev.predictDiseases, 'predictDisease'),
         targetProteins: filterField(prev.targetProteins, 'targetProtein'),
-        toxicityResults: filterField(prev.toxicityResults, 'toxicityResult'),
+        // toxicityResults: filterField(prev.toxicityResults, 'toxicityResult'),
       }));
     }
   }, [savedItems]);
@@ -144,7 +144,7 @@ const Summary = () => {
       addItems(summaryData?.generatedResearchPapers, 'generatedResearchPaper');
       addItems(summaryData?.predictDiseases, 'predictDisease');
       addItems(summaryData?.targetProteins, 'targetProtein');
-      addItems(summaryData?.toxicityResults, 'toxicityResult');
+      // addItems(summaryData?.toxicityResults, 'toxicityResult');
 
       if (savePromises.length > 0) {
         await axiosInstance.post('/summary/bulk-save', savePromises);
@@ -160,7 +160,7 @@ const Summary = () => {
           generatedResearchPapers: [],
           predictDiseases: [],
           targetProteins: [],
-          toxicityResults: [],
+          // toxicityResults: [],
         });
       } else {
         toast.error('No data to save');
@@ -198,7 +198,7 @@ const Summary = () => {
     addSection('generatedResearchPapers', data.generatedResearchPapers, 'Generated Research Paper');
     addSection('predictDiseases', data.predictDiseases, 'Predict Disease');
     addSection('targetProteins', data.targetProteins, 'Target Protein');
-    addSection('toxicityResults', data.toxicityResults, 'Toxicity Result');
+    // addSection('toxicityResults', data.toxicityResults, 'Toxicity Result');
     return rows;
   };
 
@@ -559,27 +559,27 @@ const Summary = () => {
         });
       }
 
-      if (data.toxicityResults?.length > 0) {
-        doc.addPage();
-        y = margin;
-        addText('Toxicity Predictions', { size: styles.sectionTitle.size, bold: true, color: styles.sectionTitle.color });
-        data.toxicityResults.forEach((toxicity, index) => {
-          if (y > pageHeight - 100) {
-            doc.addPage();
-            y = margin;
-          }
-          addText(`Prediction ${index + 1}`, { size: styles.subsectionTitle.size, bold: true });
-          const rows = [
-            ['SMILES', toxicity.smiles || 'N/A'],
-            ['LD50', toxicity.toxicityResult?.acuteToxicity?.LD50 || 'N/A'],
-            ['Toxicity Class', toxicity.toxicityResult?.acuteToxicity?.toxicityClass || 'N/A'],
-            ['Hepatotoxicity', toxicity.toxicityResult?.endpoints?.hepatotoxicity || 'N/A'],
-            ['Carcinogenicity', toxicity.toxicityResult?.endpoints?.carcinogenicity || 'N/A'],
-            ['Gemini Analysis', safeStringify(toxicity.geminiAnalysis)],
-          ];
-          y = addTable(['Field', 'Value'], rows, [50, contentWidth - 50], { startY: y });
-        });
-      }
+      // if (data.toxicityResults?.length > 0) {
+      //   doc.addPage();
+      //   y = margin;
+      //   addText('Toxicity Predictions', { size: styles.sectionTitle.size, bold: true, color: styles.sectionTitle.color });
+      //   data.toxicityResults.forEach((toxicity, index) => {
+      //     if (y > pageHeight - 100) {
+      //       doc.addPage();
+      //       y = margin;
+      //     }
+      //     addText(`Prediction ${index + 1}`, { size: styles.subsectionTitle.size, bold: true });
+      //     const rows = [
+      //       ['SMILES', toxicity.smiles || 'N/A'],
+      //       ['LD50', toxicity.toxicityResult?.acuteToxicity?.LD50 || 'N/A'],
+      //       ['Toxicity Class', toxicity.toxicityResult?.acuteToxicity?.toxicityClass || 'N/A'],
+      //       ['Hepatotoxicity', toxicity.toxicityResult?.endpoints?.hepatotoxicity || 'N/A'],
+      //       ['Carcinogenicity', toxicity.toxicityResult?.endpoints?.carcinogenicity || 'N/A'],
+      //       ['Gemini Analysis', safeStringify(toxicity.geminiAnalysis)],
+      //     ];
+      //     y = addTable(['Field', 'Value'], rows, [50, contentWidth - 50], { startY: y });
+      //   });
+      // }
 
       const pageCount = doc.internal.getNumberOfPages();
       for (let i = 1; i <= pageCount; i++) {
@@ -777,25 +777,25 @@ const Summary = () => {
             </tbody>
           </table>
         );
-      case 'toxicityResult':
-        return (
-          <table className="w-full border-collapse">
-            <thead>
-              <tr className="bg-accent-secondary text-white">
-                <th className="p-2 border">Field</th>
-                <th className="p-2 border">Value</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr className="bg-secondary"><td className="p-2 border text-text-primary">SMILES</td><td className="p-2 border text-text-primary">{data.smiles || 'N/A'}</td></tr>
-              <tr><td className="p-2 border text-text-primary">LD50</td><td className="p-2 border text-text-primary">{data.toxicityResult?.acuteToxicity?.LD50 || 'N/A'}</td></tr>
-              <tr className="bg-secondary"><td className="p-2 border text-text-primary">Toxicity Class</td><td className="p-2 border text-text-primary">{data.toxicityResult?.acuteToxicity?.toxicityClass || 'N/A'}</td></tr>
-              <tr><td className="p-2 border text-text-primary">Hepatotoxicity</td><td className="p-2 border text-text-primary">{data.toxicityResult?.endpoints?.hepatotoxicity || 'N/A'}</td></tr>
-              <tr className="bg-secondary"><td className="p-2 border text-text-primary">Carcinogenicity</td><td className="p-2 border text-text-primary">{data.toxicityResult?.endpoints?.carcinogenicity || 'N/A'}</td></tr>
-              <tr><td className="p-2 border text-text-primary">Gemini Analysis</td><td className="p-2 border text-text-primary">{data.geminiAnalysis || 'N/A'}</td></tr>
-            </tbody>
-          </table>
-        );
+      // case 'toxicityResult':
+      //   return (
+      //     <table className="w-full border-collapse">
+      //       <thead>
+      //         <tr className="bg-accent-secondary text-white">
+      //           <th className="p-2 border">Field</th>
+      //           <th className="p-2 border">Value</th>
+      //         </tr>
+      //       </thead>
+      //       <tbody>
+      //         <tr className="bg-secondary"><td className="p-2 border text-text-primary">SMILES</td><td className="p-2 border text-text-primary">{data.smiles || 'N/A'}</td></tr>
+      //         <tr><td className="p-2 border text-text-primary">LD50</td><td className="p-2 border text-text-primary">{data.toxicityResult?.acuteToxicity?.LD50 || 'N/A'}</td></tr>
+      //         <tr className="bg-secondary"><td className="p-2 border text-text-primary">Toxicity Class</td><td className="p-2 border text-text-primary">{data.toxicityResult?.acuteToxicity?.toxicityClass || 'N/A'}</td></tr>
+      //         <tr><td className="p-2 border text-text-primary">Hepatotoxicity</td><td className="p-2 border text-text-primary">{data.toxicityResult?.endpoints?.hepatotoxicity || 'N/A'}</td></tr>
+      //         <tr className="bg-secondary"><td className="p-2 border text-text-primary">Carcinogenicity</td><td className="p-2 border text-text-primary">{data.toxicityResult?.endpoints?.carcinogenicity || 'N/A'}</td></tr>
+      //         <tr><td className="p-2 border text-text-primary">Gemini Analysis</td><td className="p-2 border text-text-primary">{data.geminiAnalysis || 'N/A'}</td></tr>
+      //       </tbody>
+      //     </table>
+      //   );
       default:
         return <p className="text-text-secondary font-body">No content available</p>;
     }
@@ -809,8 +809,8 @@ const Summary = () => {
       summaryData.researchPapers?.length > 0 &&
       summaryData.generatedResearchPapers?.length > 0 &&
       summaryData.predictDiseases?.length > 0 &&
-      summaryData.targetProteins?.length > 0 &&
-      summaryData.toxicityResults?.length > 0;
+      summaryData.targetProteins?.length > 0 
+      // summaryData.toxicityResults?.length > 0;
 
     return (
       <section className="mb-8" aria-label="Summary Data">
@@ -990,7 +990,7 @@ const Summary = () => {
                   generatedResearchPapers: Object.values(savedItems).flatMap(items => items.filter(item => item.type === 'generatedResearchPaper').map(item => item.data)),
                   predictDiseases: Object.values(savedItems).flatMap(items => items.filter(item => item.type === 'predictDisease').map(item => item.data)),
                   targetProteins: Object.values(savedItems).flatMap(items => items.filter(item => item.type === 'targetProtein').map(item => item.data)),
-                  toxicityResults: Object.values(savedItems).flatMap(items => items.filter(item => item.type === 'toxicityResult').map(item => item.data)),
+                  // toxicityResults: Object.values(savedItems).flatMap(items => items.filter(item => item.type === 'toxicityResult').map(item => item.data)),
                 };
                 handleDownload(
                   data,
@@ -1049,7 +1049,7 @@ const Summary = () => {
                         generatedResearchPapers: items.filter(item => item.type === 'generatedResearchPaper' && !pdfGeneratedItems[`generatedResearchPaper-${item.data._id}`]).map(item => item.data),
                         predictDiseases: items.filter(item => item.type === 'predictDisease' && !pdfGeneratedItems[`predictDisease-${item.data._id}`]).map(item => item.data),
                         targetProteins: items.filter(item => item.type === 'targetProtein' && !pdfGeneratedItems[`targetProtein-${item.data._id}`]).map(item => item.data),
-                        toxicityResults: items.filter(item => item.type === 'toxicityResult' && !pdfGeneratedItems[`toxicityResult-${item.data._id}`]).map(item => item.data),
+                        // toxicityResults: items.filter(item => item.type === 'toxicityResult' && !pdfGeneratedItems[`toxicityResult-${item.data._id}`]).map(item => item.data),
                       };
                       handleDownload(
                         moleculeData,
@@ -1294,8 +1294,8 @@ const Summary = () => {
                 !summaryData?.researchPapers?.length ||
                 !summaryData?.generatedResearchPapers?.length ||
                 !summaryData?.predictDiseases?.length ||
-                !summaryData?.targetProteins?.length ||
-                !summaryData?.toxicityResults?.length) && (
+                !summaryData?.targetProteins?.length )
+                 && (
                 <div className="bg-error/10 border-l-4 border-error p-4 mb-6">
                   <div className="flex">
                     <AlertCircle className="h-5 w-5 text-error" />
@@ -1311,7 +1311,7 @@ const Summary = () => {
                         {!summaryData?.generatedResearchPapers?.length && <li>Generated Research Papers</li>}
                         {!summaryData?.predictDiseases?.length && <li>Disease Predictions</li>}
                         {!summaryData?.targetProteins?.length && <li>Target Proteins</li>}
-                        {!summaryData?.toxicityResults?.length && <li>Toxicity Predictions</li>}
+                        {/* {!summaryData?.toxicityResults?.length && <li>Toxicity Predictions</li>} */}
                       </ul>
                     </div>
                   </div>
@@ -1327,7 +1327,7 @@ const Summary = () => {
                   {summaryData.generatedResearchPapers?.length > 0 && renderSection('Generated Research Papers', summaryData.generatedResearchPapers, 'generatedResearchPaper')}
                   {summaryData.predictDiseases?.length > 0 && renderSection('Disease Predictions', summaryData.predictDiseases, 'predictDisease')}
                   {summaryData.targetProteins?.length > 0 && renderSection('Target Proteins', summaryData.targetProteins, 'targetProtein')}
-                  {summaryData.toxicityResults?.length > 0 && renderSection('Toxicity Predictions', summaryData.toxicityResults, 'toxicityResult')}
+                  
                 </>
               )}
             </div>
