@@ -3,12 +3,12 @@
   "version": "1.0.0",
   "main": "backend/server.js",
   "type": "module",
- "scripts": {
-  "dev": "nodemon backend/server.js",
-  "start": "node backend/server.js",
-  "build": "npm install && npm install express@latest && npm install --prefix frontend --production=false && npm install autoprefixer@latest --prefix frontend && npm run build --prefix frontend",
-  "install-all": "npm install && cd frontend && npm install"
-},
+  "scripts": {
+    "dev": "nodemon backend/server.js",
+    "start": "node backend/server.js",
+    "build": "npm install && npm install express@latest && npm install --prefix frontend --production=false && npm install autoprefixer@latest --prefix frontend && npm run build --prefix frontend",
+    "install-all": "npm install && cd frontend && npm install"
+  },
   "keywords": [],
   "author": "",
   "license": "ISC",
