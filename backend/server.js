@@ -28,43 +28,48 @@ const __dirname = path.resolve();
 const upload = multer({ storage: multer.memoryStorage() });
 
 // Setup allowed origins for CORS
-const allowedOrigins = [
-  process.env.CLIENT_URL,                          // From environment variable (e.g. Vercel frontend)
-  'https://drugs-1-8gub.onrender.com',             // Render frontend fallback
-  'http://localhost:5173',                         // Local dev (Vite default)
-                            // Alternate local dev (e.g. CRA)
-].filter(Boolean); // Removes any undefined/null
+// const allowedOrigins = [
+//   process.env.CLIENT_URL,                          // From environment variable (e.g. Vercel frontend)
+//                           // Local dev (Vite default)
+//                             // Alternate local dev (e.g. CRA)
+// ].filter(Boolean); // Removes any undefined/null
 
 // CORS options
-const corsOptions = {
-  origin: (origin, callback) => {
-    console.log('Incoming Origin:', origin);
+// const corsOptions = {
+//   origin: (origin, callback) => {
+//     console.log('Incoming Origin:', origin);
 
-    // Allow server-to-server, Postman, curl, SSR
-    if (!origin) return callback(null, true);
+//     // Allow server-to-server, Postman, curl, SSR
+//     if (!origin) return callback(null, true);
 
-    // Allow only if origin is in the allowed list
-    if (allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      console.warn('🚫 Blocked by CORS:', origin);
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-  credentials: true, // ✅ Required for cookies
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-  allowedHeaders: [
-    'Content-Type',
-    'Authorization',
-    'X-Requested-With',
-    'Accept',
-    'Origin'
-  ],
-  optionsSuccessStatus: 200
-};
+//     // Allow only if origin is in the allowed list
+//     if (allowedOrigins.includes(origin)) {
+//       callback(null, true);
+//     } else {
+//       console.warn('🚫 Blocked by CORS:', origin);
+//       callback(new Error('Not allowed by CORS'));
+//     }
+//   },
+//   credentials: true, // ✅ Required for cookies
+//   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+//   allowedHeaders: [
+//     'Content-Type',
+//     'Authorization',
+//     'X-Requested-With',
+//     'Accept',
+//     'Origin'
+//   ],
+//   optionsSuccessStatus: 200
+// };
 
 // Apply to all incoming requests
-app.use(cors(corsOptions));
+
+
+  app.use(cors({
+  origin: ['https://drugs-1-8gub.onrender.com',             // Render frontend fallback
+  'http://localhost:5173'], // or use env variable
+  credentials: true,
+}));
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
