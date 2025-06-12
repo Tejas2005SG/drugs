@@ -1,0 +1,14 @@
+{
+  "name": "drugs",
+  "version": "1.0.0",
+  "description": "A comprehensive full-stack application for AI-powered drug discovery and pharmaceutical research, featuring molecular visualization, predictive analytics, and real-time collaboration tools.",
+  "main": "index.js",
+  "scripts": {
+     "build": "npm install --prefix backend && npm install -- prefix frontend && npm run build -- prefix frontend",
+     "start" : "npm run start --prefix backend"
+  },
+  "keywords": [],
+  "author": "",
+  "type":"module",
+  "license": "ISC"
+}
