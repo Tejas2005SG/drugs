@@ -243,82 +243,25 @@ def standardize_molecule(mol):
         except:
             return None
         
-# def standardize_molecule(mol):
-#     """Standardize molecule with error handling."""
-#     if not mol:
-#         return None
-#     try:
-#         mol = Chem.RemoveHs(mol)
-#         Chem.SanitizeMol(mol)
-#         standardizer = MolStandardize.Standardizer()
-#         mol = standardizer.standardize(mol)
-#         Chem.AssignStereochemistry(mol, cleanIt=True, force=True)
-#         mol = Chem.AddHs(mol)
-#         return mol
-#     except Exception as e:
-#         logger.warning(f"Standardization failed: {str(e)}")
-#         try:
-#             Chem.SanitizeMol(mol)
-#             return mol
-#         except:
-#             return None
-
 def standardize_molecule(mol):
-    """Standardize molecule with error handling, ensuring implicit hydrogens."""
+    """Standardize molecule with error handling."""
     if not mol:
-        logger.warning("Invalid molecule provided for standardization")
         return None
     try:
-        # Remove explicit hydrogens first
-        mol = Chem.RemoveHs(mol, sanitize=False)
-        # Sanitize molecule
+        mol = Chem.RemoveHs(mol)
         Chem.SanitizeMol(mol)
-        # Standardize using MolStandardize
         standardizer = MolStandardize.Standardizer()
         mol = standardizer.standardize(mol)
-        # Assign stereochemistry
         Chem.AssignStereochemistry(mol, cleanIt=True, force=True)
-        # Ensure no explicit hydrogens in final output
-        mol = Chem.RemoveHs(mol, sanitize=True)
-        logger.debug(f"Standardized molecule SMILES: {Chem.MolToSmiles(mol, isomericSmiles=True, canonical=True)}")
+        mol = Chem.AddHs(mol)
         return mol
     except Exception as e:
         logger.warning(f"Standardization failed: {str(e)}")
         try:
             Chem.SanitizeMol(mol)
-            mol = Chem.RemoveHs(mol, sanitize=True)
             return mol
         except:
-            logger.error(f"Failed to sanitize molecule: {str(e)}")
             return None
-
-# def compute_product_properties(mol):
-#     """Compute molecular properties."""
-#     try:
-#         Chem.SanitizeMol(mol)
-#         mw = Descriptors.MolWt(mol)
-#         logp = Descriptors.MolLogP(mol)
-#         tpsa = Descriptors.TPSA(mol)
-#         hbd = Descriptors.NumHDonors(mol)
-#         hba = Descriptors.NumHAcceptors(mol)
-#         rotbonds = Descriptors.NumRotatableBonds(mol)
-#         has_stereo = any(atom.HasProp('_ChiralityPossible') for atom in mol.GetAtoms()) or \
-#                      any(bond.GetStereo() != Chem.BondStereo.STEREONONE for bond in mol.GetBonds())
-#         return {
-#             'smiles': Chem.MolToSmiles(mol, isomericSmiles=True, canonical=True),
-#             'molecular_weight': round(mw, 2),
-#             'num_atoms': mol.GetNumAtoms(),
-#             'logP': round(logp, 2),
-#             'tpsa': round(tpsa, 2),
-#             'num_h_donors': hbd,
-#             'num_h_acceptors': hba,
-#             'num_rotatable_bonds': rotbonds,
-#             'has_stereochemistry': has_stereo,
-#             'functional_groups': detect_functional_groups(mol) or []
-#         }
-#     except Exception as e:
-#         logger.warning(f"Property computation failed: {str(e)}")
-#         return {'error': f'Property computation failed: {str(e)}', 'functional_groups': []}
 
 def compute_product_properties(mol):
     """Compute molecular properties."""
@@ -332,11 +275,8 @@ def compute_product_properties(mol):
         rotbonds = Descriptors.NumRotatableBonds(mol)
         has_stereo = any(atom.HasProp('_ChiralityPossible') for atom in mol.GetAtoms()) or \
                      any(bond.GetStereo() != Chem.BondStereo.STEREONONE for bond in mol.GetBonds())
-        # Ensure implicit hydrogens in SMILES
-        smiles = Chem.MolToSmiles(mol, isomericSmiles=True, canonical=True, allHsExplicit=False)
-        logger.debug(f"Computed SMILES for properties: {smiles}")
         return {
-            'smiles': smiles,
+            'smiles': Chem.MolToSmiles(mol, isomericSmiles=True, canonical=True),
             'molecular_weight': round(mw, 2),
             'num_atoms': mol.GetNumAtoms(),
             'logP': round(logp, 2),
