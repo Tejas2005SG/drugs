@@ -55,7 +55,6 @@ export const getSummary = async (req, res) => {
       costEstimations,
       drugNames,
       researchPapers,
-      toxicityResults,
       generatedResearchPapers,
       predictDiseases,
       targetProteins,
@@ -64,8 +63,6 @@ export const getSummary = async (req, res) => {
       CostEstimation.find({ userId }).sort({ createdAt: -1 }).lean(),
       DrugName.find({ userId }).sort({ createdAt: -1 }).lean(),
       ResearchPaper.find({ userId }).sort({ createdAt: -1 }).lean(),
-      SavedSearch.find({ userId }).sort({ createdAt: -1 }).lean(),
-      Toxicity.find({ userId }).sort({ createdAt: -1 }).lean(),
       GeneratedResearchPaper.find({ userId }).sort({ createdAt: -1 }).lean(),
       PredictDisease.find({ userId }).sort({ createdAt: -1 }).lean(),
       TargetProtein.find({ userId }).sort({ createdAt: -1 }).lean(),
@@ -78,14 +75,17 @@ export const getSummary = async (req, res) => {
         costEstimations,
         drugNames,
         researchPapers,
-        toxicityResults,
         generatedResearchPapers,
         predictDiseases,
         targetProteins,
       },
     });
   } catch (error) {
-    console.error('Error fetching summary:', error);
+    console.error('Error fetching summary:', {
+      message: error.message,
+      stack: error.stack,
+      userId: req.user?._id,
+    });
     res.status(500).json({
       success: false,
       message: 'Failed to fetch summary data',
