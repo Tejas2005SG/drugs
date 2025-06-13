@@ -1,6 +1,6 @@
 // routes/costEstimationRoutes.js
 import express from "express";
-import { protectRoute } from "../middleware/auth.middleware.js";
+
 import {
 
   getSymptomsAndAllProducts
@@ -9,7 +9,7 @@ import {
 const router = express.Router();
 
 
-router.get("/getsymptoms-product/:id", protectRoute, getSymptomsAndAllProducts);
+router.get("/getsymptoms-product/:id",  getSymptomsAndAllProducts);
 
 
 export default router;
