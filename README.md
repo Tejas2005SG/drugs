@@ -2,7 +2,8 @@
 
 A comprehensive full-stack application for AI-powered drug discovery and pharmaceutical research, featuring molecular visualization, predictive analytics, and real-time collaboration tools.
 
-![image](https://github.com/user-attachments/assets/b42cd80d-1e3c-4e5b-af05-930cde52adde)
+![image](https://github.com/user-attachments/assets/a770845b-aefb-4295-9480-196e4e219bbe)
+
 
 https://drugs-assistant-345z.onrender.com (Live Link)
 
