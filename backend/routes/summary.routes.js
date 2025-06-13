@@ -5,10 +5,10 @@ import { protectRoute } from '../middleware/auth.middleware.js';
 
 const router = express.Router();
 
-router.get('/summary', getSummary);
-router.post('/save', saveItem);
-router.get('/saved',  getSavedItems);
-router.post('/bulk-save', bulkSaveItems);
-router.get('/molecule-progress',getMoleculeProgress);
+router.get('/summary',protectRoute, getSummary);
+router.post('/save',protectRoute, saveItem);
+router.get('/saved',protectRoute,  getSavedItems);
+router.post('/bulk-save',protectRoute, bulkSaveItems);
+router.get('/molecule-progress',protectRoute,getMoleculeProgress);
 
 export default router;

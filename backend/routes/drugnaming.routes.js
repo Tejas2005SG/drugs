@@ -15,10 +15,10 @@ const router = express.Router();
 
 
 // ai-naming
-router.post("/generate-drug-name/:id", generateDrugName);
-router.post("/accept-drug-name/:id",  acceptDrugName);
-router.post("/save-pending-drug-name/:id", savePendingDrugName);
-router.get("/saved-drug-names",getSavedDrugNames);
-router.get("/check-saved-drug-name", checkSavedDrugName);
-router.delete("/delete-drug-name/:id",  deleteDrugName);
+router.post("/generate-drug-name/:id",protectRoute, generateDrugName);
+router.post("/accept-drug-name/:id",protectRoute,  acceptDrugName);
+router.post("/save-pending-drug-name/:id",protectRoute, savePendingDrugName);
+router.get("/saved-drug-names",protectRoute,getSavedDrugNames);
+router.get("/check-saved-drug-name",protectRoute, checkSavedDrugName);
+router.delete("/delete-drug-name/:id", protectRoute, deleteDrugName);
 export default router;

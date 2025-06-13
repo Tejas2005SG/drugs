@@ -8,6 +8,6 @@ router.post('/signup', signup);
 router.post('/verify-phone', verifyPhone); // New route for OTP verification
 router.post('/login', login);
 router.post('/logout', logout);
-router.get('/profile',  getProfile);
+router.get('/profile', protectRoute, getProfile);
 
 export default router;

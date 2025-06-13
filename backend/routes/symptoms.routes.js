@@ -4,7 +4,7 @@ import { protectRoute } from '../middleware/auth.middleware.js';
 
 const router = express.Router();
 
-router.get('/list', getSymptoms);
-router.post('/diagnosis',  getDiagnosis);
+router.get('/list',protectRoute, getSymptoms);
+router.post('/diagnosis', protectRoute, getDiagnosis);
 
 export default router;

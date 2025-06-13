@@ -9,9 +9,9 @@ import {
 
 const router = express.Router();
 
-router.post('/predict',  predictToxicityController);
-router.get('/history',  getToxicityHistory);
-router.post('/save-analysis',  saveGeminiAnalysis);
-router.post('/gemini-analysis',  getGeminiAnalysis);
+router.post('/predict', protectRoute, predictToxicityController);
+router.get('/history', protectRoute, getToxicityHistory);
+router.post('/save-analysis', protectRoute, saveGeminiAnalysis);
+router.post('/gemini-analysis',protectRoute,  getGeminiAnalysis);
 
 export default router;

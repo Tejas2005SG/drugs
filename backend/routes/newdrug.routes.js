@@ -3,10 +3,10 @@ import { predictDisease,predictTargetProtein, getnewdrug,getSymptoms } from '../
 import { protectRoute } from '../middleware/auth.middleware.js';
 const router = express.Router();
 
-router.post("/predictDisease/:id",predictDisease);
-router.post("/predictTargetProtein",predictTargetProtein);
-router.get('/getnewdrug/:id', getnewdrug);
-router.get('/symptoms/:id', getSymptoms);
+router.post("/predictDisease/:id",protectRoute,predictDisease);
+router.post("/predictTargetProtein",protectRoute,predictTargetProtein);
+router.get('/getnewdrug/:id',protectRoute, getnewdrug);
+router.get('/symptoms/:id',protectRoute, getSymptoms);
 
 
 export default router;
