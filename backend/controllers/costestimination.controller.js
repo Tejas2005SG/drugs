@@ -524,39 +524,45 @@ export const postCostEstimation = async (req, res) => {
   try {
     const { smiles } = req.body;
     const userId = req.user?._id;
+    console.log('Received cost estimation request:', { smiles, userId });
 
     if (!userId) {
-      return res.status(401).json({ message: "User not authenticated" });
+      console.error('User not authenticated');
+      return res.status(401).json({ message: 'User not authenticated' });
     }
     if (!smiles) {
-      return res.status(400).json({ message: "SMILES string is required" });
+      console.error('SMILES string missing');
+      return res.status(400).json({ message: 'SMILES string is required' });
     }
-
     if (typeof smiles !== 'string' || smiles.length < 2) {
-      return res.status(400).json({ message: "Invalid SMILES string format" });
+      console.error('Invalid SMILES string:', smiles);
+      return res.status(400).json({ message: 'Invalid SMILES string format' });
     }
 
     const { estimatedcost, information, enhancedAlgorithmicData } = await geminiCostEstimation(smiles);
+    console.log('Gemini result:', { estimatedcost });
 
     const costEstimation = new CostEstimation({
       smiles,
       estimatedcost,
       information,
       userId,
-      algorithmicData: enhancedAlgorithmicData, // Store enhanced data
+      algorithmicData: enhancedAlgorithmicData,
     });
 
-    await costEstimation.save();
+    const savedEstimation = await costEstimation.save();
+    console.log('Saved estimation:', savedEstimation);
 
     res.status(201).json({
       success: true,
-      data: costEstimation,
-      message: "Cost estimation completed using advanced multi-algorithm approach"
+      data: savedEstimation.toObject(),
+      message: 'Cost estimation completed',
     });
   } catch (error) {
+    console.error('Error in postCostEstimation:', error.message, error.stack);
     res.status(500).json({
       success: false,
-      message: "Server error",
+      message: 'Server error',
       error: error.message,
     });
   }
