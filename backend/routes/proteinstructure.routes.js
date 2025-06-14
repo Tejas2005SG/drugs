@@ -13,14 +13,56 @@ import {
 
 } from "../controllers/proteinstructure.controller.js";
 import { protectRoute } from "../middleware/auth.middleware.js";
-
+import  ProteinStructure  from "../models/protienstructure.model.js";
+import { User } from "../models/auth.model.js";
 
 const router = express.Router();
 
 // Existing Routes
 router.get("/getproteinstructure/:id",protectRoute,  getProteinStructure);
 router.post("/postproteinstructure/:id",protectRoute,  postProteinStructure);
+router.post('/saveproteinstructure/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, smiles, properties, generatedStructures, information } = req.body;
 
+    // Validate required fields
+    if (!smiles) {
+      return res.status(400).json({ message: 'SMILES string is required' });
+    }
+
+    // Create new protein structure
+    const newProteinStructure = new ProteinStructure({
+      name: name || 'Untitled Structure',
+      smiles,
+      properties: properties || {},
+      generatedStructures: generatedStructures || [],
+      information: information || '',
+      userId: id,
+    });
+
+    // Save to database
+    await newProteinStructure.save();
+
+    // Update user's protein structures
+    await User.findByIdAndUpdate(
+      id,
+      { $push: { protienStructures: newProteinStructure._id } }, // Note: typo 'protien' in your original code
+      { new: true }
+    );
+
+    res.status(201).json({
+      message: 'Protein structure saved successfully',
+      structure: newProteinStructure,
+    });
+  } catch (error) {
+    console.error('Error saving protein structure:', error.message);
+    res.status(500).json({
+      message: 'Failed to save protein structure',
+      error: error.message,
+    });
+  }
+});
 
 router.post("/generatenewmolecule/:id",protectRoute, generatenewmolecule);
 router.get("/generatednewmolecule", protectRoute, getgeneratednewmolecule);
