@@ -28,7 +28,7 @@ router.post('/saveproteinstructure/:id', async (req, res) => {
 
     // Validate required fields
     if (!smiles) {
-      return res.status(400).json({ message: 'SMILES string is required' });
+      return res.status(400).json({ message: 'SMILES string is required for generation' });
     }
 
     // Create new protein structure

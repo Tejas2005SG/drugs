@@ -91,7 +91,7 @@ app.post("/api/proxy/molmim", async (req, res) => {
   } catch (error) {
     console.error('Error proxying MolMIM API request:', error.message);
     res.status(error.response?.status || 500).json({
-      message: 'Failed to proxy MolMIM API request',
+      message: 'Failed to make proxy MolMIM API request',
       error: error.message,
     });
   }
